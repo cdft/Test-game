@@ -68,6 +68,17 @@
       return 'rgb(' + r + ',' + g + ',' + b + ')';
     },
 
+    /* Blend two #rrggbb colours. Returns hex so the result can be fed back
+       into shade() and the rest of the colour helpers. */
+    mixHex: function (a, b, t) {
+      t = t < 0 ? 0 : t > 1 ? 1 : t;
+      var na = parseInt(a.slice(1), 16), nb = parseInt(b.slice(1), 16);
+      var r = Math.round(((na >> 16) & 255) + ((((nb >> 16) & 255)) - ((na >> 16) & 255)) * t);
+      var g = Math.round(((na >> 8) & 255) + ((((nb >> 8) & 255)) - ((na >> 8) & 255)) * t);
+      var bl = Math.round((na & 255) + ((nb & 255) - (na & 255)) * t);
+      return '#' + (0x1000000 + (r << 16) + (g << 8) + bl).toString(16).slice(1);
+    },
+
     /* localStorage that never throws (private mode, file:// quirks, ...). */
     store: {
       get: function (key, fallback) {

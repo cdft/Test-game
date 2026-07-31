@@ -55,6 +55,19 @@ and disables touch scrolling, which is what makes it behave on a phone.
 - **Rails** flash red for about a second before the People's Express arrives.
 - **Kibble** (golden bones) is scattered on grass, worth 5 each, plus a bonus
   of 1 per 5 metres at the end of a run. Spend it on new comrades.
+- **Get caught** and you don't just lose — the colour drains out of you, a hat
+  drops onto your head, a red star rises, and you fall into step with the rank
+  you were running from.
+
+## Sound
+
+An original 8-bit parade march plays under the run: a minor-key tune with a
+stomping root-and-fifth bass, fanfare leaps, and a snare on the backbeat. It
+picks up tempo when the Collective gets within about five metres, and the march
+gets a short victory cadence when it takes you. Three synthesised voices —
+pulse lead, triangle bass, filtered-noise drums — scheduled against the audio
+clock rather than a timer, so the beat holds steady through dropped frames.
+`M` mutes everything, music included.
 
 ## Comrades
 
@@ -71,6 +84,7 @@ build.js            bundles the whole game into one shareable HTML file
 css/style.css       HUD, menus, character cards
 js/util.js          maths, colour, storage and canvas helpers
 js/audio.js         synthesised sound effects (WebAudio, no files)
+js/music.js         the 8-bit march: an original score and its sequencer
 js/characters.js    the roster + the procedural cat/dog renderer
 js/world.js         endless row generation and simulation
 js/render.js        the faux-3D scene renderer

@@ -317,14 +317,21 @@
       ctx.stroke();
     }
 
-    /* Regime headgear, used for drivers and marchers. */
-    if (opts.cap === 'ushanka') {
+    /* Regime headgear, used for drivers, marchers and the newly converted.
+       capT animates the hat dropping onto the head. */
+    var capT = opts.capT === undefined ? 1 : U.clamp(opts.capT, 0, 1);
+    if (opts.cap && capT > 0.02) {
+      ctx.save();
+      ctx.globalAlpha *= capT;
+      ctx.translate(0, -(1 - capT) * headH * 1.1);
+    }
+    if (opts.cap === 'ushanka' && capT > 0.02) {
       ctx.fillStyle = '#4a3a2c';
       U.roundRect(ctx, hx - headW * 0.06, headTop - headH * 0.26, headW * 1.12, headH * 0.42, headW * 0.18);
       ctx.fill();
       ctx.fillStyle = '#c8102e';
       star(ctx, 0, headTop - headH * 0.06, headW * 0.17);
-    } else if (opts.cap === 'cap') {
+    } else if (opts.cap === 'cap' && capT > 0.02) {
       ctx.fillStyle = '#5a6a4a';
       U.roundRect(ctx, hx - headW * 0.04, headTop - headH * 0.16, headW * 1.08, headH * 0.30, headW * 0.1);
       ctx.fill();
@@ -334,6 +341,7 @@
       ctx.fillStyle = '#c8102e';
       star(ctx, 0, headTop - headH * 0.01, headW * 0.14);
     }
+    if (opts.cap && capT > 0.02) ctx.restore();
 
     ctx.restore();
   }

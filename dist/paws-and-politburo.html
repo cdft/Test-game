@@ -555,6 +555,17 @@ body { overscroll-behavior: none; }
       return 'rgb(' + r + ',' + g + ',' + b + ')';
     },
 
+    /* Blend two #rrggbb colours. Returns hex so the result can be fed back
+       into shade() and the rest of the colour helpers. */
+    mixHex: function (a, b, t) {
+      t = t < 0 ? 0 : t > 1 ? 1 : t;
+      var na = parseInt(a.slice(1), 16), nb = parseInt(b.slice(1), 16);
+      var r = Math.round(((na >> 16) & 255) + ((((nb >> 16) & 255)) - ((na >> 16) & 255)) * t);
+      var g = Math.round(((na >> 8) & 255) + ((((nb >> 8) & 255)) - ((na >> 8) & 255)) * t);
+      var bl = Math.round((na & 255) + ((nb & 255) - (na & 255)) * t);
+      return '#' + (0x1000000 + (r << 16) + (g << 8) + bl).toString(16).slice(1);
+    },
+
     /* localStorage that never throws (private mode, file:// quirks, ...). */
     store: {
       get: function (key, fallback) {
@@ -666,9 +677,14 @@ body { overscroll-behavior: none; }
   var Audio = {
     isMuted: function () { return muted; },
 
+    /* Shared with the music sequencer so both run on one context. */
+    context: ensure,
+    destination: function () { return master; },
+
     toggleMute: function () {
       muted = !muted;
       U.store.set('pp.muted', muted);
+      if (PP.Music) PP.Music.setMuted(muted);
       if (!muted) Audio.blip();
       return muted;
     },
@@ -723,6 +739,257 @@ body { overscroll-behavior: none; }
   };
 
   PP.Audio = Audio;
+})(window);
+</script>
+<script>
+/* An 8-bit march for the soundtrack.
+ *
+ * Original composition — a minor-key parade tune with the genre's furniture:
+ * a stomping root-and-fifth bass, fanfare leaps in fourths and fifths, and a
+ * snare on the backbeat. Three voices, all synthesised: pulse lead, triangle
+ * bass, filtered-noise drums.
+ *
+ * Notes are scheduled ahead of the audio clock rather than fired from
+ * setInterval, so the beat doesn't wobble when the game drops a frame. */
+(function (global) {
+  'use strict';
+
+  var PP = global.PP;
+  var U = PP.U;
+
+  var BPM = 116;            // parade pace
+  var URGENT_BPM = 132;     // when the tide is breathing down your neck
+  var LOOKAHEAD = 0.14;     // seconds of notes queued in advance
+  var TICK = 25;            // scheduler wake-up, ms
+
+  /* ── The tune ───────────────────────────────────────────────────────
+     Written in D minor. Melody as [midi, length-in-16ths]; 0 is a rest.
+     60 = middle C, so D4 = 62. */
+  var A_MELODY = [
+    [62, 4], [62, 4], [69, 4], [69, 4],          // D  D  A  A
+    [70, 4], [69, 4], [67, 4], [65, 4],          // Bb A  G  F
+    [64, 4], [65, 4], [67, 4], [64, 4],          // E  F  G  E
+    [62, 8], [0, 8],
+    [65, 4], [65, 4], [72, 4], [72, 4],          // F  F  C  C
+    [74, 4], [72, 4], [70, 4], [69, 4],          // D  C  Bb A
+    [67, 4], [69, 4], [70, 4], [67, 4],          // G  A  Bb G
+    [69, 8], [0, 8]
+  ];
+
+  var B_MELODY = [
+    [74, 4], [74, 4], [74, 4], [72, 4],          // D  D  D  C
+    [70, 4], [72, 4], [74, 8],
+    [69, 4], [70, 4], [72, 4], [70, 4],
+    [69, 4], [67, 4], [65, 8],
+    [67, 4], [69, 4], [70, 4], [72, 4],
+    [74, 8], [72, 8],
+    [70, 4], [69, 4], [67, 4], [65, 4],
+    [64, 8], [57, 8]                             // land on the dominant
+  ];
+
+  /* One chord root per bar, 16 bars total. */
+  var CHORDS = [
+    38, 46, 45, 38, 41, 38, 43, 45,              // D  Bb A  D  F  D  G  A
+    38, 43, 45, 38, 43, 38, 43, 45
+  ];
+
+  var STEPS_PER_BAR = 16;
+  var BARS = 16;
+  var TOTAL_STEPS = STEPS_PER_BAR * BARS;
+
+  /* Expand a [note, length] melody into { step: [midi, len] }. */
+  function expand(melody, startStep) {
+    var map = {}, step = startStep;
+    for (var i = 0; i < melody.length; i++) {
+      var note = melody[i][0], len = melody[i][1];
+      if (note) map[step] = [note, len];
+      step += len;
+    }
+    return map;
+  }
+
+  var LEAD = {};
+  (function () {
+    var a = expand(A_MELODY, 0);
+    var b = expand(B_MELODY, 8 * STEPS_PER_BAR);
+    var k;
+    for (k in a) if (Object.prototype.hasOwnProperty.call(a, k)) LEAD[k] = a[k];
+    for (k in b) if (Object.prototype.hasOwnProperty.call(b, k)) LEAD[k] = b[k];
+  })();
+
+  var ctx = null, bus = null, timer = null;
+  var playing = false, muted = false, urgent = false;
+  var step = 0, nextTime = 0;
+
+  function midiToFreq(m) { return 440 * Math.pow(2, (m - 69) / 12); }
+
+  function stepSeconds() {
+    return 60 / (urgent ? URGENT_BPM : BPM) / 4;   // one 16th note
+  }
+
+  /* ── Voices ─────────────────────────────────────────────────────── */
+
+  function pulse(freq, at, dur, gainPeak, type) {
+    var osc = ctx.createOscillator();
+    var g = ctx.createGain();
+    osc.type = type || 'square';
+    osc.frequency.setValueAtTime(freq, at);
+    g.gain.setValueAtTime(0.0001, at);
+    g.gain.linearRampToValueAtTime(gainPeak, at + 0.012);
+    g.gain.setValueAtTime(gainPeak * 0.75, at + Math.max(0.02, dur * 0.55));
+    g.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+    osc.connect(g);
+    g.connect(bus);
+    osc.start(at);
+    osc.stop(at + dur + 0.02);
+  }
+
+  function drum(at, kind) {
+    var dur = kind === 'kick' ? 0.14 : 0.11;
+    if (kind === 'kick') {
+      var osc = ctx.createOscillator();
+      var g = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(150, at);
+      osc.frequency.exponentialRampToValueAtTime(45, at + dur);
+      g.gain.setValueAtTime(0.5, at);
+      g.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+      osc.connect(g);
+      g.connect(bus);
+      osc.start(at);
+      osc.stop(at + dur + 0.02);
+      return;
+    }
+    // Snare: a short burst of high-passed noise.
+    var frames = Math.floor(ctx.sampleRate * dur);
+    var buf = ctx.createBuffer(1, frames, ctx.sampleRate);
+    var data = buf.getChannelData(0);
+    for (var i = 0; i < frames; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / frames);
+    var src = ctx.createBufferSource();
+    src.buffer = buf;
+    var hp = ctx.createBiquadFilter();
+    hp.type = 'highpass';
+    hp.frequency.value = kind === 'snare' ? 1400 : 5000;
+    var sg = ctx.createGain();
+    sg.gain.value = kind === 'snare' ? 0.30 : 0.07;
+    src.connect(hp);
+    hp.connect(sg);
+    sg.connect(bus);
+    src.start(at);
+  }
+
+  /* ── Sequencer ──────────────────────────────────────────────────── */
+
+  function scheduleStep(s, at) {
+    var bar = Math.floor(s / STEPS_PER_BAR);
+    var beat = s % STEPS_PER_BAR;
+    var sec = stepSeconds();
+
+    // Lead.
+    var note = LEAD[s];
+    if (note) {
+      pulse(midiToFreq(note[0]), at, note[1] * sec * 0.92, 0.10);
+      // A fifth above, quieter — cheap brass thickness.
+      pulse(midiToFreq(note[0] + 7), at, note[1] * sec * 0.92, 0.035);
+    }
+
+    // Bass: root, fifth, root, fifth on the quarters. Marching feet.
+    if (beat % 4 === 0) {
+      var root = CHORDS[bar % CHORDS.length];
+      var n = (beat === 0 || beat === 8) ? root : root + 7;
+      pulse(midiToFreq(n - 12), at, sec * 3.4, 0.20, 'triangle');
+    }
+
+    // Drums.
+    if (beat === 0 || beat === 8) drum(at, 'kick');
+    if (beat === 4 || beat === 12) drum(at, 'snare');
+    if (beat % 2 === 0) drum(at, 'hat');
+    // Fill into each 4-bar phrase.
+    if (bar % 4 === 3 && beat >= 12) drum(at, 'snare');
+  }
+
+  function scheduler() {
+    if (!playing || !ctx) return;
+    while (nextTime < ctx.currentTime + LOOKAHEAD) {
+      scheduleStep(step, nextTime);
+      nextTime += stepSeconds();
+      step = (step + 1) % TOTAL_STEPS;
+    }
+  }
+
+  var Music = {
+    setMuted: function (m) {
+      muted = m;
+      if (muted) Music.stop();
+    },
+
+    isPlaying: function () { return playing; },
+
+    start: function () {
+      if (playing || muted) return;
+      ctx = PP.Audio.context();
+      if (!ctx) return;
+      if (ctx.state === 'suspended') ctx.resume();
+      if (!bus) {
+        bus = ctx.createGain();
+        bus.gain.value = 0.5;               // sits under the effects
+        bus.connect(PP.Audio.destination() || ctx.destination);
+      }
+      // Cancel any fade still in flight, or a quick restart begins silent.
+      bus.gain.cancelScheduledValues(ctx.currentTime);
+      bus.gain.setValueAtTime(0.5, ctx.currentTime);
+      playing = true;
+      step = 0;
+      nextTime = ctx.currentTime + 0.08;
+      timer = global.setInterval(scheduler, TICK);
+      scheduler();
+    },
+
+    stop: function () {
+      playing = false;
+      if (timer) { global.clearInterval(timer); timer = null; }
+    },
+
+    /* Pick the tempo up when the Collective closes in. */
+    setUrgent: function (on) { urgent = !!on; },
+
+    /* Cut the music but let whatever is already queued ring out. */
+    fadeOut: function (seconds) {
+      if (!bus || !ctx) { Music.stop(); return; }
+      var now = ctx.currentTime;
+      bus.gain.cancelScheduledValues(now);
+      bus.gain.setValueAtTime(bus.gain.value, now);
+      bus.gain.exponentialRampToValueAtTime(0.0001, now + (seconds || 0.6));
+      Music.stop();
+      global.setTimeout(function () {
+        if (bus) bus.gain.setValueAtTime(0.5, ctx.currentTime);
+      }, (seconds || 0.6) * 1000 + 60);
+    },
+
+    /* The march wins: a short, smug cadence when you are caught. */
+    victoryOfTheCollective: function () {
+      if (muted) return;
+      var c = PP.Audio.context();
+      if (!c) return;
+      ctx = c;
+      if (!bus) {
+        bus = ctx.createGain();
+        bus.gain.value = 0.5;
+        bus.connect(PP.Audio.destination() || ctx.destination);
+      }
+      bus.gain.setValueAtTime(0.5, ctx.currentTime);
+      var t0 = ctx.currentTime + 0.05;
+      [[57, 0], [62, 0.16], [65, 0.32], [69, 0.48], [74, 0.64]].forEach(function (e) {
+        pulse(midiToFreq(e[0]), t0 + e[1], 0.22, 0.13);
+        pulse(midiToFreq(e[0] - 12), t0 + e[1], 0.22, 0.16, 'triangle');
+      });
+      drum(t0 + 0.64, 'kick');
+      drum(t0 + 0.80, 'snare');
+    }
+  };
+
+  muted = PP.Audio.isMuted();
+  PP.Music = Music;
 })(window);
 </script>
 <script>
@@ -1045,14 +1312,21 @@ body { overscroll-behavior: none; }
       ctx.stroke();
     }
 
-    /* Regime headgear, used for drivers and marchers. */
-    if (opts.cap === 'ushanka') {
+    /* Regime headgear, used for drivers, marchers and the newly converted.
+       capT animates the hat dropping onto the head. */
+    var capT = opts.capT === undefined ? 1 : U.clamp(opts.capT, 0, 1);
+    if (opts.cap && capT > 0.02) {
+      ctx.save();
+      ctx.globalAlpha *= capT;
+      ctx.translate(0, -(1 - capT) * headH * 1.1);
+    }
+    if (opts.cap === 'ushanka' && capT > 0.02) {
       ctx.fillStyle = '#4a3a2c';
       U.roundRect(ctx, hx - headW * 0.06, headTop - headH * 0.26, headW * 1.12, headH * 0.42, headW * 0.18);
       ctx.fill();
       ctx.fillStyle = '#c8102e';
       star(ctx, 0, headTop - headH * 0.06, headW * 0.17);
-    } else if (opts.cap === 'cap') {
+    } else if (opts.cap === 'cap' && capT > 0.02) {
       ctx.fillStyle = '#5a6a4a';
       U.roundRect(ctx, hx - headW * 0.04, headTop - headH * 0.16, headW * 1.08, headH * 0.30, headW * 0.1);
       ctx.fill();
@@ -1062,6 +1336,7 @@ body { overscroll-behavior: none; }
       ctx.fillStyle = '#c8102e';
       star(ctx, 0, headTop - headH * 0.01, headW * 0.14);
     }
+    if (opts.cap && capT > 0.02) ctx.restore();
 
     ctx.restore();
   }
@@ -2018,9 +2293,55 @@ body { overscroll-behavior: none; }
       } else if (p.deathKind === 'water') {
         opts.alpha = 1 - p.sinkT;
         opts.lift = -p.sinkT * s * 0.35;
+      } else if (p.deathKind === 'caught') {
+        // Hat drops on, then you start marching in time with the rest.
+        opts.cap = 'ushanka';
+        opts.capT = U.clamp((p.convertT - 0.25) / 0.45, 0, 1);
+        opts.lift = p.convertT > 0.6 ? Math.abs(Math.sin(p.marchT * 5)) * s * 0.10 : 0;
       }
     }
     CH.draw(ctx, x, y, opts);
+
+    // The moment it takes: a red star rises over the new comrade.
+    if (p.dead && p.deathKind === 'caught' && p.convertT > 0.5) {
+      var st = U.clamp((p.convertT - 0.5) / 0.4, 0, 1);
+      ctx.save();
+      ctx.globalAlpha = st;
+      ctx.fillStyle = '#c8102e';
+      CH.star(ctx, x, y - s * (1.15 + st * 0.25), s * 0.19 * st);
+      ctx.restore();
+    }
+  }
+
+  /* Rings spreading across the surface where something went under. */
+  function drawSplashes(list, cam) {
+    for (var i = 0; i < list.length; i++) {
+      var sp = list[i];
+      var k = sp.t / sp.maxT;
+      var x = sx(sp.x, cam);
+      var y = sy(sp.row, cam) + view.rowH * 0.18;
+      var s = view.tile;
+      ctx.save();
+      ctx.lineWidth = Math.max(1.5, s * 0.055 * (1 - k));
+      for (var r = 0; r < 3; r++) {
+        var rk = k - r * 0.16;
+        if (rk <= 0 || rk >= 1) continue;
+        ctx.globalAlpha = (1 - rk) * 0.75;
+        ctx.strokeStyle = r === 0 ? 'rgba(255,255,255,0.95)' : 'rgba(186,226,248,0.9)';
+        U.ellipse(ctx, x, y, s * (0.18 + rk * 1.15), s * (0.07 + rk * 0.42));
+        ctx.stroke();
+      }
+      // The column of water thrown up by the impact.
+      if (k < 0.42) {
+        var ck = k / 0.42;
+        ctx.globalAlpha = (1 - ck) * 0.9;
+        ctx.fillStyle = 'rgba(226,244,255,0.95)';
+        U.ellipse(ctx, x, y - s * 0.30 * Math.sin(ck * Math.PI),
+          s * (0.20 - ck * 0.08), s * (0.34 + ck * 0.22));
+        ctx.fill();
+      }
+      ctx.restore();
+    }
   }
 
   function drawParticles(list, cam) {
@@ -2121,8 +2442,10 @@ body { overscroll-behavior: none; }
       if (g.tide.row >= i) drawTideBand(row, cam, g.tide.row, t);
       if (Math.floor(g.tide.row) === i) drawTideFront(cam, g.tide.row, t);
 
-      if (i === playerDrawRow && g.showPlayer) drawPlayer(g.player, cam, g.char);
+      if (i === playerDrawRow && g.showPlayer) drawPlayer(g.player, cam, g.playerChar || g.char);
     }
+
+    drawSplashes(g.splashes, cam);
 
     // Distance haze: the far rows dissolve into the smog.
     var hzY = sy(farRow, cam) + view.rowH / 2;
@@ -2299,6 +2622,11 @@ body { overscroll-behavior: none; }
   var COIN_VALUE = 5;
   var IDLE_GRACE = 3.0;       // seconds of standing still before the tide surges
   var DEATH_HOLD = 1.6;       // seconds between dying and the game-over card
+  var CAUGHT_HOLD = 3.0;      // longer, so you get to watch yourself convert
+  var CONVERT_TIME = 1.3;     // seconds to go from pet to comrade
+
+  /* What the Collective turns you into. */
+  var REGIME = { fur: '#6b6f78', belly: '#9aa0a8', accent: '#c8102e', eye: '#1a1a1a' };
 
   var SAVE_KEY = 'pp.save';
 
@@ -2316,6 +2644,8 @@ body { overscroll-behavior: none; }
     tide: { row: -7, speed: 1.2 },
     particles: [],
     floaters: [],
+    splashes: [],
+    playerChar: null,          // set while converting; render prefers it
     shake: 0,
     flash: 0,
     showPlayer: false,
@@ -2338,7 +2668,20 @@ body { overscroll-behavior: none; }
       facing: 'up', squash: 0, lift: 0,
       onLog: null,
       dead: false, deathKind: null, sinkT: 0,
+      convertT: 0, marchT: 0,
       bumpT: 0
+    };
+  }
+
+  /* Blend the player's colours toward the regime's as they are converted. */
+  function convertedChar(base, t) {
+    return {
+      species: base.species, ears: base.ears, tail: base.tail,
+      short: base.short, fluffy: base.fluffy,
+      fur: U.mixHex(base.fur, REGIME.fur, t),
+      belly: U.mixHex(base.belly, REGIME.belly, t),
+      accent: U.mixHex(base.accent, REGIME.accent, t),
+      eye: U.mixHex(base.eye, REGIME.eye, t)
     };
   }
 
@@ -2362,6 +2705,26 @@ body { overscroll-behavior: none; }
     }
   }
 
+  /* Rings on the surface plus droplets thrown clear of the impact. */
+  function splash(x, row) {
+    g.splashes.push({ x: x, row: row, t: 0, maxT: 1.1 });
+    for (var i = 0; i < 22; i++) {
+      var a = Math.random() * Math.PI * 2;
+      var speed = U.rand(0.7, 2.4);
+      g.particles.push({
+        x: x, row: row, z: 0.05,
+        vx: Math.cos(a) * speed,
+        vrow: Math.sin(a) * speed * 0.45,
+        vz: U.rand(1.8, 4.2),
+        size: U.rand(0.018, 0.055),
+        color: i % 3 === 0 ? 'rgba(255,255,255,0.95)' : 'rgba(168,214,240,0.95)',
+        shape: 'circle',
+        life: U.rand(0.5, 1.0),
+        maxLife: 1.0
+      });
+    }
+  }
+
   function floater(text, x, row, color) {
     g.floaters.push({ text: text, x: x, row: row, life: 1.0, maxLife: 1.0, color: color });
   }
@@ -2381,6 +2744,10 @@ body { overscroll-behavior: none; }
     for (i = g.floaters.length - 1; i >= 0; i--) {
       g.floaters[i].life -= dt * 0.9;
       if (g.floaters[i].life <= 0) g.floaters.splice(i, 1);
+    }
+    for (i = g.splashes.length - 1; i >= 0; i--) {
+      g.splashes[i].t += dt;
+      if (g.splashes[i].t >= g.splashes[i].maxT) g.splashes.splice(i, 1);
     }
     g.shake = Math.max(0, g.shake - dt * 2.2);
     g.flash = Math.max(0, g.flash - dt * 3.0);
@@ -2476,6 +2843,19 @@ body { overscroll-behavior: none; }
 
     if (p.dead) {
       if (p.deathKind === 'water') p.sinkT = Math.min(1, p.sinkT + dt * 1.4);
+      if (p.deathKind === 'caught') {
+        // Re-education: the colours drain, the hat arrives, and you fall in
+        // step with the rank you were running from.
+        var was = p.convertT;
+        p.convertT = Math.min(1, p.convertT + dt / CONVERT_TIME);
+        p.marchT += dt;
+        g.playerChar = convertedChar(g.char, p.convertT);
+        if (p.convertT > 0.45) p.facing = 'up';
+        if (was < 0.5 && p.convertT >= 0.5) {
+          floater('COMRADE', p.x, p.row + 1.25, '#f5c542');
+          puff(p.x, p.row, '#c8102e', 10, 1.8);
+        }
+      }
       return;
     }
 
@@ -2517,13 +2897,18 @@ body { overscroll-behavior: none; }
       g.flash = 0.5;
       puff(p.x, p.row, g.char.fur, 16, 3.2);
       PP.Audio.squash();
+      PP.Music.fadeOut(0.5);
     } else if (kind === 'water') {
-      puff(p.x, p.row, 'rgba(200,235,255,0.95)', 14, 2.2);
+      splash(p.x, p.row);
+      g.shake = 0.35;
       PP.Audio.splash();
+      PP.Music.fadeOut(0.5);
     } else {
       g.shake = 0.7;
       puff(p.x, p.row, '#c8102e', 18, 2.6);
       PP.Audio.caught();
+      PP.Music.stop();
+      PP.Music.victoryOfTheCollective();
     }
   }
 
@@ -2559,6 +2944,9 @@ body { overscroll-behavior: none; }
 
     g.tide.speed = speed;
     g.tide.row += speed * dt;
+
+    // The band plays faster the closer it gets.
+    PP.Music.setUrgent(gap < 5.5);
   }
 
   /* ── Camera ─────────────────────────────────────────────────────── */
@@ -2607,10 +2995,13 @@ body { overscroll-behavior: none; }
       g.tide.row = -5;
       g.player = newPlayer();
       g.showPlayer = false;
+      g.playerChar = null;
       g.particles.length = 0;
       g.floaters.length = 0;
+      g.splashes.length = 0;
       g.shake = 0;
       g.flash = 0;
+      PP.Music.stop();
     },
 
     start: function () {
@@ -2629,20 +3020,24 @@ body { overscroll-behavior: none; }
       g.queued = null;
       g.particles.length = 0;
       g.floaters.length = 0;
+      g.splashes.length = 0;
+      g.playerChar = null;
       g.shake = 0;
       g.flash = 0;
       g.char = PP.Characters.byId(save.char);
       save.runs = (save.runs || 0) + 1;
       persist();
+      PP.Music.setUrgent(false);
+      PP.Music.start();
     },
 
     pause: function () {
-      if (g.mode === 'playing') { g.mode = 'paused'; return true; }
+      if (g.mode === 'playing') { g.mode = 'paused'; PP.Music.stop(); return true; }
       return false;
     },
 
     resume: function () {
-      if (g.mode === 'paused') g.mode = 'playing';
+      if (g.mode === 'paused') { g.mode = 'playing'; PP.Music.start(); }
     },
 
     isPlaying: function () { return g.mode === 'playing'; },
@@ -2683,7 +3078,8 @@ body { overscroll-behavior: none; }
           updatePlayer(dt);
           if (g.mode === 'dying') {
             g.deathT += dt;
-            if (g.deathT >= DEATH_HOLD) {
+            var hold = g.player.deathKind === 'caught' ? CAUGHT_HOLD : DEATH_HOLD;
+            if (g.deathT >= hold) {
               g.mode = 'dead';
               if (g.onDeath) g.onDeath(Game.finishRun());
             }
@@ -2729,7 +3125,7 @@ body { overscroll-behavior: none; }
     },
     caught: {
       title: 'REDISTRIBUTED',
-      flavor: 'Your snacks, your cushion and your name now belong to everyone.'
+      flavor: 'You have been issued a hat and an opinion. Welcome to the march, comrade.'
     }
   };
 
@@ -2819,6 +3215,7 @@ body { overscroll-behavior: none; }
   }
 
   function onDeath(result) {
+    PP.Music.stop();
     var info = DEATHS[result.kind] || DEATHS.caught;
     U.$('over-title').textContent = info.title;
     U.$('over-flavor').textContent = info.flavor;
@@ -2840,6 +3237,8 @@ body { overscroll-behavior: none; }
   function toggleMute() {
     var muted = PP.Audio.toggleMute();
     U.$('btn-mute').textContent = muted ? '🔇' : '🔊';
+    // Unmuting mid-run brings the band back.
+    if (!muted && Game.isPlaying()) PP.Music.start();
   }
 
   /* ── Buttons ────────────────────────────────────────────────────── */

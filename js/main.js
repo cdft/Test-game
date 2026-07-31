@@ -25,7 +25,7 @@
     },
     caught: {
       title: 'REDISTRIBUTED',
-      flavor: 'Your snacks, your cushion and your name now belong to everyone.'
+      flavor: 'You have been issued a hat and an opinion. Welcome to the march, comrade.'
     }
   };
 
@@ -115,6 +115,7 @@
   }
 
   function onDeath(result) {
+    PP.Music.stop();
     var info = DEATHS[result.kind] || DEATHS.caught;
     U.$('over-title').textContent = info.title;
     U.$('over-flavor').textContent = info.flavor;
@@ -136,6 +137,8 @@
   function toggleMute() {
     var muted = PP.Audio.toggleMute();
     U.$('btn-mute').textContent = muted ? '🔇' : '🔊';
+    // Unmuting mid-run brings the band back.
+    if (!muted && Game.isPlaying()) PP.Music.start();
   }
 
   /* ── Buttons ────────────────────────────────────────────────────── */

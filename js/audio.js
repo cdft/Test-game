@@ -87,9 +87,14 @@
   var Audio = {
     isMuted: function () { return muted; },
 
+    /* Shared with the music sequencer so both run on one context. */
+    context: ensure,
+    destination: function () { return master; },
+
     toggleMute: function () {
       muted = !muted;
       U.store.set('pp.muted', muted);
+      if (PP.Music) PP.Music.setMuted(muted);
       if (!muted) Audio.blip();
       return muted;
     },

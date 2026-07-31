@@ -575,9 +575,55 @@
       } else if (p.deathKind === 'water') {
         opts.alpha = 1 - p.sinkT;
         opts.lift = -p.sinkT * s * 0.35;
+      } else if (p.deathKind === 'caught') {
+        // Hat drops on, then you start marching in time with the rest.
+        opts.cap = 'ushanka';
+        opts.capT = U.clamp((p.convertT - 0.25) / 0.45, 0, 1);
+        opts.lift = p.convertT > 0.6 ? Math.abs(Math.sin(p.marchT * 5)) * s * 0.10 : 0;
       }
     }
     CH.draw(ctx, x, y, opts);
+
+    // The moment it takes: a red star rises over the new comrade.
+    if (p.dead && p.deathKind === 'caught' && p.convertT > 0.5) {
+      var st = U.clamp((p.convertT - 0.5) / 0.4, 0, 1);
+      ctx.save();
+      ctx.globalAlpha = st;
+      ctx.fillStyle = '#c8102e';
+      CH.star(ctx, x, y - s * (1.15 + st * 0.25), s * 0.19 * st);
+      ctx.restore();
+    }
+  }
+
+  /* Rings spreading across the surface where something went under. */
+  function drawSplashes(list, cam) {
+    for (var i = 0; i < list.length; i++) {
+      var sp = list[i];
+      var k = sp.t / sp.maxT;
+      var x = sx(sp.x, cam);
+      var y = sy(sp.row, cam) + view.rowH * 0.18;
+      var s = view.tile;
+      ctx.save();
+      ctx.lineWidth = Math.max(1.5, s * 0.055 * (1 - k));
+      for (var r = 0; r < 3; r++) {
+        var rk = k - r * 0.16;
+        if (rk <= 0 || rk >= 1) continue;
+        ctx.globalAlpha = (1 - rk) * 0.75;
+        ctx.strokeStyle = r === 0 ? 'rgba(255,255,255,0.95)' : 'rgba(186,226,248,0.9)';
+        U.ellipse(ctx, x, y, s * (0.18 + rk * 1.15), s * (0.07 + rk * 0.42));
+        ctx.stroke();
+      }
+      // The column of water thrown up by the impact.
+      if (k < 0.42) {
+        var ck = k / 0.42;
+        ctx.globalAlpha = (1 - ck) * 0.9;
+        ctx.fillStyle = 'rgba(226,244,255,0.95)';
+        U.ellipse(ctx, x, y - s * 0.30 * Math.sin(ck * Math.PI),
+          s * (0.20 - ck * 0.08), s * (0.34 + ck * 0.22));
+        ctx.fill();
+      }
+      ctx.restore();
+    }
   }
 
   function drawParticles(list, cam) {
@@ -678,8 +724,10 @@
       if (g.tide.row >= i) drawTideBand(row, cam, g.tide.row, t);
       if (Math.floor(g.tide.row) === i) drawTideFront(cam, g.tide.row, t);
 
-      if (i === playerDrawRow && g.showPlayer) drawPlayer(g.player, cam, g.char);
+      if (i === playerDrawRow && g.showPlayer) drawPlayer(g.player, cam, g.playerChar || g.char);
     }
+
+    drawSplashes(g.splashes, cam);
 
     // Distance haze: the far rows dissolve into the smog.
     var hzY = sy(farRow, cam) + view.rowH / 2;
