@@ -19,6 +19,20 @@ If you'd rather serve it:
 python3 -m http.server 8000   # then visit http://localhost:8000
 ```
 
+### Sharing it as one file
+
+`build.js` inlines the CSS and all eight scripts into a single page with no
+external requests, for hosting or passing around:
+
+```sh
+node build.js                    # -> dist/paws-and-politburo.html
+node build.js --standalone       # adds <!doctype>, <head> and a mobile viewport
+```
+
+Without `--standalone` the output omits the document scaffolding, so it drops
+into a host that supplies its own. The bundle pins the canvas to the viewport
+and disables touch scrolling, which is what makes it behave on a phone.
+
 ## Controls
 
 | Action | Keyboard | Touch |
@@ -53,6 +67,7 @@ Boris (60), Duchess (90), Sputnik (120), Pierogi (150), Field Marshal Fluff
 
 ```
 index.html          markup for the canvas and every UI screen
+build.js            bundles the whole game into one shareable HTML file
 css/style.css       HUD, menus, character cards
 js/util.js          maths, colour, storage and canvas helpers
 js/audio.js         synthesised sound effects (WebAudio, no files)
