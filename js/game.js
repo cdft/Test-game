@@ -199,7 +199,11 @@
       if (lg) {
         p.onLog = lg;
         puff(p.x, p.row, 'rgba(190,225,245,0.9)', 5, 1.2);
+        g.splashes.push({ x: p.x, row: p.row, t: 0, maxT: 0.5, kind: 'ripple' });
       }
+    } else if (row) {
+      // A little kick of dust marks every landing on solid ground.
+      g.splashes.push({ x: p.x, row: p.row, t: 0, maxT: 0.38, kind: 'dust' });
     }
 
     var coin = World.coinAt(Math.round(p.x), p.row);

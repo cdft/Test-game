@@ -74,6 +74,8 @@ html, body {
   font-size: 54px;
   font-weight: 800;
   letter-spacing: -1px;
+  color: #ffe9c4;
+  text-shadow: 0 3px 0 rgba(60, 10, 20, 0.55), 0 0 22px rgba(255, 180, 90, 0.3);
 }
 
 .hud-score small {

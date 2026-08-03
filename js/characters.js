@@ -99,7 +99,7 @@
     /* Contact shadow stays on the ground even while the critter is airborne. */
     ctx.save();
     ctx.globalAlpha = (opts.alpha === undefined ? 1 : opts.alpha) * (0.28 - Math.min(lift, s) / s * 0.12);
-    ctx.fillStyle = '#000';
+    ctx.fillStyle = '#251536';
     U.ellipse(ctx, x, y, bodyW * 0.62, bodyW * 0.24);
     ctx.fill();
     ctx.restore();
@@ -110,18 +110,23 @@
     var dark = U.shade(c.fur, -0.28);
     var light = U.shade(c.fur, 0.18);
 
-    /* Tail (behind the body). */
+    /* Tail (behind the body). Sways idly; tucks low when afraid. */
     ctx.strokeStyle = dark;
     ctx.lineCap = 'round';
     var tailBaseY = -legH - bodyH * 0.55;
+    var fear = opts.fear || 0;
+    var tnow = PP.World ? PP.World.time() : 0;
+    var sway = Math.sin(tnow * 2.1) * s * 0.05 * (1 - fear);
     if (c.tail === 'long' || c.tail === 'curl') {
       ctx.lineWidth = s * 0.09;
       ctx.beginPath();
       ctx.moveTo(-bodyW * 0.42, tailBaseY);
       if (c.tail === 'curl') {
-        ctx.quadraticCurveTo(-bodyW * 0.95, tailBaseY - s * 0.30, -bodyW * 0.35, tailBaseY - s * 0.42);
+        ctx.quadraticCurveTo(-bodyW * 0.95 + sway, tailBaseY - s * 0.30 + fear * s * 0.34,
+          -bodyW * 0.35, tailBaseY - s * 0.42 + fear * s * 0.38);
       } else {
-        ctx.quadraticCurveTo(-bodyW * 0.95, tailBaseY + s * 0.02, -bodyW * 0.80, tailBaseY - s * 0.34);
+        ctx.quadraticCurveTo(-bodyW * 0.95 + sway, tailBaseY + s * 0.02 + fear * s * 0.18,
+          -bodyW * 0.80 + sway * 0.6, tailBaseY - s * 0.34 + fear * s * 0.40);
       }
       ctx.stroke();
     } else if (c.tail === 'fluffy') {
@@ -170,11 +175,12 @@
     if (c.ears === 'cat' || c.ears === 'perk') {
       var earW = headW * (c.ears === 'cat' ? 0.30 : 0.26);
       var earH = headH * (c.ears === 'cat' ? 0.52 : 0.44);
+      earH *= (1 - 0.42 * fear);            // ears pin back when afraid
       [-1, 1].forEach(function (sgn) {
         var ex = sgn * headW * 0.30;
         ctx.beginPath();
         ctx.moveTo(ex - earW / 2, headTop + earH * 0.5);
-        ctx.lineTo(ex + sgn * earW * 0.10, headTop - earH * 0.55);
+        ctx.lineTo(ex + sgn * earW * (0.10 + 0.45 * fear), headTop - earH * 0.55);
         ctx.lineTo(ex + earW / 2, headTop + earH * 0.5);
         ctx.closePath();
         ctx.fill();
@@ -236,6 +242,14 @@
         if (sideOn && sgn < 0) return;
         U.ellipse(ctx, eyeOffset + sgn * eyeDX + (sideOn ? headW * 0.02 : 0), faceY,
           headW * (c.species === 'cat' ? 0.045 : 0.06), headW * 0.085);
+        ctx.fill();
+      });
+      // A pinpoint catchlight makes the eyes read as alive.
+      ctx.fillStyle = 'rgba(255,255,255,0.85)';
+      [-1, 1].forEach(function (sgn) {
+        if (sideOn && sgn < 0) return;
+        U.ellipse(ctx, eyeOffset + sgn * eyeDX + headW * 0.025, faceY - headW * 0.03,
+          headW * 0.024, headW * 0.028);
         ctx.fill();
       });
 
