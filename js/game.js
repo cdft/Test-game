@@ -45,6 +45,9 @@
     idleT: 0,
     deathT: 0,
     nextMilestone: 25,
+    bestLineRow: -1,           // where the record line sits for this run
+    bestCrossed: false,
+    falcon: { state: 'idle', t: 0, x: 0, row: 0 },
     queued: null,
     onDeath: null,             // set by main.js
     onScore: null
@@ -56,7 +59,7 @@
       fromX: 0, fromRow: 2, toX: 0, toRow: 2,
       hopping: false, hopT: 0,
       facing: 'up', squash: 0, lift: 0,
-      onLog: null,
+      onLog: null, charging: false,
       dead: false, deathKind: null, sinkT: 0,
       convertT: 0, marchT: 0,
       bumpT: 0
@@ -149,6 +152,7 @@
     if (g.mode !== 'playing') return;
     var p = g.player;
     if (p.dead) return;
+    p.charging = false;
 
     if (p.hopping) {
       // Late input is buffered so chained hops feel responsive.
@@ -181,7 +185,7 @@
     p.hopT = 0;
     p.onLog = null;
     if (dir === 'up') g.idleT = 0;
-    PP.Audio.hop();
+    PP.Audio.hop(g.char.species === 'cat' ? 1.12 : 0.85);
   }
 
   function land() {
@@ -201,9 +205,19 @@
         puff(p.x, p.row, 'rgba(190,225,245,0.9)', 5, 1.2);
         g.splashes.push({ x: p.x, row: p.row, t: 0, maxT: 0.5, kind: 'ripple' });
       }
+    } else if (row && row.type === 'ice') {
+      g.splashes.push({ x: p.x, row: p.row, t: 0, maxT: 0.45, kind: 'ripple' });
+      PP.Audio.iceLand();
     } else if (row) {
       // A little kick of dust marks every landing on solid ground.
       g.splashes.push({ x: p.x, row: p.row, t: 0, maxT: 0.38, kind: 'dust' });
+    }
+
+    // Crossing your own record line is a moment.
+    if (!g.bestCrossed && g.bestLineRow >= 3 && p.row > g.bestLineRow) {
+      g.bestCrossed = true;
+      floater('RECORD BROKEN', p.x, p.row + 0.6, '#f5c542');
+      PP.Audio.milestone();
     }
 
     var coin = World.coinAt(Math.round(p.x), p.row);
@@ -237,6 +251,7 @@
 
     if (p.dead) {
       if (p.deathKind === 'water') p.sinkT = Math.min(1, p.sinkT + dt * 1.4);
+      if (p.deathKind === 'falcon') p.sinkT = Math.min(1, p.sinkT + dt * 0.85);
       if (p.deathKind === 'caught') {
         // Re-education: the colours drain, the hat arrives, and you fall in
         // step with the rank you were running from.
@@ -271,6 +286,21 @@
         var lg = World.logUnder(p.x, p.row);
         p.onLog = lg;
         if (lg) p.x += row.dir * row.speed * dt;
+      } else if (row && row.type === 'ice') {
+        // Your weight is a problem the floe intends to solve.
+        var floe = World.floeAt(p.x, p.row);
+        if (floe && floe.state !== 'sunk') {
+          floe.pressed = true;
+          floe.standT += dt;
+          if (floe.standT > 1.6) {
+            floe.state = 'sunk';
+            floe.recoverT = 2.6;
+            PP.Audio.iceBreak();
+          } else if (floe.standT > 0.8 && floe.state === 'solid') {
+            floe.state = 'cracking';
+            PP.Audio.iceCrack();
+          }
+        }
       }
     }
 
@@ -297,6 +327,11 @@
       g.shake = 0.35;
       PP.Audio.splash();
       PP.Music.fadeOut(0.5);
+    } else if (kind === 'falcon') {
+      g.shake = 0.45;
+      puff(p.x, p.row, g.char.fur, 10, 2.0);
+      PP.Audio.snatch();
+      PP.Music.fadeOut(0.5);
     } else {
       g.shake = 0.7;
       puff(p.x, p.row, '#c8102e', 18, 2.6);
@@ -314,12 +349,85 @@
     if (g.tide.row >= p.row - 0.05) { die('caught'); return; }
 
     if (row.type === 'road' && World.carAt(p.x, p.row, HALF_W)) { die('squash'); return; }
+    if (row.type === 'parade' && World.carAt(p.x, p.row, HALF_W)) { die('caught'); return; }
     if (row.type === 'rail' && World.trainAt(p.x, p.row, HALF_W)) { die('squash'); return; }
+
+    if (row.type === 'ice' && !p.hopping) {
+      var fl = World.floeAt(p.x, p.row);
+      if (!fl || fl.state === 'sunk') { die('water'); return; }
+    }
 
     if (row.type === 'water' && !p.hopping) {
       if (!World.logUnder(p.x, p.row)) { die('water'); return; }
       // Carried past the bank: still on screen when it happens, so you see it.
       if (p.x < World.CFG.X_MIN - 1 || p.x > World.CFG.X_MAX + 1) { die('water'); return; }
+    }
+  }
+
+  /* ── The State Falcon ───────────────────────────────────────────────
+     The tide punishes hesitation from behind; the falcon punishes it from
+     above, so idling is never safe no matter how big your lead is. */
+
+  function updateFalcon(dt) {
+    var f = g.falcon;
+    var p = g.player;
+    var gap = p.row - g.tide.row;
+
+    if (f.state === 'idle') {
+      if (g.idleT > 4.2 && gap > 6 && !p.dead) {
+        f.state = 'warn';
+        f.t = 0;
+        f.x = p.x;
+        f.row = p.row;
+        PP.Audio.screech();
+      }
+    } else if (f.state === 'warn') {
+      f.t += dt;
+      if (f.t > 0.85) { f.state = 'dive'; f.t = 0; }
+    } else if (f.state === 'dive') {
+      f.t += dt;
+      if (f.t >= 0.5) {
+        var hit = !p.dead && Math.abs(p.x - f.x) < 0.6 && Math.abs(p.row - f.row) < 0.6;
+        if (hit) {
+          die('falcon');
+          f.state = 'carry';
+        } else {
+          f.state = 'miss';
+          g.idleT = 0;
+        }
+        f.t = 0;
+      }
+    } else if (f.state === 'miss' || f.state === 'carry') {
+      f.t += dt;
+      if (f.state === 'miss' && f.t > 0.9) f.state = 'idle';
+    }
+  }
+
+  /* ── Traffic feedback: whooshes and honks, no gameplay effect ───── */
+
+  function updateTraffic(dt) {
+    var p = g.player;
+    if (p.dead) return;
+    var row = World.row(Math.round(p.row));
+    if (!row || row.type !== 'road') return;
+    for (var i = 0; i < row.cars.length; i++) {
+      var car = row.cars[i];
+      var cx = World.carX(row, car);
+      var dxx = Math.abs(cx - p.x);
+      var shave = car.w / 2 + HALF_W + 0.5;
+      if (car._pd !== undefined && dxx < shave && car._pd >= shave && !p.hopping) {
+        PP.Audio.whoosh();
+        g.shake = Math.max(g.shake, 0.12);
+      }
+      car._pd = dxx;
+
+      // An impatient beep from anyone bearing down on your column.
+      var closing = row.dir > 0 ? p.x - cx : cx - p.x;
+      if (closing > 0.8 && closing < 3.2 &&
+          World.time() - (row.lastBeep || -9) > 1.6 && Math.random() < dt * 2.0) {
+        row.lastBeep = World.time();
+        PP.Audio.beep();
+      }
     }
   }
 
@@ -395,6 +503,7 @@
       g.splashes.length = 0;
       g.shake = 0;
       g.flash = 0;
+      g.falcon.state = 'idle';
       PP.Music.stop();
     },
 
@@ -411,6 +520,10 @@
       g.idleT = 0;
       g.deathT = 0;
       g.nextMilestone = 25;
+      g.bestLineRow = (save.best || 0) >= 3 ? save.best : -1;
+      g.bestCrossed = false;
+      g.falcon.state = 'idle';
+      g.falcon.t = 0;
       g.queued = null;
       g.particles.length = 0;
       g.floaters.length = 0;
@@ -439,6 +552,38 @@
 
     move: tryMove,
 
+    /* Press-and-hold: the animal crouches, the hop fires on release. */
+    charge: function () {
+      if (g.mode === 'playing' && g.player && !g.player.dead && !g.player.hopping) {
+        g.player.charging = true;
+      }
+    },
+    uncharge: function () { if (g.player) g.player.charging = false; },
+
+    /* The People's Lottery: 100 kibble, one guaranteed new comrade. */
+    LOTTERY_COST: 100,
+    lockedCount: function () {
+      return PP.Characters.ROSTER.filter(function (c) {
+        return save.owned.indexOf(c.id) === -1;
+      }).length;
+    },
+    lottery: function () {
+      var locked = PP.Characters.ROSTER.filter(function (c) {
+        return save.owned.indexOf(c.id) === -1;
+      });
+      if (!locked.length || (save.coins || 0) < Game.LOTTERY_COST) {
+        PP.Audio.deny();
+        return null;
+      }
+      save.coins -= Game.LOTTERY_COST;
+      var win = locked[U.randInt(0, locked.length - 1)];
+      save.owned.push(win.id);
+      save.char = win.id;
+      g.char = PP.Characters.byId(win.id);
+      persist();
+      return win;
+    },
+
     /* Distance bonus is paid out at the end of the run. */
     finishRun: function () {
       var bonus = Math.floor(g.score / 5);
@@ -466,6 +611,8 @@
           g.idleT += dt;
           updatePlayer(dt);
           updateTide(dt);
+          updateFalcon(dt);
+          updateTraffic(dt);
         } else {
           // The tide keeps rolling over the scene while the card comes up.
           g.tide.row += g.tide.speed * 0.7 * dt;

@@ -56,6 +56,8 @@
       start = pos(e);
       moved = false;
       PP.Audio.unlock();
+      // Press-and-hold: the animal crouches until you release.
+      if (handlers.onCharge) handlers.onCharge();
     }
 
     function drag(e) {
@@ -88,7 +90,10 @@
     U.on(canvas, 'pointerdown', down);
     U.on(canvas, 'pointermove', drag);
     U.on(canvas, 'pointerup', up);
-    U.on(canvas, 'pointercancel', function () { start = null; });
+    U.on(canvas, 'pointercancel', function () {
+      start = null;
+      if (handlers.onChargeCancel) handlers.onChargeCancel();
+    });
     U.on(canvas, 'contextmenu', function (e) { e.preventDefault(); });
     U.on(canvas, 'touchstart', function (e) { e.preventDefault(); }, { passive: false });
   }

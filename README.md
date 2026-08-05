@@ -52,9 +52,22 @@ and disables touch scrolling, which is what makes it behave on a phone.
   tank, each driven by a very loyal pet. They do not brake.
 - **Canals** drown you unless you land on a log or a raft. Logs drift; ride
   one too far and you go over the edge of the map.
-- **Rails** flash red for about a second before the People's Express arrives.
+- **Rails** flash red for about a second before the People's Express arrives —
+  wig-wag lamps, and striped boom arms that drop across the crossing.
+- **Frozen rivers** offer ice floes as stepping stones. Your weight cracks
+  them, then sinks them; they bob back up once you're gone. Keep moving.
+- **May Day parades** cross the route in slow, dense squads. They will not
+  trample you — they will recruit you. Walking into one starts the
+  conversion on the spot.
+- **The State Falcon** handles anyone who thinks a big lead means they can
+  stand still. Idle too long and a shadow locks onto your tile; you have
+  under a second to move before the stoop lands. The tide covers hesitation
+  from behind, the falcon covers it from above.
 - **Kibble** (golden bones) is scattered on grass, worth 5 each, plus a bonus
-  of 1 per 5 metres at the end of a run. Spend it on new comrades.
+  of 1 per 5 metres at the end of a run. Spend it on new comrades — directly,
+  or through the lottery.
+- **Your record** is drawn in the world: a dashed gold line at your best
+  distance, with a little moment when you cross it.
 - **Get caught** and you don't just lose — the colour drains out of you, a hat
   drops onto your head, a red star rises, and you fall into step with the rank
   you were running from.
@@ -72,9 +85,17 @@ clock rather than a timer, so the beat holds steady through dropped frames.
 ## Comrades
 
 Eight playable animals, two unlocked from the start. The rest cost kibble:
-Boris (60), Duchess (90), Sputnik (120), Pierogi (150), Field Marshal Fluff
-(220) and Laika (300). Progress, coins and your pick are saved to
-`localStorage`.
+Boris (60), Duchess (90), Sputnik (120), Pierogi (150), Marshal Fluff (220)
+and Laika (300) — or gamble 100 on **The People's Lottery**, which air-drops
+a crate containing one guaranteed new comrade, chosen by the State. Progress,
+coins and your pick are saved to `localStorage`.
+
+## Feel
+
+Hops are pressed, not tapped: touching down crouches your animal and the hop
+fires on release, so chained hops have a rhythm to them. Cars that shave past
+you whoosh; drivers bearing down on your column beep. Hop sounds are pitched
+by species — cats sit a few semitones above dogs.
 
 ## Project layout
 

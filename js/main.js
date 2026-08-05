@@ -12,7 +12,7 @@
   var elCoins = U.$('coins');
   var elWarning = U.$('warning');
 
-  var SCREENS = ['screen-title', 'screen-pick', 'screen-help', 'screen-pause', 'screen-over'];
+  var SCREENS = ['screen-title', 'screen-pick', 'screen-help', 'screen-pause', 'screen-over', 'screen-prize'];
 
   var DEATHS = {
     squash: {
@@ -26,6 +26,10 @@
     caught: {
       title: 'REDISTRIBUTED',
       flavor: 'You have been issued a hat and an opinion. Welcome to the march, comrade.'
+    },
+    falcon: {
+      title: 'AIRLIFTED',
+      flavor: 'You were selected for immediate relocation. The State Falcon does not accept appeals.'
     }
   };
 
@@ -46,6 +50,18 @@
     U.$('t-coins').textContent = Game.save.coins || 0;
     U.$('t-runs').textContent = Game.save.runs || 0;
     U.$('p-coins').textContent = Game.save.coins || 0;
+    refreshLotteryButtons();
+  }
+
+  function refreshLotteryButtons() {
+    var locked = Game.lockedCount();
+    var poor = (Game.save.coins || 0) < Game.LOTTERY_COST;
+    [U.$('btn-lottery'), U.$('btn-lottery-again')].forEach(function (btn) {
+      if (!btn) return;
+      btn.disabled = !locked || poor;
+      if (!locked) btn.textContent = 'Every comrade is free';
+      else btn.textContent = (btn.id === 'btn-lottery' ? 'People\u2019s Lottery \u00b7 \ud83c\udf56 100' : 'Again \u00b7 \ud83c\udf56 100');
+    });
   }
 
   /* ── Character select ───────────────────────────────────────────── */
@@ -162,9 +178,82 @@
   U.on(U.$('btn-pick'), 'click', openPicker);
   U.on(U.$('btn-over-pick'), 'click', openPicker);
 
+  /* ── The People's Lottery ───────────────────────────────────────── */
+
+  var lotteryBusy = false;
+
+  function confettiBurst(stage) {
+    var colors = ['#c8102e', '#f5c542', '#f0e6d6', '#e08a3c'];
+    for (var i = 0; i < 14; i++) {
+      var bit = document.createElement('span');
+      bit.className = 'confetti';
+      bit.style.background = colors[i % colors.length];
+      bit.style.setProperty('--cx', (Math.random() * 240 - 120).toFixed(0) + 'px');
+      bit.style.setProperty('--cy', (Math.random() * -160 - 20).toFixed(0) + 'px');
+      bit.style.setProperty('--cr', (Math.random() * 720 - 360).toFixed(0) + 'deg');
+      stage.appendChild(bit);
+      setTimeout(function (el) { el.remove(); }.bind(null, bit), 1100);
+    }
+  }
+
+  function runLottery() {
+    if (lotteryBusy) return;
+    var win = Game.lottery();
+    refreshStats();
+    if (!win) return;
+
+    lotteryBusy = true;
+    showScreen('screen-prize');
+    var crate = U.$('crate');
+    var reveal = U.$('prize-reveal');
+    var stage = U.$('prize-stage');
+    reveal.classList.add('hidden');
+    reveal.classList.remove('pop');
+    crate.classList.remove('hidden', 'drop', 'shake', 'burst');
+
+    // Drop -> thud -> shake -> burst -> reveal.
+    void crate.offsetWidth;
+    crate.classList.add('drop');
+    setTimeout(function () { PP.Audio.crateDrop(); }, 780);
+    setTimeout(function () {
+      crate.classList.remove('drop');
+      void crate.offsetWidth;
+      crate.classList.add('shake');
+      PP.Audio.bump();
+    }, 950);
+    setTimeout(function () {
+      crate.classList.remove('shake');
+      void crate.offsetWidth;
+      crate.classList.add('burst');
+      confettiBurst(stage);
+    }, 1550);
+    setTimeout(function () {
+      crate.classList.add('hidden');
+      PP.Render.drawPortrait(U.$('prize-portrait'), win);
+      U.$('prize-name').textContent = win.name;
+      U.$('prize-tag').textContent = win.tag;
+      reveal.classList.remove('hidden');
+      void reveal.offsetWidth;
+      reveal.classList.add('pop');
+      PP.Audio.unlockChime();
+      refreshStats();
+      lotteryBusy = false;
+    }, 1850);
+  }
+
+  U.on(U.$('btn-lottery'), 'click', function () { PP.Audio.unlock(); runLottery(); });
+  U.on(U.$('btn-lottery-again'), 'click', runLottery);
+  U.on(U.$('btn-lottery-done'), 'click', function () {
+    if (lotteryBusy) return;
+    refreshStats();
+    showScreen('screen-title');
+  });
+
   /* ── Input ──────────────────────────────────────────────────────── */
 
   PP.Input.init(canvas, {
+    onCharge: function () { Game.charge(); },
+    onChargeCancel: function () { Game.uncharge(); },
     onMove: function (dir) {
       if (Game.isPlaying()) Game.move(dir);
       else if (Game.mode() === 'menu' && dir === 'up') startRun();

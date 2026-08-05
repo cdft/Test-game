@@ -46,9 +46,11 @@
     var d = difficulty(index);
     var table = [
       ['grass', 30 - d * 8],
-      ['road', 34 + d * 12],
-      ['water', 18 + d * 4],
-      ['rail', 6 + d * 4]
+      ['road', 30 + d * 10],
+      ['water', 16 + d * 3],
+      ['rail', 6 + d * 4],
+      ['parade', index > 12 ? 7 + d * 5 : 0],
+      ['ice', index > 25 ? 8 + d * 5 : 0]
     ];
     // Never repeat the same band twice in a row: it makes reading the
     // board hard and water-after-water is unfair at speed.
@@ -58,6 +60,8 @@
     if (t === 'road') len = U.randInt(1, d > 0.4 ? 4 : 3);
     else if (t === 'water') len = U.randInt(1, d > 0.5 ? 3 : 2);
     else if (t === 'rail') len = U.randInt(1, 2);
+    else if (t === 'parade') len = 1;
+    else if (t === 'ice') len = U.randInt(1, d > 0.5 ? 2 : 1);
     else len = U.randInt(1, 2);
 
     plan.type = t;
@@ -184,6 +188,43 @@
     return row;
   }
 
+  /* A May Day column: squads of marchers crossing like slow, wide,
+     very committed vehicles. Touching one doesn't squash you — it
+     recruits you. */
+  function makeParade(index) {
+    var d = difficulty(index);
+    var row = {
+      index: index, type: 'parade',
+      dir: Math.random() < 0.5 ? -1 : 1,
+      speed: U.rand(1.0, 1.5) + d * 0.8,
+      cars: []
+    };
+    var count = U.randInt(3, 4);
+    var widths = [], i;
+    for (i = 0; i < count; i++) widths.push(U.pick([2.2, 2.8, 3.4]));
+    var ps = layout(widths, 1.7, 3.2, function () { return U.pick([2.2, 2.8]); });
+    for (i = 0; i < ps.length; i++) {
+      row.cars.push({
+        p: ps[i], w: widths[i], kind: 'squad',
+        skin: U.randInt(0, 3), seed: Math.random()
+      });
+    }
+    return row;
+  }
+
+  /* A frozen river: static floes you can stand on — briefly. Weight on a
+     floe cracks it, then sinks it; it bobs back up once you're gone. */
+  function makeIce(index) {
+    var row = { index: index, type: 'ice', floes: {} };
+    var run = 0;
+    for (var x = CFG.X_MIN; x <= CFG.X_MAX; x++) {
+      if (Math.random() < 0.3 && run < 2) { run++; continue; }
+      run = 0;
+      row.floes[x] = { state: 'solid', standT: 0, recoverT: 0, pressed: false, seed: Math.random() };
+    }
+    return row;
+  }
+
   function makeRail(index) {
     return {
       index: index, type: 'rail',
@@ -205,6 +246,8 @@
       case 'road': return makeRoad(index);
       case 'water': return makeWater(index);
       case 'rail': return makeRail(index);
+      case 'parade': return makeParade(index);
+      case 'ice': return makeIce(index);
     }
   }
 
@@ -261,8 +304,20 @@
         r = rowAt(i);
         if (!r) continue;
 
-        if (r.type === 'road') {
+        if (r.type === 'road' || r.type === 'parade') {
           for (j = 0; j < r.cars.length; j++) r.cars[j].p += r.speed * dt;
+        } else if (r.type === 'ice') {
+          for (var fk in r.floes) {
+            var fl = r.floes[fk];
+            if (fl.state === 'sunk') {
+              fl.recoverT -= dt;
+              if (fl.recoverT <= 0) { fl.state = 'solid'; fl.standT = 0; }
+            } else if (!fl.pressed && fl.standT > 0) {
+              fl.standT = Math.max(0, fl.standT - dt * 1.4);
+              if (fl.standT < 0.8) fl.state = 'solid';
+            }
+            fl.pressed = false;
+          }
         } else if (r.type === 'water') {
           for (j = 0; j < r.logs.length; j++) r.logs[j].p += r.speed * dt;
         } else if (r.type === 'rail') {
@@ -323,13 +378,20 @@
     /* A vehicle overlapping this point, or null. */
     carAt: function (x, rowIndex, halfWidth) {
       var r = rowAt(rowIndex);
-      if (!r || r.type !== 'road') return null;
+      if (!r || (r.type !== 'road' && r.type !== 'parade')) return null;
       for (var i = 0; i < r.cars.length; i++) {
         var car = r.cars[i];
         var cx = carX(r, car);
         if (Math.abs(cx - x) < car.w / 2 + halfWidth) return car;
       }
       return null;
+    },
+
+    /* The floe under this tile, or null. */
+    floeAt: function (x, rowIndex) {
+      var r = rowAt(rowIndex);
+      if (!r || r.type !== 'ice') return null;
+      return r.floes[Math.round(x)] || null;
     },
 
     trainAt: function (x, rowIndex, halfWidth) {

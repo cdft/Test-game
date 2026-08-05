@@ -36,6 +36,9 @@
       </div>
       <button id="btn-play" class="btn big">RUN FOR IT</button>
       <div class="row-btns">
+        <button id="btn-lottery" class="btn lottery">People's Lottery · 🍖 100</button>
+      </div>
+      <div class="row-btns">
         <button id="btn-pick" class="btn ghost">Choose comrade</button>
         <button id="btn-help" class="btn ghost">How to play</button>
       </div>
@@ -85,6 +88,29 @@
       <p class="sub">The tide waits. Politely.</p>
       <button id="btn-resume" class="btn big">Resume</button>
       <button id="btn-quit" class="btn ghost">Give up, go home</button>
+    </div>
+  </div>
+
+  <!-- ── The People's Lottery ────────────────────────────────── -->
+  <div id="screen-prize" class="layer screen hidden">
+    <div class="panel">
+      <h2>THE PEOPLE'S LOTTERY</h2>
+      <p class="sub">Everyone wins. Eventually.</p>
+      <div id="prize-stage">
+        <div id="crate" class="hidden">
+          <div class="chute"></div>
+          <div class="crate-box"><span class="crate-star">★</span></div>
+        </div>
+        <div id="prize-reveal" class="hidden">
+          <canvas id="prize-portrait" width="76" height="76"></canvas>
+          <div id="prize-name"></div>
+          <div id="prize-tag"></div>
+        </div>
+      </div>
+      <div class="row-btns">
+        <button id="btn-lottery-again" class="btn lottery">Again · 🍖 100</button>
+        <button id="btn-lottery-done" class="btn ghost">Done</button>
+      </div>
     </div>
   </div>
 

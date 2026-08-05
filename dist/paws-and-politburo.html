@@ -244,6 +244,136 @@ h2 {
   flex-wrap: wrap;
 }
 
+.btn.lottery {
+  background: linear-gradient(180deg, #d9a832, #b8862a);
+  box-shadow: 0 5px 0 #7a5a18;
+  color: #2c1f08;
+}
+
+.btn.lottery:disabled {
+  filter: grayscale(0.8) brightness(0.7);
+  cursor: default;
+  transform: none;
+}
+
+/* ── The People's Lottery ─────────────────────────────────────── */
+
+#prize-stage {
+  position: relative;
+  height: 200px;
+  margin: 6px 0 10px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#crate {
+  position: absolute;
+  left: 50%;
+  top: 18px;
+  transform: translateX(-50%);
+}
+
+#crate .chute {
+  width: 92px;
+  height: 46px;
+  margin: 0 auto 4px;
+  border-radius: 92px 92px 0 0;
+  background:
+    repeating-linear-gradient(90deg, #c8102e 0 14px, #f0e6d6 14px 28px);
+  opacity: 0.95;
+}
+
+#crate .crate-box {
+  width: 74px;
+  height: 62px;
+  margin: 0 auto;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #9a7a50, #7d5a33);
+  border: 3px solid #5f4325;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#crate .crate-star {
+  color: #c8102e;
+  font-size: 30px;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+
+#crate.drop {
+  animation: crate-drop 0.9s cubic-bezier(0.22, 1.4, 0.36, 1) both;
+}
+
+#crate.shake {
+  animation: crate-shake 0.55s ease-in-out both;
+}
+
+#crate.burst {
+  animation: crate-burst 0.35s ease-in both;
+}
+
+@keyframes crate-drop {
+  from { transform: translateX(-50%) translateY(-240px); }
+  to { transform: translateX(-50%) translateY(0); }
+}
+
+@keyframes crate-shake {
+  0%, 100% { transform: translateX(-50%) rotate(0); }
+  20% { transform: translateX(-54%) rotate(-5deg); }
+  40% { transform: translateX(-46%) rotate(5deg); }
+  60% { transform: translateX(-53%) rotate(-4deg); }
+  80% { transform: translateX(-47%) rotate(4deg); }
+}
+
+@keyframes crate-burst {
+  to { transform: translateX(-50%) scale(1.6); opacity: 0; }
+}
+
+#prize-reveal {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+#prize-reveal.pop {
+  animation: prize-pop 0.45s cubic-bezier(0.22, 1.6, 0.36, 1) both;
+}
+
+@keyframes prize-pop {
+  from { transform: scale(0.2); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+#prize-portrait { width: 90px; height: 90px; }
+
+#prize-name {
+  font-size: 20px;
+  font-weight: 900;
+  color: var(--gold);
+  letter-spacing: 0.5px;
+}
+
+#prize-tag { font-size: 12px; opacity: 0.7; }
+
+.confetti {
+  position: absolute;
+  width: 8px;
+  height: 12px;
+  top: 40%;
+  left: 50%;
+  opacity: 0;
+  animation: confetti-fly 1s ease-out forwards;
+}
+
+@keyframes confetti-fly {
+  0% { opacity: 1; transform: translate(0, 0) rotate(0); }
+  100% { opacity: 0; transform: translate(var(--cx), var(--cy)) rotate(var(--cr)); }
+}
+
 .fine {
   margin-top: 16px;
   font-size: 11px;
@@ -414,6 +544,9 @@ body { overscroll-behavior: none; }
       </div>
       <button id="btn-play" class="btn big">RUN FOR IT</button>
       <div class="row-btns">
+        <button id="btn-lottery" class="btn lottery">People's Lottery · 🍖 100</button>
+      </div>
+      <div class="row-btns">
         <button id="btn-pick" class="btn ghost">Choose comrade</button>
         <button id="btn-help" class="btn ghost">How to play</button>
       </div>
@@ -463,6 +596,29 @@ body { overscroll-behavior: none; }
       <p class="sub">The tide waits. Politely.</p>
       <button id="btn-resume" class="btn big">Resume</button>
       <button id="btn-quit" class="btn ghost">Give up, go home</button>
+    </div>
+  </div>
+
+  <!-- ── The People's Lottery ────────────────────────────────── -->
+  <div id="screen-prize" class="layer screen hidden">
+    <div class="panel">
+      <h2>THE PEOPLE'S LOTTERY</h2>
+      <p class="sub">Everyone wins. Eventually.</p>
+      <div id="prize-stage">
+        <div id="crate" class="hidden">
+          <div class="chute"></div>
+          <div class="crate-box"><span class="crate-star">★</span></div>
+        </div>
+        <div id="prize-reveal" class="hidden">
+          <canvas id="prize-portrait" width="76" height="76"></canvas>
+          <div id="prize-name"></div>
+          <div id="prize-tag"></div>
+        </div>
+      </div>
+      <div class="row-btns">
+        <button id="btn-lottery-again" class="btn lottery">Again · 🍖 100</button>
+        <button id="btn-lottery-done" class="btn ghost">Done</button>
+      </div>
     </div>
   </div>
 
@@ -697,7 +853,10 @@ body { overscroll-behavior: none; }
       if (c && c.state === 'suspended') c.resume();
     },
 
-    hop: function () { tone({ type: 'square', from: 420, to: 700, dur: 0.09, gain: 0.22 }); },
+    hop: function (mul) {
+      mul = mul || 1;
+      tone({ type: 'square', from: 420 * mul, to: 700 * mul, dur: 0.09, gain: 0.22 });
+    },
     bump: function () { tone({ type: 'square', from: 150, to: 90, dur: 0.09, gain: 0.2 }); },
     blip: function () { tone({ type: 'square', from: 600, to: 900, dur: 0.07, gain: 0.2 }); },
 
@@ -733,6 +892,48 @@ body { overscroll-behavior: none; }
     },
 
     deny: function () { tone({ type: 'square', from: 200, to: 120, dur: 0.18, gain: 0.25 }); },
+
+    /* A car shaving past. */
+    whoosh: function () {
+      noise({ dur: 0.16, filter: 'bandpass', freq: 900, sweepTo: 2600, gain: 0.3 });
+    },
+
+    /* An impatient driver. */
+    beep: function () {
+      tone({ type: 'square', from: 620, to: 620, dur: 0.06, gain: 0.2 });
+      tone({ type: 'square', from: 620, to: 620, dur: 0.09, gain: 0.2, delay: 0.09 });
+    },
+
+    /* The State Falcon announces itself... */
+    screech: function () {
+      tone({ type: 'sawtooth', from: 1900, to: 650, dur: 0.5, gain: 0.22 });
+      noise({ dur: 0.4, filter: 'highpass', freq: 2400, gain: 0.12 });
+    },
+
+    /* ...and collects. */
+    snatch: function () {
+      noise({ dur: 0.3, filter: 'bandpass', freq: 700, sweepTo: 2000, gain: 0.35 });
+      tone({ type: 'sawtooth', from: 500, to: 1100, dur: 0.4, gain: 0.2 });
+    },
+
+    /* Ice: a light landing, a worrying creak, a full break. */
+    iceLand: function () {
+      tone({ type: 'triangle', from: 900, to: 700, dur: 0.06, gain: 0.14 });
+    },
+    iceCrack: function () {
+      noise({ dur: 0.12, filter: 'highpass', freq: 2800, gain: 0.28 });
+      tone({ type: 'square', from: 950, to: 480, dur: 0.1, gain: 0.14 });
+    },
+    iceBreak: function () {
+      noise({ dur: 0.3, filter: 'lowpass', freq: 1600, sweepTo: 300, gain: 0.4 });
+      tone({ type: 'sine', from: 350, to: 110, dur: 0.28, gain: 0.2 });
+    },
+
+    /* The lottery crate arriving from a considerate sky. */
+    crateDrop: function () {
+      tone({ type: 'sine', from: 220, to: 60, dur: 0.22, gain: 0.35 });
+      noise({ dur: 0.22, filter: 'lowpass', freq: 500, sweepTo: 140, gain: 0.4 });
+    },
 
     milestone: function () {
       tone({ type: 'triangle', from: 660, to: 660, dur: 0.1, gain: 0.22 });
@@ -1429,9 +1630,11 @@ body { overscroll-behavior: none; }
     var d = difficulty(index);
     var table = [
       ['grass', 30 - d * 8],
-      ['road', 34 + d * 12],
-      ['water', 18 + d * 4],
-      ['rail', 6 + d * 4]
+      ['road', 30 + d * 10],
+      ['water', 16 + d * 3],
+      ['rail', 6 + d * 4],
+      ['parade', index > 12 ? 7 + d * 5 : 0],
+      ['ice', index > 25 ? 8 + d * 5 : 0]
     ];
     // Never repeat the same band twice in a row: it makes reading the
     // board hard and water-after-water is unfair at speed.
@@ -1441,6 +1644,8 @@ body { overscroll-behavior: none; }
     if (t === 'road') len = U.randInt(1, d > 0.4 ? 4 : 3);
     else if (t === 'water') len = U.randInt(1, d > 0.5 ? 3 : 2);
     else if (t === 'rail') len = U.randInt(1, 2);
+    else if (t === 'parade') len = 1;
+    else if (t === 'ice') len = U.randInt(1, d > 0.5 ? 2 : 1);
     else len = U.randInt(1, 2);
 
     plan.type = t;
@@ -1567,6 +1772,43 @@ body { overscroll-behavior: none; }
     return row;
   }
 
+  /* A May Day column: squads of marchers crossing like slow, wide,
+     very committed vehicles. Touching one doesn't squash you — it
+     recruits you. */
+  function makeParade(index) {
+    var d = difficulty(index);
+    var row = {
+      index: index, type: 'parade',
+      dir: Math.random() < 0.5 ? -1 : 1,
+      speed: U.rand(1.0, 1.5) + d * 0.8,
+      cars: []
+    };
+    var count = U.randInt(3, 4);
+    var widths = [], i;
+    for (i = 0; i < count; i++) widths.push(U.pick([2.2, 2.8, 3.4]));
+    var ps = layout(widths, 1.7, 3.2, function () { return U.pick([2.2, 2.8]); });
+    for (i = 0; i < ps.length; i++) {
+      row.cars.push({
+        p: ps[i], w: widths[i], kind: 'squad',
+        skin: U.randInt(0, 3), seed: Math.random()
+      });
+    }
+    return row;
+  }
+
+  /* A frozen river: static floes you can stand on — briefly. Weight on a
+     floe cracks it, then sinks it; it bobs back up once you're gone. */
+  function makeIce(index) {
+    var row = { index: index, type: 'ice', floes: {} };
+    var run = 0;
+    for (var x = CFG.X_MIN; x <= CFG.X_MAX; x++) {
+      if (Math.random() < 0.3 && run < 2) { run++; continue; }
+      run = 0;
+      row.floes[x] = { state: 'solid', standT: 0, recoverT: 0, pressed: false, seed: Math.random() };
+    }
+    return row;
+  }
+
   function makeRail(index) {
     return {
       index: index, type: 'rail',
@@ -1588,6 +1830,8 @@ body { overscroll-behavior: none; }
       case 'road': return makeRoad(index);
       case 'water': return makeWater(index);
       case 'rail': return makeRail(index);
+      case 'parade': return makeParade(index);
+      case 'ice': return makeIce(index);
     }
   }
 
@@ -1644,8 +1888,20 @@ body { overscroll-behavior: none; }
         r = rowAt(i);
         if (!r) continue;
 
-        if (r.type === 'road') {
+        if (r.type === 'road' || r.type === 'parade') {
           for (j = 0; j < r.cars.length; j++) r.cars[j].p += r.speed * dt;
+        } else if (r.type === 'ice') {
+          for (var fk in r.floes) {
+            var fl = r.floes[fk];
+            if (fl.state === 'sunk') {
+              fl.recoverT -= dt;
+              if (fl.recoverT <= 0) { fl.state = 'solid'; fl.standT = 0; }
+            } else if (!fl.pressed && fl.standT > 0) {
+              fl.standT = Math.max(0, fl.standT - dt * 1.4);
+              if (fl.standT < 0.8) fl.state = 'solid';
+            }
+            fl.pressed = false;
+          }
         } else if (r.type === 'water') {
           for (j = 0; j < r.logs.length; j++) r.logs[j].p += r.speed * dt;
         } else if (r.type === 'rail') {
@@ -1706,13 +1962,20 @@ body { overscroll-behavior: none; }
     /* A vehicle overlapping this point, or null. */
     carAt: function (x, rowIndex, halfWidth) {
       var r = rowAt(rowIndex);
-      if (!r || r.type !== 'road') return null;
+      if (!r || (r.type !== 'road' && r.type !== 'parade')) return null;
       for (var i = 0; i < r.cars.length; i++) {
         var car = r.cars[i];
         var cx = carX(r, car);
         if (Math.abs(cx - x) < car.w / 2 + halfWidth) return car;
       }
       return null;
+    },
+
+    /* The floe under this tile, or null. */
+    floeAt: function (x, rowIndex) {
+      var r = rowAt(rowIndex);
+      if (!r || r.type !== 'ice') return null;
+      return r.floes[Math.round(x)] || null;
     },
 
     trainAt: function (x, rowIndex, halfWidth) {
@@ -2048,6 +2311,61 @@ body { overscroll-behavior: none; }
       if (!(below && below.type === 'water')) {
         ctx.fillStyle = 'rgba(255,255,255,0.14)'; // waterline sparkle
         ctx.fillRect(x0, top + h - 2, x1, 2);
+      }
+    } else if (row.type === 'ice') {
+      // A frozen river: pale, glassy, faintly blushing at the horizon.
+      var wf2 = U.clamp(1 - (top - horizonY) / (view.h * 0.55), 0, 1);
+      var ig = ctx.createLinearGradient(0, top, 0, top + h);
+      ig.addColorStop(0, U.mixHex('#7fa8c4', '#a88a92', wf2 * 0.4));
+      ig.addColorStop(1, U.mixHex('#93bdd4', '#b29592', wf2 * 0.0 + 0));
+      ctx.fillStyle = ig;
+      ctx.fillRect(x0, top, x1, h);
+      // Frost sparkles.
+      ctx.fillStyle = '#ffffff';
+      for (var sp2 = 0; sp2 < 10; sp2++) {
+        var spx2 = hash(row.index, sp2 + 200) * view.w;
+        var spy2 = top + h * (0.15 + U.mod(hash(row.index, sp2 + 300) * 7, 0.7));
+        ctx.globalAlpha = Math.max(0, 0.25 * Math.sin(t * 2 + sp2 * 2.2 + row.index));
+        ctx.fillRect(spx2, spy2, 2, 2);
+      }
+      ctx.globalAlpha = 1;
+      above = PP.World.row(row.index + 1);
+      below = row.index > 0 ? PP.World.row(row.index - 1) : null;
+      if (!(above && above.type === 'ice')) {
+        ctx.fillStyle = 'rgba(0,0,0,0.20)';
+        ctx.fillRect(x0, top, x1, h * 0.09);
+      }
+      if (!(below && below.type === 'ice')) {
+        ctx.fillStyle = 'rgba(255,255,255,0.18)';
+        ctx.fillRect(x0, top + h - 2, x1, 2);
+      }
+    } else if (row.type === 'parade') {
+      // A paved parade route with a red runner and bunting.
+      ctx.fillStyle = '#4a4450';
+      ctx.fillRect(x0, top, x1, h);
+      if (patterns.asphalt) {
+        ctx.globalAlpha = 0.4;
+        ctx.fillStyle = patterns.asphalt;
+        ctx.fillRect(x0, top, x1, h);
+        ctx.globalAlpha = 1;
+      }
+      ctx.fillStyle = 'rgba(165,20,36,0.30)';
+      ctx.fillRect(x0, top + h * 0.24, x1, h * 0.55);
+      ctx.fillStyle = 'rgba(245,197,66,0.25)';
+      ctx.fillRect(x0, top + h * 0.24, x1, 2);
+      ctx.fillRect(x0, top + h * 0.79 - 2, x1, 2);
+      ctx.fillStyle = 'rgba(0,0,0,0.20)';
+      ctx.fillRect(x0, top, x1, h * 0.08);
+      // Bunting along the far edge, anchored to the world.
+      var bstep = view.tile * 0.5;
+      for (var bx3 = U.mod(-cam.x * view.tile, bstep) - bstep; bx3 < view.w; bx3 += bstep) {
+        ctx.fillStyle = ((bx3 / bstep) | 0) % 2 ? '#c8102e' : '#f5c542';
+        ctx.beginPath();
+        ctx.moveTo(bx3, top + 2);
+        ctx.lineTo(bx3 + bstep * 0.5, top + 2);
+        ctx.lineTo(bx3 + bstep * 0.25, top + h * 0.14);
+        ctx.closePath();
+        ctx.fill();
       }
     } else if (row.type === 'rail') {
       ctx.fillStyle = '#665d50';
@@ -2715,6 +3033,241 @@ body { overscroll-behavior: none; }
     ctx.restore();
   }
 
+  function drawFloes(row, cam, t) {
+    var s = view.tile;
+    var y = sy(row.index, cam) + view.rowH * 0.16;
+    for (var key in row.floes) {
+      if (!Object.prototype.hasOwnProperty.call(row.floes, key)) continue;
+      var f = row.floes[key];
+      var x = sx(+key, cam);
+      if (x < -s || x > view.w + s) continue;
+
+      if (f.state === 'sunk') {
+        // The hole it left: dark water with a shiver of rings.
+        ctx.fillStyle = 'rgba(20,50,80,0.55)';
+        U.ellipse(ctx, x, y + s * 0.04, s * 0.34, s * 0.15);
+        ctx.fill();
+        continue;
+      }
+
+      var bob = Math.sin(t * 1.7 + f.seed * 9) * s * 0.012;
+      var dip = Math.min(f.standT, 1.6) * s * 0.05;
+      var fy = y + bob + dip;
+      // Every floe is its own shape, so a row of them never reads as
+      // one long object.
+      var fw = s * (0.34 + f.seed * 0.10);
+      var fx2 = x + (f.seed - 0.5) * s * 0.12;
+
+      ctx.fillStyle = 'rgba(8,20,40,0.22)';
+      U.ellipse(ctx, fx2 - s * 0.05, fy + s * 0.10, fw * 0.95, s * 0.12);
+      ctx.fill();
+
+      ctx.fillStyle = f.state === 'cracking' ? '#ddeaf2'
+        : U.mixHex('#eef6fa', '#cfe0ea', f.seed * 0.7);
+      U.roundRect(ctx, fx2 - fw, fy - s * 0.16, fw * 2, s * (0.30 + f.seed * 0.07), s * (0.09 + f.seed * 0.06));
+      ctx.fill();
+      ctx.fillStyle = 'rgba(160,200,220,0.5)';
+      U.roundRect(ctx, fx2 - fw, fy + s * 0.08, fw * 2, s * 0.08, s * 0.04);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(255,240,214,0.35)';
+      U.roundRect(ctx, fx2 - fw * 0.8, fy - s * 0.155, fw, s * 0.05, s * 0.025);
+      ctx.fill();
+
+
+      if (f.state === 'cracking' || f.standT > 0.5) {
+        // Cracks spider out from wherever the weight is.
+        var severity = U.clamp((f.standT - 0.5) / 1.1, 0, 1);
+        ctx.strokeStyle = 'rgba(70,110,140,' + (0.4 + severity * 0.5).toFixed(2) + ')';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        for (var cr = 0; cr < 3 + severity * 2; cr++) {
+          var a2 = f.seed * 7 + cr * 2.2;
+          var len2 = s * (0.12 + severity * 0.28) * (0.7 + hash(row.index, cr + (+key)) * 0.6);
+          ctx.moveTo(fx2, fy);
+          ctx.lineTo(fx2 + Math.cos(a2) * len2, fy + Math.sin(a2) * len2 * 0.45);
+        }
+        ctx.stroke();
+      }
+    }
+  }
+
+  /* A squad of marchers crossing the parade route like a slow vehicle. */
+  function drawSquad(row, car, cam, t) {
+    var x = sx(PP.World.carX(row, car), cam);
+    var y = sy(row.index, cam) + view.rowH * 0.26;
+    var s = view.tile;
+    var w = car.w * s;
+    if (x < -w || x > view.w + w) return;
+
+    ctx.save();
+    ctx.fillStyle = 'rgba(40,24,58,0.28)';
+    U.ellipse(ctx, x, y, w * 0.5, s * 0.12);
+    ctx.fill();
+
+    var n = Math.max(3, Math.round(car.w / 0.75));
+    var facing = row.dir > 0 ? 'right' : 'left';
+    for (var k = 0; k < n; k++) {
+      var mx = x + (k - (n - 1) / 2) * (w / n);
+      var beat = t * 2.6 + car.seed * 5 + k * 0.5;
+      var frac = beat - Math.floor(beat);
+      var bounce = Math.sin(Math.min(frac * 1.6, 1) * Math.PI) * s * 0.08;
+      CH.draw(ctx, mx, y - bounce, {
+        size: s * 0.72, char: CH.enemySkin(car.skin + k), facing: facing,
+        cap: (car.skin + k) % 3 === 0 ? 'ushanka' : 'cap'
+      });
+    }
+    // The squad's little banner, carried at the front.
+    var bx = x + row.dir * (w / 2 - s * 0.1);
+    ctx.fillStyle = '#5e5248';
+    ctx.fillRect(bx - s * 0.025, y - s * 1.3, s * 0.05, s * 1.0);
+    ctx.fillStyle = '#c8102e';
+    var wv = Math.sin(t * 4 + car.seed * 9) * s * 0.04;
+    ctx.beginPath();
+    ctx.moveTo(bx + s * 0.02, y - s * 1.28);
+    ctx.lineTo(bx + s * 0.42 + wv, y - s * 1.23);
+    ctx.lineTo(bx + s * 0.42 + wv, y - s * 0.95);
+    ctx.lineTo(bx + s * 0.02, y - s * 1.0);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+
+  /* The record line: how far you got last time, drawn where it happened. */
+  function drawBestLine(rowIndex, cam) {
+    var yTop = sy(rowIndex, cam) - view.rowH / 2;
+    var s = view.tile;
+    var lx0 = Math.max(0, sx(PP.World.CFG.X_MIN - 0.5, cam));
+    var lx1 = Math.min(view.w, sx(PP.World.CFG.X_MAX + 0.5, cam));
+    ctx.save();
+    ctx.strokeStyle = 'rgba(245,197,66,0.7)';
+    ctx.lineWidth = Math.max(2, s * 0.05);
+    ctx.setLineDash([s * 0.3, s * 0.22]);
+    ctx.beginPath();
+    ctx.moveTo(lx0, yTop);
+    ctx.lineTo(lx1, yTop);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    // A little tag on the right end.
+    ctx.fillStyle = 'rgba(245,197,66,0.9)';
+    U.roundRect(ctx, lx1 - s * 1.7, yTop - s * 0.26, s * 1.5, s * 0.5, s * 0.1);
+    ctx.fill();
+    ctx.fillStyle = '#3a2a10';
+    ctx.font = '800 ' + Math.round(s * 0.3) + 'px "Trebuchet MS", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('BEST ' + rowIndex, lx1 - s * 0.95, yTop + s * 0.09);
+    ctx.textAlign = 'left';
+    ctx.restore();
+  }
+
+  /* ── The State Falcon ───────────────────────────────────────────── */
+
+  function drawFalconBird(x, y, s, flap) {
+    ctx.save();
+    ctx.translate(x, y);
+    // Wings: two beating triangles, sun-rimmed so they read on a dark sky.
+    var wingY = Math.sin(flap) * s * 0.30;
+    ctx.fillStyle = '#4c3a54';
+    [-1, 1].forEach(function (sgn) {
+      ctx.beginPath();
+      ctx.moveTo(sgn * s * 0.16, -s * 0.05);
+      ctx.lineTo(sgn * s * 0.85, -s * 0.30 - wingY);
+      ctx.lineTo(sgn * s * 0.30, s * 0.10);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255,200,140,0.55)';
+      ctx.lineWidth = Math.max(1.5, s * 0.035);
+      ctx.beginPath();
+      ctx.moveTo(sgn * s * 0.16, -s * 0.05);
+      ctx.lineTo(sgn * s * 0.85, -s * 0.30 - wingY);
+      ctx.stroke();
+    });
+    // Body + tail.
+    ctx.fillStyle = '#5a4560';
+    U.ellipse(ctx, 0, 0, s * 0.24, s * 0.30);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(-s * 0.10, s * 0.22);
+    ctx.lineTo(0, s * 0.48);
+    ctx.lineTo(s * 0.10, s * 0.22);
+    ctx.closePath();
+    ctx.fill();
+    // Head, stern little cap, beak.
+    U.ellipse(ctx, 0, -s * 0.30, s * 0.15, s * 0.14);
+    ctx.fill();
+    ctx.fillStyle = '#5a6a4a';
+    U.roundRect(ctx, -s * 0.14, -s * 0.44, s * 0.28, s * 0.09, s * 0.04);
+    ctx.fill();
+    ctx.fillStyle = '#e0a03c';
+    ctx.beginPath();
+    ctx.moveTo(-s * 0.05, -s * 0.26);
+    ctx.lineTo(0, -s * 0.16);
+    ctx.lineTo(s * 0.05, -s * 0.26);
+    ctx.closePath();
+    ctx.fill();
+    // Red star on the chest, large enough to read at distance.
+    ctx.fillStyle = '#c8102e';
+    CH.star(ctx, 0, s * 0.02, s * 0.12);
+    ctx.restore();
+  }
+
+  function drawFalcon(f, g, cam, t) {
+    var s = view.tile;
+    var tx = sx(f.x, cam);
+    var ty = sy(f.row, cam) + view.rowH * 0.2;
+
+    if (f.state === 'warn') {
+      // The shadow arrives before the bird does.
+      var k = U.clamp(f.t / 0.85, 0, 1);
+      ctx.save();
+      ctx.globalAlpha = 0.25 + k * 0.3;
+      ctx.fillStyle = '#160b26';
+      U.ellipse(ctx, tx, ty, s * (0.2 + k * 0.5), s * (0.08 + k * 0.2));
+      ctx.fill();
+      var blink3 = Math.sin(t * 16) > 0;
+      ctx.globalAlpha = (0.65 + k * 0.35) * (blink3 ? 1 : 0.45);
+      ctx.strokeStyle = '#ff4b3a';
+      ctx.lineWidth = Math.max(2.5, s * 0.06);
+      U.ellipse(ctx, tx, ty, s * (0.32 + k * 0.42), s * (0.13 + k * 0.17));
+      ctx.stroke();
+      ctx.strokeStyle = '#f5c542';
+      ctx.lineWidth = Math.max(1.5, s * 0.03);
+      U.ellipse(ctx, tx, ty, s * (0.16 + k * 0.2), s * (0.07 + k * 0.08));
+      ctx.stroke();
+      ctx.restore();
+    } else if (f.state === 'dive') {
+      var k2 = U.clamp(f.t / 0.5, 0, 1);
+      var e2 = k2 * k2;
+      var bx2 = U.lerp(tx + view.w * 0.3, tx, e2);
+      var by2 = U.lerp(-s * 1.5, ty - s * 0.3, e2);
+      ctx.fillStyle = 'rgba(22,11,38,0.35)';
+      U.ellipse(ctx, tx, ty, s * 0.55, s * 0.22);
+      ctx.fill();
+      // Speed streaks trailing the stoop.
+      ctx.strokeStyle = 'rgba(255,220,180,0.30)';
+      ctx.lineWidth = 2;
+      for (var st3 = 0; st3 < 3; st3++) {
+        var off3 = (st3 - 1) * s * 0.16;
+        ctx.beginPath();
+        ctx.moveTo(bx2 + s * 0.5 + off3, by2 - s * 0.9);
+        ctx.lineTo(bx2 + s * 0.15 + off3, by2 - s * 0.2);
+        ctx.stroke();
+      }
+      drawFalconBird(bx2, by2, s * (0.8 + e2 * 0.3), t * 26);
+    } else if (f.state === 'carry') {
+      // Rising with the catch; the player is drawn rising in its row.
+      var p = g.player;
+      var px2 = sx(p.x, cam);
+      var py2 = sy(p.row, cam) + view.rowH * 0.24 - p.sinkT * s * 5 - s * 1.1;
+      ctx.globalAlpha = Math.max(0, 1 - Math.max(0, p.sinkT - 0.75) * 4);
+      drawFalconBird(px2, py2, s * 1.05, t * 20);
+      ctx.globalAlpha = 1;
+    } else if (f.state === 'miss') {
+      var k3 = U.clamp(f.t / 0.9, 0, 1);
+      drawFalconBird(tx - k3 * view.w * 0.4, ty - s * 0.3 - k3 * view.h * 0.5,
+        s * (1.1 - k3 * 0.4), t * 22);
+    }
+  }
+
   /* ── The Collective ─────────────────────────────────────────────── */
 
   function drawTideBand(row, cam, tideRow, t) {
@@ -2909,6 +3462,8 @@ body { overscroll-behavior: none; }
     };
     if (!p.hopping && !p.dead) {
       opts.squash += Math.sin(t * 2.8) * 0.02;   // breathing
+      // Press-and-hold: crouched, coiled, ready.
+      if (p.charging) opts.squash = Math.max(opts.squash, 0.30);
     }
     if (p.dead) {
       if (p.deathKind === 'squash') {
@@ -2917,6 +3472,10 @@ body { overscroll-behavior: none; }
       } else if (p.deathKind === 'water') {
         opts.alpha = 1 - p.sinkT;
         opts.lift = -p.sinkT * s * 0.35;
+      } else if (p.deathKind === 'falcon') {
+        opts.lift = p.sinkT * s * 5;
+        opts.alpha = Math.max(0, 1 - Math.max(0, p.sinkT - 0.75) * 4);
+        opts.squash = -0.2;
       } else if (p.deathKind === 'caught') {
         // Hat drops on, then you start marching in time with the rest.
         opts.cap = 'ushanka';
@@ -3094,10 +3653,16 @@ body { overscroll-behavior: none; }
         for (var c = 0; c < row.cars.length; c++) drawCar(row, row.cars[c], cam, t);
       } else if (row.type === 'water') {
         for (var l = 0; l < row.logs.length; l++) drawLog(row, row.logs[l], cam, t);
+      } else if (row.type === 'ice') {
+        drawFloes(row, cam, t);
+      } else if (row.type === 'parade') {
+        for (var q = 0; q < row.cars.length; q++) drawSquad(row, row.cars[q], cam, t);
       } else if (row.type === 'rail') {
         if (row.state === 'train') drawTrain(row, cam, t);
         drawRailSignals(row, cam, t);
       }
+
+      if (g.bestLineRow >= 3 && i === g.bestLineRow && g.showPlayer) drawBestLine(i, cam);
 
       // Aerial perspective: far rows sink into the warm smog, near rows
       // cool toward the night behind you. Painted over the row's own
@@ -3118,6 +3683,8 @@ body { overscroll-behavior: none; }
 
       if (i === playerDrawRow && g.showPlayer) drawPlayer(g.player, cam, g.playerChar || g.char, t, fear);
     }
+
+    if (g.falcon && g.falcon.state !== 'idle' && g.showPlayer) drawFalcon(g.falcon, g, cam, t);
 
     // The last of the sun finds the escapee.
     if (g.showPlayer && !g.player.dead) {
@@ -3258,6 +3825,8 @@ body { overscroll-behavior: none; }
       start = pos(e);
       moved = false;
       PP.Audio.unlock();
+      // Press-and-hold: the animal crouches until you release.
+      if (handlers.onCharge) handlers.onCharge();
     }
 
     function drag(e) {
@@ -3290,7 +3859,10 @@ body { overscroll-behavior: none; }
     U.on(canvas, 'pointerdown', down);
     U.on(canvas, 'pointermove', drag);
     U.on(canvas, 'pointerup', up);
-    U.on(canvas, 'pointercancel', function () { start = null; });
+    U.on(canvas, 'pointercancel', function () {
+      start = null;
+      if (handlers.onChargeCancel) handlers.onChargeCancel();
+    });
     U.on(canvas, 'contextmenu', function (e) { e.preventDefault(); });
     U.on(canvas, 'touchstart', function (e) { e.preventDefault(); }, { passive: false });
   }
@@ -3346,6 +3918,9 @@ body { overscroll-behavior: none; }
     idleT: 0,
     deathT: 0,
     nextMilestone: 25,
+    bestLineRow: -1,           // where the record line sits for this run
+    bestCrossed: false,
+    falcon: { state: 'idle', t: 0, x: 0, row: 0 },
     queued: null,
     onDeath: null,             // set by main.js
     onScore: null
@@ -3357,7 +3932,7 @@ body { overscroll-behavior: none; }
       fromX: 0, fromRow: 2, toX: 0, toRow: 2,
       hopping: false, hopT: 0,
       facing: 'up', squash: 0, lift: 0,
-      onLog: null,
+      onLog: null, charging: false,
       dead: false, deathKind: null, sinkT: 0,
       convertT: 0, marchT: 0,
       bumpT: 0
@@ -3450,6 +4025,7 @@ body { overscroll-behavior: none; }
     if (g.mode !== 'playing') return;
     var p = g.player;
     if (p.dead) return;
+    p.charging = false;
 
     if (p.hopping) {
       // Late input is buffered so chained hops feel responsive.
@@ -3482,7 +4058,7 @@ body { overscroll-behavior: none; }
     p.hopT = 0;
     p.onLog = null;
     if (dir === 'up') g.idleT = 0;
-    PP.Audio.hop();
+    PP.Audio.hop(g.char.species === 'cat' ? 1.12 : 0.85);
   }
 
   function land() {
@@ -3502,9 +4078,19 @@ body { overscroll-behavior: none; }
         puff(p.x, p.row, 'rgba(190,225,245,0.9)', 5, 1.2);
         g.splashes.push({ x: p.x, row: p.row, t: 0, maxT: 0.5, kind: 'ripple' });
       }
+    } else if (row && row.type === 'ice') {
+      g.splashes.push({ x: p.x, row: p.row, t: 0, maxT: 0.45, kind: 'ripple' });
+      PP.Audio.iceLand();
     } else if (row) {
       // A little kick of dust marks every landing on solid ground.
       g.splashes.push({ x: p.x, row: p.row, t: 0, maxT: 0.38, kind: 'dust' });
+    }
+
+    // Crossing your own record line is a moment.
+    if (!g.bestCrossed && g.bestLineRow >= 3 && p.row > g.bestLineRow) {
+      g.bestCrossed = true;
+      floater('RECORD BROKEN', p.x, p.row + 0.6, '#f5c542');
+      PP.Audio.milestone();
     }
 
     var coin = World.coinAt(Math.round(p.x), p.row);
@@ -3538,6 +4124,7 @@ body { overscroll-behavior: none; }
 
     if (p.dead) {
       if (p.deathKind === 'water') p.sinkT = Math.min(1, p.sinkT + dt * 1.4);
+      if (p.deathKind === 'falcon') p.sinkT = Math.min(1, p.sinkT + dt * 0.85);
       if (p.deathKind === 'caught') {
         // Re-education: the colours drain, the hat arrives, and you fall in
         // step with the rank you were running from.
@@ -3572,6 +4159,21 @@ body { overscroll-behavior: none; }
         var lg = World.logUnder(p.x, p.row);
         p.onLog = lg;
         if (lg) p.x += row.dir * row.speed * dt;
+      } else if (row && row.type === 'ice') {
+        // Your weight is a problem the floe intends to solve.
+        var floe = World.floeAt(p.x, p.row);
+        if (floe && floe.state !== 'sunk') {
+          floe.pressed = true;
+          floe.standT += dt;
+          if (floe.standT > 1.6) {
+            floe.state = 'sunk';
+            floe.recoverT = 2.6;
+            PP.Audio.iceBreak();
+          } else if (floe.standT > 0.8 && floe.state === 'solid') {
+            floe.state = 'cracking';
+            PP.Audio.iceCrack();
+          }
+        }
       }
     }
 
@@ -3598,6 +4200,11 @@ body { overscroll-behavior: none; }
       g.shake = 0.35;
       PP.Audio.splash();
       PP.Music.fadeOut(0.5);
+    } else if (kind === 'falcon') {
+      g.shake = 0.45;
+      puff(p.x, p.row, g.char.fur, 10, 2.0);
+      PP.Audio.snatch();
+      PP.Music.fadeOut(0.5);
     } else {
       g.shake = 0.7;
       puff(p.x, p.row, '#c8102e', 18, 2.6);
@@ -3615,12 +4222,85 @@ body { overscroll-behavior: none; }
     if (g.tide.row >= p.row - 0.05) { die('caught'); return; }
 
     if (row.type === 'road' && World.carAt(p.x, p.row, HALF_W)) { die('squash'); return; }
+    if (row.type === 'parade' && World.carAt(p.x, p.row, HALF_W)) { die('caught'); return; }
     if (row.type === 'rail' && World.trainAt(p.x, p.row, HALF_W)) { die('squash'); return; }
+
+    if (row.type === 'ice' && !p.hopping) {
+      var fl = World.floeAt(p.x, p.row);
+      if (!fl || fl.state === 'sunk') { die('water'); return; }
+    }
 
     if (row.type === 'water' && !p.hopping) {
       if (!World.logUnder(p.x, p.row)) { die('water'); return; }
       // Carried past the bank: still on screen when it happens, so you see it.
       if (p.x < World.CFG.X_MIN - 1 || p.x > World.CFG.X_MAX + 1) { die('water'); return; }
+    }
+  }
+
+  /* ── The State Falcon ───────────────────────────────────────────────
+     The tide punishes hesitation from behind; the falcon punishes it from
+     above, so idling is never safe no matter how big your lead is. */
+
+  function updateFalcon(dt) {
+    var f = g.falcon;
+    var p = g.player;
+    var gap = p.row - g.tide.row;
+
+    if (f.state === 'idle') {
+      if (g.idleT > 4.2 && gap > 6 && !p.dead) {
+        f.state = 'warn';
+        f.t = 0;
+        f.x = p.x;
+        f.row = p.row;
+        PP.Audio.screech();
+      }
+    } else if (f.state === 'warn') {
+      f.t += dt;
+      if (f.t > 0.85) { f.state = 'dive'; f.t = 0; }
+    } else if (f.state === 'dive') {
+      f.t += dt;
+      if (f.t >= 0.5) {
+        var hit = !p.dead && Math.abs(p.x - f.x) < 0.6 && Math.abs(p.row - f.row) < 0.6;
+        if (hit) {
+          die('falcon');
+          f.state = 'carry';
+        } else {
+          f.state = 'miss';
+          g.idleT = 0;
+        }
+        f.t = 0;
+      }
+    } else if (f.state === 'miss' || f.state === 'carry') {
+      f.t += dt;
+      if (f.state === 'miss' && f.t > 0.9) f.state = 'idle';
+    }
+  }
+
+  /* ── Traffic feedback: whooshes and honks, no gameplay effect ───── */
+
+  function updateTraffic(dt) {
+    var p = g.player;
+    if (p.dead) return;
+    var row = World.row(Math.round(p.row));
+    if (!row || row.type !== 'road') return;
+    for (var i = 0; i < row.cars.length; i++) {
+      var car = row.cars[i];
+      var cx = World.carX(row, car);
+      var dxx = Math.abs(cx - p.x);
+      var shave = car.w / 2 + HALF_W + 0.5;
+      if (car._pd !== undefined && dxx < shave && car._pd >= shave && !p.hopping) {
+        PP.Audio.whoosh();
+        g.shake = Math.max(g.shake, 0.12);
+      }
+      car._pd = dxx;
+
+      // An impatient beep from anyone bearing down on your column.
+      var closing = row.dir > 0 ? p.x - cx : cx - p.x;
+      if (closing > 0.8 && closing < 3.2 &&
+          World.time() - (row.lastBeep || -9) > 1.6 && Math.random() < dt * 2.0) {
+        row.lastBeep = World.time();
+        PP.Audio.beep();
+      }
     }
   }
 
@@ -3696,6 +4376,7 @@ body { overscroll-behavior: none; }
       g.splashes.length = 0;
       g.shake = 0;
       g.flash = 0;
+      g.falcon.state = 'idle';
       PP.Music.stop();
     },
 
@@ -3712,6 +4393,10 @@ body { overscroll-behavior: none; }
       g.idleT = 0;
       g.deathT = 0;
       g.nextMilestone = 25;
+      g.bestLineRow = (save.best || 0) >= 3 ? save.best : -1;
+      g.bestCrossed = false;
+      g.falcon.state = 'idle';
+      g.falcon.t = 0;
       g.queued = null;
       g.particles.length = 0;
       g.floaters.length = 0;
@@ -3740,6 +4425,38 @@ body { overscroll-behavior: none; }
 
     move: tryMove,
 
+    /* Press-and-hold: the animal crouches, the hop fires on release. */
+    charge: function () {
+      if (g.mode === 'playing' && g.player && !g.player.dead && !g.player.hopping) {
+        g.player.charging = true;
+      }
+    },
+    uncharge: function () { if (g.player) g.player.charging = false; },
+
+    /* The People's Lottery: 100 kibble, one guaranteed new comrade. */
+    LOTTERY_COST: 100,
+    lockedCount: function () {
+      return PP.Characters.ROSTER.filter(function (c) {
+        return save.owned.indexOf(c.id) === -1;
+      }).length;
+    },
+    lottery: function () {
+      var locked = PP.Characters.ROSTER.filter(function (c) {
+        return save.owned.indexOf(c.id) === -1;
+      });
+      if (!locked.length || (save.coins || 0) < Game.LOTTERY_COST) {
+        PP.Audio.deny();
+        return null;
+      }
+      save.coins -= Game.LOTTERY_COST;
+      var win = locked[U.randInt(0, locked.length - 1)];
+      save.owned.push(win.id);
+      save.char = win.id;
+      g.char = PP.Characters.byId(win.id);
+      persist();
+      return win;
+    },
+
     /* Distance bonus is paid out at the end of the run. */
     finishRun: function () {
       var bonus = Math.floor(g.score / 5);
@@ -3767,6 +4484,8 @@ body { overscroll-behavior: none; }
           g.idleT += dt;
           updatePlayer(dt);
           updateTide(dt);
+          updateFalcon(dt);
+          updateTraffic(dt);
         } else {
           // The tide keeps rolling over the scene while the card comes up.
           g.tide.row += g.tide.speed * 0.7 * dt;
@@ -3807,7 +4526,7 @@ body { overscroll-behavior: none; }
   var elCoins = U.$('coins');
   var elWarning = U.$('warning');
 
-  var SCREENS = ['screen-title', 'screen-pick', 'screen-help', 'screen-pause', 'screen-over'];
+  var SCREENS = ['screen-title', 'screen-pick', 'screen-help', 'screen-pause', 'screen-over', 'screen-prize'];
 
   var DEATHS = {
     squash: {
@@ -3821,6 +4540,10 @@ body { overscroll-behavior: none; }
     caught: {
       title: 'REDISTRIBUTED',
       flavor: 'You have been issued a hat and an opinion. Welcome to the march, comrade.'
+    },
+    falcon: {
+      title: 'AIRLIFTED',
+      flavor: 'You were selected for immediate relocation. The State Falcon does not accept appeals.'
     }
   };
 
@@ -3841,6 +4564,18 @@ body { overscroll-behavior: none; }
     U.$('t-coins').textContent = Game.save.coins || 0;
     U.$('t-runs').textContent = Game.save.runs || 0;
     U.$('p-coins').textContent = Game.save.coins || 0;
+    refreshLotteryButtons();
+  }
+
+  function refreshLotteryButtons() {
+    var locked = Game.lockedCount();
+    var poor = (Game.save.coins || 0) < Game.LOTTERY_COST;
+    [U.$('btn-lottery'), U.$('btn-lottery-again')].forEach(function (btn) {
+      if (!btn) return;
+      btn.disabled = !locked || poor;
+      if (!locked) btn.textContent = 'Every comrade is free';
+      else btn.textContent = (btn.id === 'btn-lottery' ? 'People\u2019s Lottery \u00b7 \ud83c\udf56 100' : 'Again \u00b7 \ud83c\udf56 100');
+    });
   }
 
   /* ── Character select ───────────────────────────────────────────── */
@@ -3957,9 +4692,82 @@ body { overscroll-behavior: none; }
   U.on(U.$('btn-pick'), 'click', openPicker);
   U.on(U.$('btn-over-pick'), 'click', openPicker);
 
+  /* ── The People's Lottery ───────────────────────────────────────── */
+
+  var lotteryBusy = false;
+
+  function confettiBurst(stage) {
+    var colors = ['#c8102e', '#f5c542', '#f0e6d6', '#e08a3c'];
+    for (var i = 0; i < 14; i++) {
+      var bit = document.createElement('span');
+      bit.className = 'confetti';
+      bit.style.background = colors[i % colors.length];
+      bit.style.setProperty('--cx', (Math.random() * 240 - 120).toFixed(0) + 'px');
+      bit.style.setProperty('--cy', (Math.random() * -160 - 20).toFixed(0) + 'px');
+      bit.style.setProperty('--cr', (Math.random() * 720 - 360).toFixed(0) + 'deg');
+      stage.appendChild(bit);
+      setTimeout(function (el) { el.remove(); }.bind(null, bit), 1100);
+    }
+  }
+
+  function runLottery() {
+    if (lotteryBusy) return;
+    var win = Game.lottery();
+    refreshStats();
+    if (!win) return;
+
+    lotteryBusy = true;
+    showScreen('screen-prize');
+    var crate = U.$('crate');
+    var reveal = U.$('prize-reveal');
+    var stage = U.$('prize-stage');
+    reveal.classList.add('hidden');
+    reveal.classList.remove('pop');
+    crate.classList.remove('hidden', 'drop', 'shake', 'burst');
+
+    // Drop -> thud -> shake -> burst -> reveal.
+    void crate.offsetWidth;
+    crate.classList.add('drop');
+    setTimeout(function () { PP.Audio.crateDrop(); }, 780);
+    setTimeout(function () {
+      crate.classList.remove('drop');
+      void crate.offsetWidth;
+      crate.classList.add('shake');
+      PP.Audio.bump();
+    }, 950);
+    setTimeout(function () {
+      crate.classList.remove('shake');
+      void crate.offsetWidth;
+      crate.classList.add('burst');
+      confettiBurst(stage);
+    }, 1550);
+    setTimeout(function () {
+      crate.classList.add('hidden');
+      PP.Render.drawPortrait(U.$('prize-portrait'), win);
+      U.$('prize-name').textContent = win.name;
+      U.$('prize-tag').textContent = win.tag;
+      reveal.classList.remove('hidden');
+      void reveal.offsetWidth;
+      reveal.classList.add('pop');
+      PP.Audio.unlockChime();
+      refreshStats();
+      lotteryBusy = false;
+    }, 1850);
+  }
+
+  U.on(U.$('btn-lottery'), 'click', function () { PP.Audio.unlock(); runLottery(); });
+  U.on(U.$('btn-lottery-again'), 'click', runLottery);
+  U.on(U.$('btn-lottery-done'), 'click', function () {
+    if (lotteryBusy) return;
+    refreshStats();
+    showScreen('screen-title');
+  });
+
   /* ── Input ──────────────────────────────────────────────────────── */
 
   PP.Input.init(canvas, {
+    onCharge: function () { Game.charge(); },
+    onChargeCancel: function () { Game.uncharge(); },
     onMove: function (dir) {
       if (Game.isPlaying()) Game.move(dir);
       else if (Game.mode() === 'menu' && dir === 'up') startRun();

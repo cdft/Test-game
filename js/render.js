@@ -315,6 +315,61 @@
         ctx.fillStyle = 'rgba(255,255,255,0.14)'; // waterline sparkle
         ctx.fillRect(x0, top + h - 2, x1, 2);
       }
+    } else if (row.type === 'ice') {
+      // A frozen river: pale, glassy, faintly blushing at the horizon.
+      var wf2 = U.clamp(1 - (top - horizonY) / (view.h * 0.55), 0, 1);
+      var ig = ctx.createLinearGradient(0, top, 0, top + h);
+      ig.addColorStop(0, U.mixHex('#7fa8c4', '#a88a92', wf2 * 0.4));
+      ig.addColorStop(1, U.mixHex('#93bdd4', '#b29592', wf2 * 0.0 + 0));
+      ctx.fillStyle = ig;
+      ctx.fillRect(x0, top, x1, h);
+      // Frost sparkles.
+      ctx.fillStyle = '#ffffff';
+      for (var sp2 = 0; sp2 < 10; sp2++) {
+        var spx2 = hash(row.index, sp2 + 200) * view.w;
+        var spy2 = top + h * (0.15 + U.mod(hash(row.index, sp2 + 300) * 7, 0.7));
+        ctx.globalAlpha = Math.max(0, 0.25 * Math.sin(t * 2 + sp2 * 2.2 + row.index));
+        ctx.fillRect(spx2, spy2, 2, 2);
+      }
+      ctx.globalAlpha = 1;
+      above = PP.World.row(row.index + 1);
+      below = row.index > 0 ? PP.World.row(row.index - 1) : null;
+      if (!(above && above.type === 'ice')) {
+        ctx.fillStyle = 'rgba(0,0,0,0.20)';
+        ctx.fillRect(x0, top, x1, h * 0.09);
+      }
+      if (!(below && below.type === 'ice')) {
+        ctx.fillStyle = 'rgba(255,255,255,0.18)';
+        ctx.fillRect(x0, top + h - 2, x1, 2);
+      }
+    } else if (row.type === 'parade') {
+      // A paved parade route with a red runner and bunting.
+      ctx.fillStyle = '#4a4450';
+      ctx.fillRect(x0, top, x1, h);
+      if (patterns.asphalt) {
+        ctx.globalAlpha = 0.4;
+        ctx.fillStyle = patterns.asphalt;
+        ctx.fillRect(x0, top, x1, h);
+        ctx.globalAlpha = 1;
+      }
+      ctx.fillStyle = 'rgba(165,20,36,0.30)';
+      ctx.fillRect(x0, top + h * 0.24, x1, h * 0.55);
+      ctx.fillStyle = 'rgba(245,197,66,0.25)';
+      ctx.fillRect(x0, top + h * 0.24, x1, 2);
+      ctx.fillRect(x0, top + h * 0.79 - 2, x1, 2);
+      ctx.fillStyle = 'rgba(0,0,0,0.20)';
+      ctx.fillRect(x0, top, x1, h * 0.08);
+      // Bunting along the far edge, anchored to the world.
+      var bstep = view.tile * 0.5;
+      for (var bx3 = U.mod(-cam.x * view.tile, bstep) - bstep; bx3 < view.w; bx3 += bstep) {
+        ctx.fillStyle = ((bx3 / bstep) | 0) % 2 ? '#c8102e' : '#f5c542';
+        ctx.beginPath();
+        ctx.moveTo(bx3, top + 2);
+        ctx.lineTo(bx3 + bstep * 0.5, top + 2);
+        ctx.lineTo(bx3 + bstep * 0.25, top + h * 0.14);
+        ctx.closePath();
+        ctx.fill();
+      }
     } else if (row.type === 'rail') {
       ctx.fillStyle = '#665d50';
       ctx.fillRect(x0, top, x1, h);
@@ -981,6 +1036,241 @@
     ctx.restore();
   }
 
+  function drawFloes(row, cam, t) {
+    var s = view.tile;
+    var y = sy(row.index, cam) + view.rowH * 0.16;
+    for (var key in row.floes) {
+      if (!Object.prototype.hasOwnProperty.call(row.floes, key)) continue;
+      var f = row.floes[key];
+      var x = sx(+key, cam);
+      if (x < -s || x > view.w + s) continue;
+
+      if (f.state === 'sunk') {
+        // The hole it left: dark water with a shiver of rings.
+        ctx.fillStyle = 'rgba(20,50,80,0.55)';
+        U.ellipse(ctx, x, y + s * 0.04, s * 0.34, s * 0.15);
+        ctx.fill();
+        continue;
+      }
+
+      var bob = Math.sin(t * 1.7 + f.seed * 9) * s * 0.012;
+      var dip = Math.min(f.standT, 1.6) * s * 0.05;
+      var fy = y + bob + dip;
+      // Every floe is its own shape, so a row of them never reads as
+      // one long object.
+      var fw = s * (0.34 + f.seed * 0.10);
+      var fx2 = x + (f.seed - 0.5) * s * 0.12;
+
+      ctx.fillStyle = 'rgba(8,20,40,0.22)';
+      U.ellipse(ctx, fx2 - s * 0.05, fy + s * 0.10, fw * 0.95, s * 0.12);
+      ctx.fill();
+
+      ctx.fillStyle = f.state === 'cracking' ? '#ddeaf2'
+        : U.mixHex('#eef6fa', '#cfe0ea', f.seed * 0.7);
+      U.roundRect(ctx, fx2 - fw, fy - s * 0.16, fw * 2, s * (0.30 + f.seed * 0.07), s * (0.09 + f.seed * 0.06));
+      ctx.fill();
+      ctx.fillStyle = 'rgba(160,200,220,0.5)';
+      U.roundRect(ctx, fx2 - fw, fy + s * 0.08, fw * 2, s * 0.08, s * 0.04);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(255,240,214,0.35)';
+      U.roundRect(ctx, fx2 - fw * 0.8, fy - s * 0.155, fw, s * 0.05, s * 0.025);
+      ctx.fill();
+
+
+      if (f.state === 'cracking' || f.standT > 0.5) {
+        // Cracks spider out from wherever the weight is.
+        var severity = U.clamp((f.standT - 0.5) / 1.1, 0, 1);
+        ctx.strokeStyle = 'rgba(70,110,140,' + (0.4 + severity * 0.5).toFixed(2) + ')';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        for (var cr = 0; cr < 3 + severity * 2; cr++) {
+          var a2 = f.seed * 7 + cr * 2.2;
+          var len2 = s * (0.12 + severity * 0.28) * (0.7 + hash(row.index, cr + (+key)) * 0.6);
+          ctx.moveTo(fx2, fy);
+          ctx.lineTo(fx2 + Math.cos(a2) * len2, fy + Math.sin(a2) * len2 * 0.45);
+        }
+        ctx.stroke();
+      }
+    }
+  }
+
+  /* A squad of marchers crossing the parade route like a slow vehicle. */
+  function drawSquad(row, car, cam, t) {
+    var x = sx(PP.World.carX(row, car), cam);
+    var y = sy(row.index, cam) + view.rowH * 0.26;
+    var s = view.tile;
+    var w = car.w * s;
+    if (x < -w || x > view.w + w) return;
+
+    ctx.save();
+    ctx.fillStyle = 'rgba(40,24,58,0.28)';
+    U.ellipse(ctx, x, y, w * 0.5, s * 0.12);
+    ctx.fill();
+
+    var n = Math.max(3, Math.round(car.w / 0.75));
+    var facing = row.dir > 0 ? 'right' : 'left';
+    for (var k = 0; k < n; k++) {
+      var mx = x + (k - (n - 1) / 2) * (w / n);
+      var beat = t * 2.6 + car.seed * 5 + k * 0.5;
+      var frac = beat - Math.floor(beat);
+      var bounce = Math.sin(Math.min(frac * 1.6, 1) * Math.PI) * s * 0.08;
+      CH.draw(ctx, mx, y - bounce, {
+        size: s * 0.72, char: CH.enemySkin(car.skin + k), facing: facing,
+        cap: (car.skin + k) % 3 === 0 ? 'ushanka' : 'cap'
+      });
+    }
+    // The squad's little banner, carried at the front.
+    var bx = x + row.dir * (w / 2 - s * 0.1);
+    ctx.fillStyle = '#5e5248';
+    ctx.fillRect(bx - s * 0.025, y - s * 1.3, s * 0.05, s * 1.0);
+    ctx.fillStyle = '#c8102e';
+    var wv = Math.sin(t * 4 + car.seed * 9) * s * 0.04;
+    ctx.beginPath();
+    ctx.moveTo(bx + s * 0.02, y - s * 1.28);
+    ctx.lineTo(bx + s * 0.42 + wv, y - s * 1.23);
+    ctx.lineTo(bx + s * 0.42 + wv, y - s * 0.95);
+    ctx.lineTo(bx + s * 0.02, y - s * 1.0);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+
+  /* The record line: how far you got last time, drawn where it happened. */
+  function drawBestLine(rowIndex, cam) {
+    var yTop = sy(rowIndex, cam) - view.rowH / 2;
+    var s = view.tile;
+    var lx0 = Math.max(0, sx(PP.World.CFG.X_MIN - 0.5, cam));
+    var lx1 = Math.min(view.w, sx(PP.World.CFG.X_MAX + 0.5, cam));
+    ctx.save();
+    ctx.strokeStyle = 'rgba(245,197,66,0.7)';
+    ctx.lineWidth = Math.max(2, s * 0.05);
+    ctx.setLineDash([s * 0.3, s * 0.22]);
+    ctx.beginPath();
+    ctx.moveTo(lx0, yTop);
+    ctx.lineTo(lx1, yTop);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    // A little tag on the right end.
+    ctx.fillStyle = 'rgba(245,197,66,0.9)';
+    U.roundRect(ctx, lx1 - s * 1.7, yTop - s * 0.26, s * 1.5, s * 0.5, s * 0.1);
+    ctx.fill();
+    ctx.fillStyle = '#3a2a10';
+    ctx.font = '800 ' + Math.round(s * 0.3) + 'px "Trebuchet MS", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('BEST ' + rowIndex, lx1 - s * 0.95, yTop + s * 0.09);
+    ctx.textAlign = 'left';
+    ctx.restore();
+  }
+
+  /* ── The State Falcon ───────────────────────────────────────────── */
+
+  function drawFalconBird(x, y, s, flap) {
+    ctx.save();
+    ctx.translate(x, y);
+    // Wings: two beating triangles, sun-rimmed so they read on a dark sky.
+    var wingY = Math.sin(flap) * s * 0.30;
+    ctx.fillStyle = '#4c3a54';
+    [-1, 1].forEach(function (sgn) {
+      ctx.beginPath();
+      ctx.moveTo(sgn * s * 0.16, -s * 0.05);
+      ctx.lineTo(sgn * s * 0.85, -s * 0.30 - wingY);
+      ctx.lineTo(sgn * s * 0.30, s * 0.10);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255,200,140,0.55)';
+      ctx.lineWidth = Math.max(1.5, s * 0.035);
+      ctx.beginPath();
+      ctx.moveTo(sgn * s * 0.16, -s * 0.05);
+      ctx.lineTo(sgn * s * 0.85, -s * 0.30 - wingY);
+      ctx.stroke();
+    });
+    // Body + tail.
+    ctx.fillStyle = '#5a4560';
+    U.ellipse(ctx, 0, 0, s * 0.24, s * 0.30);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(-s * 0.10, s * 0.22);
+    ctx.lineTo(0, s * 0.48);
+    ctx.lineTo(s * 0.10, s * 0.22);
+    ctx.closePath();
+    ctx.fill();
+    // Head, stern little cap, beak.
+    U.ellipse(ctx, 0, -s * 0.30, s * 0.15, s * 0.14);
+    ctx.fill();
+    ctx.fillStyle = '#5a6a4a';
+    U.roundRect(ctx, -s * 0.14, -s * 0.44, s * 0.28, s * 0.09, s * 0.04);
+    ctx.fill();
+    ctx.fillStyle = '#e0a03c';
+    ctx.beginPath();
+    ctx.moveTo(-s * 0.05, -s * 0.26);
+    ctx.lineTo(0, -s * 0.16);
+    ctx.lineTo(s * 0.05, -s * 0.26);
+    ctx.closePath();
+    ctx.fill();
+    // Red star on the chest, large enough to read at distance.
+    ctx.fillStyle = '#c8102e';
+    CH.star(ctx, 0, s * 0.02, s * 0.12);
+    ctx.restore();
+  }
+
+  function drawFalcon(f, g, cam, t) {
+    var s = view.tile;
+    var tx = sx(f.x, cam);
+    var ty = sy(f.row, cam) + view.rowH * 0.2;
+
+    if (f.state === 'warn') {
+      // The shadow arrives before the bird does.
+      var k = U.clamp(f.t / 0.85, 0, 1);
+      ctx.save();
+      ctx.globalAlpha = 0.25 + k * 0.3;
+      ctx.fillStyle = '#160b26';
+      U.ellipse(ctx, tx, ty, s * (0.2 + k * 0.5), s * (0.08 + k * 0.2));
+      ctx.fill();
+      var blink3 = Math.sin(t * 16) > 0;
+      ctx.globalAlpha = (0.65 + k * 0.35) * (blink3 ? 1 : 0.45);
+      ctx.strokeStyle = '#ff4b3a';
+      ctx.lineWidth = Math.max(2.5, s * 0.06);
+      U.ellipse(ctx, tx, ty, s * (0.32 + k * 0.42), s * (0.13 + k * 0.17));
+      ctx.stroke();
+      ctx.strokeStyle = '#f5c542';
+      ctx.lineWidth = Math.max(1.5, s * 0.03);
+      U.ellipse(ctx, tx, ty, s * (0.16 + k * 0.2), s * (0.07 + k * 0.08));
+      ctx.stroke();
+      ctx.restore();
+    } else if (f.state === 'dive') {
+      var k2 = U.clamp(f.t / 0.5, 0, 1);
+      var e2 = k2 * k2;
+      var bx2 = U.lerp(tx + view.w * 0.3, tx, e2);
+      var by2 = U.lerp(-s * 1.5, ty - s * 0.3, e2);
+      ctx.fillStyle = 'rgba(22,11,38,0.35)';
+      U.ellipse(ctx, tx, ty, s * 0.55, s * 0.22);
+      ctx.fill();
+      // Speed streaks trailing the stoop.
+      ctx.strokeStyle = 'rgba(255,220,180,0.30)';
+      ctx.lineWidth = 2;
+      for (var st3 = 0; st3 < 3; st3++) {
+        var off3 = (st3 - 1) * s * 0.16;
+        ctx.beginPath();
+        ctx.moveTo(bx2 + s * 0.5 + off3, by2 - s * 0.9);
+        ctx.lineTo(bx2 + s * 0.15 + off3, by2 - s * 0.2);
+        ctx.stroke();
+      }
+      drawFalconBird(bx2, by2, s * (0.8 + e2 * 0.3), t * 26);
+    } else if (f.state === 'carry') {
+      // Rising with the catch; the player is drawn rising in its row.
+      var p = g.player;
+      var px2 = sx(p.x, cam);
+      var py2 = sy(p.row, cam) + view.rowH * 0.24 - p.sinkT * s * 5 - s * 1.1;
+      ctx.globalAlpha = Math.max(0, 1 - Math.max(0, p.sinkT - 0.75) * 4);
+      drawFalconBird(px2, py2, s * 1.05, t * 20);
+      ctx.globalAlpha = 1;
+    } else if (f.state === 'miss') {
+      var k3 = U.clamp(f.t / 0.9, 0, 1);
+      drawFalconBird(tx - k3 * view.w * 0.4, ty - s * 0.3 - k3 * view.h * 0.5,
+        s * (1.1 - k3 * 0.4), t * 22);
+    }
+  }
+
   /* ── The Collective ─────────────────────────────────────────────── */
 
   function drawTideBand(row, cam, tideRow, t) {
@@ -1175,6 +1465,8 @@
     };
     if (!p.hopping && !p.dead) {
       opts.squash += Math.sin(t * 2.8) * 0.02;   // breathing
+      // Press-and-hold: crouched, coiled, ready.
+      if (p.charging) opts.squash = Math.max(opts.squash, 0.30);
     }
     if (p.dead) {
       if (p.deathKind === 'squash') {
@@ -1183,6 +1475,10 @@
       } else if (p.deathKind === 'water') {
         opts.alpha = 1 - p.sinkT;
         opts.lift = -p.sinkT * s * 0.35;
+      } else if (p.deathKind === 'falcon') {
+        opts.lift = p.sinkT * s * 5;
+        opts.alpha = Math.max(0, 1 - Math.max(0, p.sinkT - 0.75) * 4);
+        opts.squash = -0.2;
       } else if (p.deathKind === 'caught') {
         // Hat drops on, then you start marching in time with the rest.
         opts.cap = 'ushanka';
@@ -1360,10 +1656,16 @@
         for (var c = 0; c < row.cars.length; c++) drawCar(row, row.cars[c], cam, t);
       } else if (row.type === 'water') {
         for (var l = 0; l < row.logs.length; l++) drawLog(row, row.logs[l], cam, t);
+      } else if (row.type === 'ice') {
+        drawFloes(row, cam, t);
+      } else if (row.type === 'parade') {
+        for (var q = 0; q < row.cars.length; q++) drawSquad(row, row.cars[q], cam, t);
       } else if (row.type === 'rail') {
         if (row.state === 'train') drawTrain(row, cam, t);
         drawRailSignals(row, cam, t);
       }
+
+      if (g.bestLineRow >= 3 && i === g.bestLineRow && g.showPlayer) drawBestLine(i, cam);
 
       // Aerial perspective: far rows sink into the warm smog, near rows
       // cool toward the night behind you. Painted over the row's own
@@ -1384,6 +1686,8 @@
 
       if (i === playerDrawRow && g.showPlayer) drawPlayer(g.player, cam, g.playerChar || g.char, t, fear);
     }
+
+    if (g.falcon && g.falcon.state !== 'idle' && g.showPlayer) drawFalcon(g.falcon, g, cam, t);
 
     // The last of the sun finds the escapee.
     if (g.showPlayer && !g.player.dead) {

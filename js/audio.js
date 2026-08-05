@@ -105,7 +105,10 @@
       if (c && c.state === 'suspended') c.resume();
     },
 
-    hop: function () { tone({ type: 'square', from: 420, to: 700, dur: 0.09, gain: 0.22 }); },
+    hop: function (mul) {
+      mul = mul || 1;
+      tone({ type: 'square', from: 420 * mul, to: 700 * mul, dur: 0.09, gain: 0.22 });
+    },
     bump: function () { tone({ type: 'square', from: 150, to: 90, dur: 0.09, gain: 0.2 }); },
     blip: function () { tone({ type: 'square', from: 600, to: 900, dur: 0.07, gain: 0.2 }); },
 
@@ -141,6 +144,48 @@
     },
 
     deny: function () { tone({ type: 'square', from: 200, to: 120, dur: 0.18, gain: 0.25 }); },
+
+    /* A car shaving past. */
+    whoosh: function () {
+      noise({ dur: 0.16, filter: 'bandpass', freq: 900, sweepTo: 2600, gain: 0.3 });
+    },
+
+    /* An impatient driver. */
+    beep: function () {
+      tone({ type: 'square', from: 620, to: 620, dur: 0.06, gain: 0.2 });
+      tone({ type: 'square', from: 620, to: 620, dur: 0.09, gain: 0.2, delay: 0.09 });
+    },
+
+    /* The State Falcon announces itself... */
+    screech: function () {
+      tone({ type: 'sawtooth', from: 1900, to: 650, dur: 0.5, gain: 0.22 });
+      noise({ dur: 0.4, filter: 'highpass', freq: 2400, gain: 0.12 });
+    },
+
+    /* ...and collects. */
+    snatch: function () {
+      noise({ dur: 0.3, filter: 'bandpass', freq: 700, sweepTo: 2000, gain: 0.35 });
+      tone({ type: 'sawtooth', from: 500, to: 1100, dur: 0.4, gain: 0.2 });
+    },
+
+    /* Ice: a light landing, a worrying creak, a full break. */
+    iceLand: function () {
+      tone({ type: 'triangle', from: 900, to: 700, dur: 0.06, gain: 0.14 });
+    },
+    iceCrack: function () {
+      noise({ dur: 0.12, filter: 'highpass', freq: 2800, gain: 0.28 });
+      tone({ type: 'square', from: 950, to: 480, dur: 0.1, gain: 0.14 });
+    },
+    iceBreak: function () {
+      noise({ dur: 0.3, filter: 'lowpass', freq: 1600, sweepTo: 300, gain: 0.4 });
+      tone({ type: 'sine', from: 350, to: 110, dur: 0.28, gain: 0.2 });
+    },
+
+    /* The lottery crate arriving from a considerate sky. */
+    crateDrop: function () {
+      tone({ type: 'sine', from: 220, to: 60, dur: 0.22, gain: 0.35 });
+      noise({ dur: 0.22, filter: 'lowpass', freq: 500, sweepTo: 140, gain: 0.4 });
+    },
 
     milestone: function () {
       tone({ type: 'triangle', from: 660, to: 660, dur: 0.1, gain: 0.22 });
