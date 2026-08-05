@@ -1813,6 +1813,15 @@
 
     drawSky(cam, t);
 
+    // Everything in the world is clipped at the horizon line, so a newly
+    // generated far row is born BEHIND the horizon and slides smoothly out
+    // from underneath it — instead of popping into view a full band above
+    // the previous coverage edge every time the camera crosses a row.
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, horizonY, view.w, view.h + 60 - horizonY);
+    ctx.clip();
+
     var playerDrawRow = Math.round(g.player.row);
     // How scared should the body language be? Purely a function of the gap.
     var fear = g.showPlayer && !g.player.dead
@@ -1866,6 +1875,8 @@
 
       if (i === playerDrawRow && g.showPlayer) drawPlayer(g.player, cam, g.playerChar || g.char, t, fear, g.streak >= 10);
     }
+
+    ctx.restore();   // end horizon clip
 
     if (g.van && g.van.state !== 'idle' && g.showPlayer) drawVan(g.van, g, cam, t);
 
