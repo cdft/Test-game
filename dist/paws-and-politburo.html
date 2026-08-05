@@ -2269,7 +2269,7 @@ body { overscroll-behavior: none; }
     ctx.fill();
 
     // Skyline in two parallax layers; the far one owns the smokestacks.
-    var off2 = U.mod(cam.x * view.tile * 0.12 + cam.row * 1, 90);
+    var off2 = U.mod(cam.x * view.tile * 0.12, 90);
     for (i = -1; i < view.w / 90 + 2; i++) {
       var bx2 = i * 90 - off2;
       var bh2 = 22 + ((i * 29) % 4) * 11;
@@ -2288,7 +2288,7 @@ body { overscroll-behavior: none; }
         ctx.globalAlpha = 1;
       }
     }
-    var off = U.mod(cam.x * view.tile * 0.25 + cam.row * 2, 120);
+    var off = U.mod(cam.x * view.tile * 0.25, 120);
     for (i = -1; i < view.w / 120 + 2; i++) {
       var bx = i * 120 - off;
       var bh = 38 + ((i * 37) % 5) * 15;
@@ -3062,7 +3062,10 @@ body { overscroll-behavior: none; }
     var ease = 1 - Math.pow(1 - k, 3);
     if (row.state === 'warn') ease += Math.sin(Math.min(k * 1.2, 1) * Math.PI) * 0.05;
     [-1, 1].forEach(function (side) {
-      var x = view.w / 2 + side * (view.w / 2 - s * 0.4);
+      // World-anchored: the posts stand just outside the corridor and
+      // stay put no matter where the camera pans.
+      var x = sx(side < 0 ? PP.World.CFG.X_MIN - 0.8 : PP.World.CFG.X_MAX + 0.8, cam);
+      if (x < -s || x > view.w + s) return;
       ctx.fillStyle = '#4a4038';
       ctx.fillRect(x - s * 0.04, y - s * 0.9, s * 0.08, s * 0.9);
       ctx.save();
@@ -3931,7 +3934,9 @@ body { overscroll-behavior: none; }
     var depth = U.clamp((view.baseY - view.h * 0.17) / view.rowH, 6, 16);
     var farRow = Math.floor(cam.row + depth);
     var nearRow = Math.floor(cam.row - (view.h - view.baseY) / view.rowH) - 1;
-    horizonY = sy(farRow, cam) + view.rowH / 2;
+    // A constant screen position: the world slides beneath the skyline
+    // instead of the skyline re-seating itself on every row crossed.
+    horizonY = view.baseY - (depth - 0.5) * view.rowH;
 
     drawSky(cam, t);
 
@@ -4009,7 +4014,7 @@ body { overscroll-behavior: none; }
     drawSplashes(g.splashes, cam);
 
     // Distance haze: the far rows dissolve into the smog.
-    var hzY = sy(farRow, cam) + view.rowH / 2;
+    var hzY = horizonY;
     var hz = ctx.createLinearGradient(0, hzY - view.rowH * 1.1, 0, hzY + view.rowH * 1.9);
     hz.addColorStop(0, 'rgba(205,124,82,0.55)');
     hz.addColorStop(1, 'rgba(205,124,82,0)');
