@@ -54,6 +54,12 @@
       ears: 'cat', tail: 'fluffy', crown: true, fluffy: true
     },
     {
+      id: 'kotleta', name: 'Kotleta', species: 'cat', price: -1, secret: true,
+      tag: 'Was never here. You saw nothing.',
+      fur: '#7b7469', belly: '#a99f92', accent: '#3a3f4a', eye: '#cfd8e0',
+      ears: 'cat', tail: 'long', glasses: true, flatcap: true
+    },
+    {
       id: 'laika', name: 'Laika', species: 'dog', price: 300,
       tag: 'Came back. Wants a word.',
       fur: '#cfc6bb', belly: '#ffffff', accent: '#d0d6dd', eye: '#3a2f26',
@@ -281,6 +287,29 @@
         });
       }
 
+      if (c.glasses) {
+        ctx.fillStyle = '#20242c';
+        [-1, 1].forEach(function (sgn) {
+          if (sideOn && sgn < 0) return;
+          U.ellipse(ctx, eyeOffset + sgn * eyeDX, faceY, headW * 0.115, headW * 0.115);
+          ctx.fill();
+        });
+        ctx.strokeStyle = '#20242c';
+        ctx.lineWidth = Math.max(1.5, s * 0.02);
+        ctx.beginPath();
+        ctx.moveTo(eyeOffset - eyeDX + headW * 0.115, faceY);
+        ctx.lineTo(eyeOffset + eyeDX - headW * 0.115, faceY);
+        ctx.stroke();
+        ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+        ctx.lineWidth = Math.max(1, s * 0.012);
+        [-1, 1].forEach(function (sgn) {
+          if (sideOn && sgn < 0) return;
+          ctx.beginPath();
+          ctx.arc(eyeOffset + sgn * eyeDX - headW * 0.03, faceY - headW * 0.03, headW * 0.05, Math.PI, Math.PI * 1.5);
+          ctx.stroke();
+        });
+      }
+
       if (c.goggles) {
         ctx.strokeStyle = '#6b5a3e';
         ctx.lineWidth = s * 0.05;
@@ -329,6 +358,15 @@
       ctx.strokeStyle = '#cfd8e3';
       ctx.lineWidth = s * 0.03;
       ctx.stroke();
+    }
+
+    if (c.flatcap) {
+      ctx.fillStyle = '#6a655c';
+      U.roundRect(ctx, hx + headW * 0.02, headTop - headH * 0.14, headW * 0.96, headH * 0.26, headW * 0.12);
+      ctx.fill();
+      ctx.fillStyle = '#59554d';
+      U.roundRect(ctx, hx + headW * 0.3, headTop + headH * 0.08, headW * 0.72, headH * 0.09, headW * 0.04);
+      ctx.fill();
     }
 
     /* Regime headgear, used for drivers, marchers and the newly converted.

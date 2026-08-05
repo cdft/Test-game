@@ -51,6 +51,20 @@
     U.$('t-runs').textContent = Game.save.runs || 0;
     U.$('p-coins').textContent = Game.save.coins || 0;
     refreshLotteryButtons();
+    refreshDirectivesPanel();
+  }
+
+  function refreshDirectivesPanel() {
+    var host = U.$('directives');
+    if (!host) return;
+    var list = Game.directiveList();
+    var html = '<div class="dhead">State Directives</div>';
+    list.forEach(function (d) {
+      html += '<div class="drow' + (d.done ? ' done' : '') + '"><span>' + d.label +
+        (d.progText ? ' \u00b7 ' + d.progText : '') +
+        '</span><span class="rw">+' + d.reward + ' \ud83c\udf56</span></div>';
+    });
+    host.innerHTML = html;
   }
 
   function refreshLotteryButtons() {
@@ -71,6 +85,7 @@
     host.innerHTML = '';
     PP.Characters.ROSTER.forEach(function (c) {
       var owned = Game.owns(c.id);
+      var hiddenSecret = c.secret && !owned;
       var card = document.createElement('div');
       card.className = 'card' + (Game.save.char === c.id ? ' selected' : '') + (owned ? '' : ' locked');
 
@@ -79,18 +94,23 @@
 
       var name = document.createElement('div');
       name.className = 'name';
-      name.textContent = c.name;
+      name.textContent = hiddenSecret ? '?????' : c.name;
       card.appendChild(name);
 
       var tag = document.createElement('div');
       tag.className = 'tag';
-      tag.textContent = c.tag;
+      tag.textContent = hiddenSecret
+        ? 'Dodge the black car \u00d73 (' + Math.min(Game.dodgeCount(), 3) + '/3)'
+        : c.tag;
       card.appendChild(tag);
 
       var foot = document.createElement('div');
       if (owned) {
         foot.className = 'owned';
         foot.textContent = Game.save.char === c.id ? 'SELECTED' : 'ready';
+      } else if (hiddenSecret) {
+        foot.className = 'owned';
+        foot.textContent = 'classified';
       } else {
         foot.className = 'price' + ((Game.save.coins || 0) >= c.price ? '' : ' cant');
         foot.textContent = '🍖 ' + c.price;
@@ -99,6 +119,7 @@
 
       card.addEventListener('click', function () {
         PP.Audio.unlock();
+        if (hiddenSecret) { PP.Audio.deny(); return; }
         if (!Game.owns(c.id)) {
           var res = Game.buy(c.id);
           if (res !== 'bought') { refreshStats(); buildRoster(); return; }
@@ -111,7 +132,21 @@
       });
 
       host.appendChild(card);
-      PP.Render.drawPortrait(cnv, c);
+      if (hiddenSecret) {
+        // A redacted silhouette: the file exists, the photo does not.
+        var c2 = cnv.getContext('2d');
+        var dpr = Math.min(window.devicePixelRatio || 1, 2);
+        cnv.width = 76 * dpr; cnv.height = 76 * dpr;
+        c2.setTransform(dpr, 0, 0, dpr, 0, 0);
+        c2.fillStyle = 'rgba(255,255,255,0.06)';
+        c2.fillRect(8, 6, 60, 64);
+        c2.fillStyle = 'rgba(245,197,66,0.8)';
+        c2.font = '900 40px "Trebuchet MS", sans-serif';
+        c2.textAlign = 'center';
+        c2.fillText('?', 38, 52);
+      } else {
+        PP.Render.drawPortrait(cnv, c);
+      }
     });
   }
 
@@ -123,11 +158,25 @@
     showScreen('screen-title');
   }
 
+  var hintTimer = null;
+
   function startRun() {
     Game.start();
     elScore.textContent = '0';
     elCoins.textContent = '0';
     hideScreens();
+    // Coach the press-and-release hop for the first few escapes.
+    var hint = U.$('hint');
+    if (hint && (Game.save.runs || 0) <= 3) {
+      hint.classList.remove('hidden');
+      if (hintTimer) clearTimeout(hintTimer);
+      hintTimer = setTimeout(function () { hint.classList.add('hidden'); }, 6000);
+    }
+  }
+
+  function hideHint() {
+    var hint = U.$('hint');
+    if (hint && !hint.classList.contains('hidden')) hint.classList.add('hidden');
   }
 
   function onDeath(result) {
@@ -139,6 +188,8 @@
     U.$('o-best').textContent = result.best;
     U.$('o-coins').textContent = result.earned;
     U.$('o-newbest').classList.toggle('hidden', !result.newBest);
+    U.$('o-secret').classList.toggle('hidden', !result.unlockedSecret);
+    if (result.unlockedSecret) PP.Audio.unlockChime();
     refreshStats();
     showScreen('screen-over');
   }
@@ -255,6 +306,7 @@
     onCharge: function () { Game.charge(); },
     onChargeCancel: function () { Game.uncharge(); },
     onMove: function (dir) {
+      hideHint();
       if (Game.isPlaying()) Game.move(dir);
       else if (Game.mode() === 'menu' && dir === 'up') startRun();
     },

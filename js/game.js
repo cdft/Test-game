@@ -24,8 +24,92 @@
     best: 0, coins: 0, runs: 0, owned: ['mittens', 'biscuit'], char: 'mittens'
   };
   if (!save.owned || !save.owned.length) save.owned = ['mittens', 'biscuit'];
+  save.dodges = save.dodges || 0;
+  save.hops = save.hops || 0;
 
   function persist() { U.store.set(SAVE_KEY, save); }
+
+  /* ── State Directives ─────────────────────────────────────────────
+     Three rotating objectives. Complete one mid-run and the bounty is
+     paid on the spot; a fresh directive replaces it next run. */
+
+  var D_TEMPLATES = [
+    { id: 'dist30', label: 'Reach 30m in one run', type: 'dist', target: 30, reward: 40 },
+    { id: 'dist50', label: 'Reach 50m in one run', type: 'dist', target: 50, reward: 60 },
+    { id: 'dist80', label: 'Reach 80m in one run', type: 'dist', target: 80, reward: 90 },
+    { id: 'coins15', label: 'Pocket 15 kibble in one run', type: 'coins', target: 15, reward: 40 },
+    { id: 'rivers4', label: 'Cross 4 canals in one run', type: 'rivers', target: 4, reward: 40 },
+    { id: 'ice3', label: 'Cross 3 frozen rows in one run', type: 'ice', target: 3, reward: 50 },
+    { id: 'parade2', label: 'Slip past 2 parades in one run', type: 'parade', target: 2, reward: 50 },
+    { id: 'dodge1', label: 'Dodge the black car', type: 'dodge', target: 1, reward: 60 },
+    { id: 'hops500', label: 'Hop 500 times, in total', type: 'hops', target: 500, reward: 50 },
+    { id: 'record', label: 'Break your record', type: 'record', target: 1, reward: 50 }
+  ];
+
+  function templateById(id) {
+    for (var i = 0; i < D_TEMPLATES.length; i++) if (D_TEMPLATES[i].id === id) return D_TEMPLATES[i];
+    return null;
+  }
+
+  function pickDirective(exceptIds) {
+    var pool = D_TEMPLATES.filter(function (tpl) {
+      return exceptIds.indexOf(tpl.id) === -1;
+    });
+    return pool[U.randInt(0, pool.length - 1)];
+  }
+
+  function ensureDirectives() {
+    if (save.directives && save.directives.length === 3) return;
+    save.directives = [];
+    for (var i = 0; i < 3; i++) {
+      var have = save.directives.map(function (d) { return d.id; });
+      save.directives.push({ id: pickDirective(have).id, done: false });
+    }
+    persist();
+  }
+
+  function refreshDirectives() {
+    var changed = false;
+    for (var i = 0; i < save.directives.length; i++) {
+      if (save.directives[i].done) {
+        var have = save.directives.map(function (d) { return d.id; });
+        save.directives[i] = { id: pickDirective(have).id, done: false };
+        changed = true;
+      }
+    }
+    if (changed) persist();
+  }
+
+  function directiveValue(tpl) {
+    switch (tpl.type) {
+      case 'dist': return g.score;
+      case 'coins': return g.runStats.kibble;
+      case 'rivers': return g.runStats.waterX;
+      case 'ice': return g.runStats.iceX;
+      case 'parade': return g.runStats.paradeX;
+      case 'dodge': return g.runStats.dodged ? 1 : 0;
+      case 'hops': return save.hops;
+      case 'record': return g.bestCrossed ? 1 : 0;
+    }
+    return 0;
+  }
+
+  function checkDirectives() {
+    if (g.mode !== 'playing') return;
+    for (var i = 0; i < save.directives.length; i++) {
+      var d = save.directives[i];
+      if (d.done) continue;
+      var tpl = templateById(d.id);
+      if (!tpl) continue;
+      if (directiveValue(tpl) >= tpl.target) {
+        d.done = true;
+        persist();
+        g.runCoins += tpl.reward;
+        floater('DIRECTIVE +' + tpl.reward, g.player.x, g.player.row + 1.0, '#8ee36a');
+        PP.Audio.unlockChime();
+      }
+    }
+  }
 
   var g = {
     mode: 'menu',              // menu | playing | paused | dying | dead
@@ -48,6 +132,8 @@
     bestLineRow: -1,           // where the record line sits for this run
     bestCrossed: false,
     van: { state: 'idle', t: 0, x: 0, row: 0, fromSide: 1, caught: false },
+    runStats: { waterX: 0, iceX: 0, paradeX: 0, kibble: 0, dodged: false },
+    slowmoT: 0,
     queued: null,
     onDeath: null,             // set by main.js
     onScore: null
@@ -185,6 +271,7 @@
     p.hopT = 0;
     p.onLog = null;
     if (dir === 'up') g.idleT = 0;
+    save.hops++;
     PP.Audio.hop(g.char.species === 'cat' ? 1.12 : 0.85);
   }
 
@@ -217,20 +304,32 @@
     if (!g.bestCrossed && g.bestLineRow >= 3 && p.row > g.bestLineRow) {
       g.bestCrossed = true;
       floater('RECORD BROKEN', p.x, p.row + 0.6, '#f5c542');
+      puff(p.x, p.row, '#f5c542', 16, 2.6);
       PP.Audio.milestone();
+      checkDirectives();
     }
 
     var coin = World.coinAt(Math.round(p.x), p.row);
     if (coin) {
       coin.taken = true;
       g.runCoins += COIN_VALUE;
+      g.runStats.kibble += COIN_VALUE;
       floater('+' + COIN_VALUE, p.x, p.row, '#f5c542');
       puff(p.x, p.row, '#f5c542', 8, 1.6);
       PP.Audio.coin();
+      checkDirectives();
     }
 
     if (p.row > g.score) {
       g.score = p.row;
+      // The row now fully behind you counts as crossed.
+      var behind = World.row(g.score - 1);
+      if (behind) {
+        if (behind.type === 'water') g.runStats.waterX++;
+        else if (behind.type === 'ice') g.runStats.iceX++;
+        else if (behind.type === 'parade') g.runStats.paradeX++;
+      }
+      checkDirectives();
       if (g.onScore) g.onScore(g.score);
       if (g.score >= g.nextMilestone) {
         g.nextMilestone += 25;
@@ -315,6 +414,8 @@
     p.hopping = false;
     g.mode = 'dying';
     g.deathT = 0;
+    // A beat of slow motion sells the impact; conversion is already slow.
+    if (kind !== 'caught') g.slowmoT = 0.45;
 
     if (kind === 'squash') {
       g.shake = 1;
@@ -396,7 +497,14 @@
       if (v.t >= 0.45) {
         v.caught = !p.dead && Math.abs(p.x - v.x) < 0.6 && Math.abs(p.row - v.row) < 0.6;
         if (v.caught) die('van');
-        else g.idleT = 0;
+        else {
+          g.idleT = 0;
+          g.runStats.dodged = true;
+          save.dodges++;
+          persist();
+          floater('DODGED', p.x, p.row + 0.6, '#8ee36a');
+          checkDirectives();
+        }
         v.state = 'grab';
         v.t = 0;
       }
@@ -487,6 +595,7 @@
 
     buy: function (id) {
       var c = PP.Characters.byId(id);
+      if (c.secret) { PP.Audio.deny(); return 'secret'; }
       if (Game.owns(id)) return 'owned';
       if (save.coins < c.price) { PP.Audio.deny(); return 'poor'; }
       save.coins -= c.price;
@@ -530,6 +639,9 @@
       g.bestCrossed = false;
       g.van.state = 'idle';
       g.van.t = 0;
+      g.runStats = { waterX: 0, iceX: 0, paradeX: 0, kibble: 0, dodged: false };
+      g.slowmoT = 0;
+      refreshDirectives();
       g.queued = null;
       g.particles.length = 0;
       g.floaters.length = 0;
@@ -570,12 +682,13 @@
     LOTTERY_COST: 100,
     lockedCount: function () {
       return PP.Characters.ROSTER.filter(function (c) {
-        return save.owned.indexOf(c.id) === -1;
+        return !c.secret && save.owned.indexOf(c.id) === -1;
       }).length;
     },
     lottery: function () {
+      // The State does not raffle off dissidents.
       var locked = PP.Characters.ROSTER.filter(function (c) {
-        return save.owned.indexOf(c.id) === -1;
+        return !c.secret && save.owned.indexOf(c.id) === -1;
       });
       if (!locked.length || (save.coins || 0) < Game.LOTTERY_COST) {
         PP.Audio.deny();
@@ -597,9 +710,30 @@
       var newBest = g.score > (save.best || 0);
       if (newBest) save.best = g.score;
       save.coins = (save.coins || 0) + earned;
+      // Three clean escapes from the black car earn you the dissident.
+      var unlockedSecret = false;
+      if (save.dodges >= 3 && save.owned.indexOf('kotleta') === -1) {
+        save.owned.push('kotleta');
+        unlockedSecret = true;
+      }
       persist();
-      return { score: g.score, best: save.best, earned: earned, newBest: newBest, kind: g.player.deathKind };
+      return {
+        score: g.score, best: save.best, earned: earned, newBest: newBest,
+        kind: g.player.deathKind, unlockedSecret: unlockedSecret
+      };
     },
+
+    /* For the title screen: the three active directives, displayable. */
+    directiveList: function () {
+      ensureDirectives();
+      return save.directives.map(function (d) {
+        var tpl = templateById(d.id) || { label: d.id, reward: 0, type: '' };
+        var progText = '';
+        if (tpl.type === 'hops') progText = Math.min(save.hops, tpl.target) + '/' + tpl.target;
+        return { label: tpl.label, reward: tpl.reward, done: d.done, progText: progText };
+      });
+    },
+    dodgeCount: function () { return save.dodges; },
 
     playerScreenPos: function () {
       return {
@@ -610,6 +744,10 @@
 
     update: function (dt) {
       if (g.mode === 'paused') return;
+      if (g.slowmoT > 0) {
+        g.slowmoT -= dt;
+        dt *= 0.3;
+      }
 
       if (g.mode === 'playing' || g.mode === 'dying' || g.mode === 'dead') {
         World.update(dt, g.player.row);

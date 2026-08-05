@@ -372,6 +372,60 @@ h2 {
   100% { opacity: 0; transform: translate(var(--cx), var(--cy)) rotate(var(--cr)); }
 }
 
+.directives {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin: 0 0 14px;
+}
+
+.directives .drow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border-left: 3px solid var(--red);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 12px;
+  text-align: left;
+}
+
+.directives .drow.done {
+  border-left-color: #8ee36a;
+  opacity: 0.55;
+  text-decoration: line-through;
+}
+
+.directives .drow .rw {
+  color: var(--gold);
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.directives .dhead {
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  opacity: 0.55;
+  text-align: left;
+}
+
+.hint {
+  align-self: center;
+  margin-top: 8px;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(245, 197, 66, 0.4);
+  color: var(--paper);
+  font-size: 12px;
+  letter-spacing: 1px;
+  padding: 7px 16px;
+  border-radius: 999px;
+  animation: pulse 1s infinite alternate;
+  transition: opacity 0.5s;
+}
+
 .fine {
   margin-top: 16px;
   font-size: 11px;

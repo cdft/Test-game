@@ -83,6 +83,13 @@ pulse lead, triangle bass, filtered-noise drums — scheduled against the audio
 clock rather than a timer, so the beat holds steady through dropped frames.
 `M` mutes everything, music included.
 
+## State Directives
+
+Three rotating objectives sit on the title screen — cross four canals in one
+run, pocket fifteen kibble, dodge the black car, break your record. Complete
+one mid-run and the bounty is paid on the spot; a fresh directive takes its
+place next run.
+
 ## Comrades
 
 Eight playable animals, two unlocked from the start. The rest cost kibble:
@@ -91,12 +98,17 @@ and Laika (300) — or gamble 100 on **The People's Lottery**, which air-drops
 a crate containing one guaranteed new comrade, chosen by the State. Progress,
 coins and your pick are saved to `localStorage`.
 
+There is also a ninth comrade. The file is classified. All that is known:
+the black car has failed to collect them three times.
+
 ## Feel
 
 Hops are pressed, not tapped: touching down crouches your animal and the hop
 fires on release, so chained hops have a rhythm to them. Cars that shave past
 you whoosh; drivers bearing down on your column beep. Hop sounds are pitched
-by species — cats sit a few semitones above dogs.
+by species — cats sit a few semitones above dogs. Deaths land with a beat of
+slow motion. And the further you flee, the colder it gets: snow starts
+falling around 35 metres, right where the rivers begin to freeze.
 
 ## Project layout
 

@@ -1606,6 +1606,26 @@
     ctx.textAlign = 'left';
   }
 
+  /* The further you flee, the colder it gets: snow begins around 35m,
+     right where the rivers start freezing. Stateless — every flake's
+     position is a function of time. */
+  function drawSnow(cam, t) {
+    var intensity = U.clamp((cam.row - 35) / 40, 0, 0.85);
+    if (intensity <= 0.01) return;
+    var n = Math.floor(46 * intensity);
+    ctx.fillStyle = '#f2f6fa';
+    for (var i = 0; i < n; i++) {
+      var speed = 26 + hash(i, 401) * 34;
+      var drift = Math.sin(t * (0.6 + hash(i, 403)) + i * 2.1) * 30;
+      var fx = U.mod(hash(i, 405) * view.w + drift - cam.x * view.tile * 0.15, view.w + 20) - 10;
+      var fy = U.mod(hash(i, 407) * view.h + t * speed + cam.row * 8, view.h + 16) - 8;
+      ctx.globalAlpha = 0.35 + hash(i, 409) * 0.4;
+      var fs = 1.4 + hash(i, 411) * 1.6;
+      ctx.fillRect(fx, fy, fs, fs);
+    }
+    ctx.globalAlpha = 1;
+  }
+
   /* Dusk grade: warm above, cool below, dark in the corners. */
   function drawGrade() {
     var lg = ctx.createLinearGradient(0, 0, 0, view.h);
@@ -1764,6 +1784,7 @@
 
     drawParticles(g.particles, cam);
     drawFloaters(g.floaters, cam);
+    drawSnow(cam, t);
     ctx.restore();
 
     drawGrade();

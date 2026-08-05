@@ -374,6 +374,60 @@ h2 {
   100% { opacity: 0; transform: translate(var(--cx), var(--cy)) rotate(var(--cr)); }
 }
 
+.directives {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin: 0 0 14px;
+}
+
+.directives .drow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border-left: 3px solid var(--red);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 12px;
+  text-align: left;
+}
+
+.directives .drow.done {
+  border-left-color: #8ee36a;
+  opacity: 0.55;
+  text-decoration: line-through;
+}
+
+.directives .drow .rw {
+  color: var(--gold);
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.directives .dhead {
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  opacity: 0.55;
+  text-align: left;
+}
+
+.hint {
+  align-self: center;
+  margin-top: 8px;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(245, 197, 66, 0.4);
+  color: var(--paper);
+  font-size: 12px;
+  letter-spacing: 1px;
+  padding: 7px 16px;
+  border-radius: 999px;
+  animation: pulse 1s infinite alternate;
+  transition: opacity 0.5s;
+}
+
 .fine {
   margin-top: 16px;
   font-size: 11px;
@@ -530,6 +584,7 @@ body { overscroll-behavior: none; }
       </div>
     </div>
     <div id="warning" class="warning hidden">THE COLLECTIVE IS CLOSING IN</div>
+    <div id="hint" class="hint hidden">hold &amp; release to hop &nbsp;·&nbsp; swipe to dodge</div>
   </div>
 
   <!-- ── Title ───────────────────────────────────────────────── -->
@@ -542,6 +597,7 @@ body { overscroll-behavior: none; }
         <div><b id="t-coins">0</b><small>kibble</small></div>
         <div><b id="t-runs">0</b><small>escapes attempted</small></div>
       </div>
+      <div id="directives" class="directives"></div>
       <button id="btn-play" class="btn big">RUN FOR IT</button>
       <div class="row-btns">
         <button id="btn-lottery" class="btn lottery">People's Lottery · 🍖 100</button>
@@ -633,6 +689,7 @@ body { overscroll-behavior: none; }
         <div><b id="o-coins">0</b><small>kibble earned</small></div>
       </div>
       <div id="o-newbest" class="newbest hidden">NEW PERSONAL RECORD</div>
+      <div id="o-secret" class="newbest hidden">KOTLETA HAS FOUND YOU · SECRET COMRADE</div>
       <button id="btn-again" class="btn big">RUN AGAIN</button>
       <div class="row-btns">
         <button id="btn-over-pick" class="btn ghost">Change comrade</button>
@@ -1258,6 +1315,12 @@ body { overscroll-behavior: none; }
       ears: 'cat', tail: 'fluffy', crown: true, fluffy: true
     },
     {
+      id: 'kotleta', name: 'Kotleta', species: 'cat', price: -1, secret: true,
+      tag: 'Was never here. You saw nothing.',
+      fur: '#7b7469', belly: '#a99f92', accent: '#3a3f4a', eye: '#cfd8e0',
+      ears: 'cat', tail: 'long', glasses: true, flatcap: true
+    },
+    {
       id: 'laika', name: 'Laika', species: 'dog', price: 300,
       tag: 'Came back. Wants a word.',
       fur: '#cfc6bb', belly: '#ffffff', accent: '#d0d6dd', eye: '#3a2f26',
@@ -1485,6 +1548,29 @@ body { overscroll-behavior: none; }
         });
       }
 
+      if (c.glasses) {
+        ctx.fillStyle = '#20242c';
+        [-1, 1].forEach(function (sgn) {
+          if (sideOn && sgn < 0) return;
+          U.ellipse(ctx, eyeOffset + sgn * eyeDX, faceY, headW * 0.115, headW * 0.115);
+          ctx.fill();
+        });
+        ctx.strokeStyle = '#20242c';
+        ctx.lineWidth = Math.max(1.5, s * 0.02);
+        ctx.beginPath();
+        ctx.moveTo(eyeOffset - eyeDX + headW * 0.115, faceY);
+        ctx.lineTo(eyeOffset + eyeDX - headW * 0.115, faceY);
+        ctx.stroke();
+        ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+        ctx.lineWidth = Math.max(1, s * 0.012);
+        [-1, 1].forEach(function (sgn) {
+          if (sideOn && sgn < 0) return;
+          ctx.beginPath();
+          ctx.arc(eyeOffset + sgn * eyeDX - headW * 0.03, faceY - headW * 0.03, headW * 0.05, Math.PI, Math.PI * 1.5);
+          ctx.stroke();
+        });
+      }
+
       if (c.goggles) {
         ctx.strokeStyle = '#6b5a3e';
         ctx.lineWidth = s * 0.05;
@@ -1533,6 +1619,15 @@ body { overscroll-behavior: none; }
       ctx.strokeStyle = '#cfd8e3';
       ctx.lineWidth = s * 0.03;
       ctx.stroke();
+    }
+
+    if (c.flatcap) {
+      ctx.fillStyle = '#6a655c';
+      U.roundRect(ctx, hx + headW * 0.02, headTop - headH * 0.14, headW * 0.96, headH * 0.26, headW * 0.12);
+      ctx.fill();
+      ctx.fillStyle = '#59554d';
+      U.roundRect(ctx, hx + headW * 0.3, headTop + headH * 0.08, headW * 0.72, headH * 0.09, headW * 0.04);
+      ctx.fill();
     }
 
     /* Regime headgear, used for drivers, marchers and the newly converted.
@@ -3609,6 +3704,26 @@ body { overscroll-behavior: none; }
     ctx.textAlign = 'left';
   }
 
+  /* The further you flee, the colder it gets: snow begins around 35m,
+     right where the rivers start freezing. Stateless — every flake's
+     position is a function of time. */
+  function drawSnow(cam, t) {
+    var intensity = U.clamp((cam.row - 35) / 40, 0, 0.85);
+    if (intensity <= 0.01) return;
+    var n = Math.floor(46 * intensity);
+    ctx.fillStyle = '#f2f6fa';
+    for (var i = 0; i < n; i++) {
+      var speed = 26 + hash(i, 401) * 34;
+      var drift = Math.sin(t * (0.6 + hash(i, 403)) + i * 2.1) * 30;
+      var fx = U.mod(hash(i, 405) * view.w + drift - cam.x * view.tile * 0.15, view.w + 20) - 10;
+      var fy = U.mod(hash(i, 407) * view.h + t * speed + cam.row * 8, view.h + 16) - 8;
+      ctx.globalAlpha = 0.35 + hash(i, 409) * 0.4;
+      var fs = 1.4 + hash(i, 411) * 1.6;
+      ctx.fillRect(fx, fy, fs, fs);
+    }
+    ctx.globalAlpha = 1;
+  }
+
   /* Dusk grade: warm above, cool below, dark in the corners. */
   function drawGrade() {
     var lg = ctx.createLinearGradient(0, 0, 0, view.h);
@@ -3767,6 +3882,7 @@ body { overscroll-behavior: none; }
 
     drawParticles(g.particles, cam);
     drawFloaters(g.floaters, cam);
+    drawSnow(cam, t);
     ctx.restore();
 
     drawGrade();
@@ -3932,8 +4048,92 @@ body { overscroll-behavior: none; }
     best: 0, coins: 0, runs: 0, owned: ['mittens', 'biscuit'], char: 'mittens'
   };
   if (!save.owned || !save.owned.length) save.owned = ['mittens', 'biscuit'];
+  save.dodges = save.dodges || 0;
+  save.hops = save.hops || 0;
 
   function persist() { U.store.set(SAVE_KEY, save); }
+
+  /* ── State Directives ─────────────────────────────────────────────
+     Three rotating objectives. Complete one mid-run and the bounty is
+     paid on the spot; a fresh directive replaces it next run. */
+
+  var D_TEMPLATES = [
+    { id: 'dist30', label: 'Reach 30m in one run', type: 'dist', target: 30, reward: 40 },
+    { id: 'dist50', label: 'Reach 50m in one run', type: 'dist', target: 50, reward: 60 },
+    { id: 'dist80', label: 'Reach 80m in one run', type: 'dist', target: 80, reward: 90 },
+    { id: 'coins15', label: 'Pocket 15 kibble in one run', type: 'coins', target: 15, reward: 40 },
+    { id: 'rivers4', label: 'Cross 4 canals in one run', type: 'rivers', target: 4, reward: 40 },
+    { id: 'ice3', label: 'Cross 3 frozen rows in one run', type: 'ice', target: 3, reward: 50 },
+    { id: 'parade2', label: 'Slip past 2 parades in one run', type: 'parade', target: 2, reward: 50 },
+    { id: 'dodge1', label: 'Dodge the black car', type: 'dodge', target: 1, reward: 60 },
+    { id: 'hops500', label: 'Hop 500 times, in total', type: 'hops', target: 500, reward: 50 },
+    { id: 'record', label: 'Break your record', type: 'record', target: 1, reward: 50 }
+  ];
+
+  function templateById(id) {
+    for (var i = 0; i < D_TEMPLATES.length; i++) if (D_TEMPLATES[i].id === id) return D_TEMPLATES[i];
+    return null;
+  }
+
+  function pickDirective(exceptIds) {
+    var pool = D_TEMPLATES.filter(function (tpl) {
+      return exceptIds.indexOf(tpl.id) === -1;
+    });
+    return pool[U.randInt(0, pool.length - 1)];
+  }
+
+  function ensureDirectives() {
+    if (save.directives && save.directives.length === 3) return;
+    save.directives = [];
+    for (var i = 0; i < 3; i++) {
+      var have = save.directives.map(function (d) { return d.id; });
+      save.directives.push({ id: pickDirective(have).id, done: false });
+    }
+    persist();
+  }
+
+  function refreshDirectives() {
+    var changed = false;
+    for (var i = 0; i < save.directives.length; i++) {
+      if (save.directives[i].done) {
+        var have = save.directives.map(function (d) { return d.id; });
+        save.directives[i] = { id: pickDirective(have).id, done: false };
+        changed = true;
+      }
+    }
+    if (changed) persist();
+  }
+
+  function directiveValue(tpl) {
+    switch (tpl.type) {
+      case 'dist': return g.score;
+      case 'coins': return g.runStats.kibble;
+      case 'rivers': return g.runStats.waterX;
+      case 'ice': return g.runStats.iceX;
+      case 'parade': return g.runStats.paradeX;
+      case 'dodge': return g.runStats.dodged ? 1 : 0;
+      case 'hops': return save.hops;
+      case 'record': return g.bestCrossed ? 1 : 0;
+    }
+    return 0;
+  }
+
+  function checkDirectives() {
+    if (g.mode !== 'playing') return;
+    for (var i = 0; i < save.directives.length; i++) {
+      var d = save.directives[i];
+      if (d.done) continue;
+      var tpl = templateById(d.id);
+      if (!tpl) continue;
+      if (directiveValue(tpl) >= tpl.target) {
+        d.done = true;
+        persist();
+        g.runCoins += tpl.reward;
+        floater('DIRECTIVE +' + tpl.reward, g.player.x, g.player.row + 1.0, '#8ee36a');
+        PP.Audio.unlockChime();
+      }
+    }
+  }
 
   var g = {
     mode: 'menu',              // menu | playing | paused | dying | dead
@@ -3956,6 +4156,8 @@ body { overscroll-behavior: none; }
     bestLineRow: -1,           // where the record line sits for this run
     bestCrossed: false,
     van: { state: 'idle', t: 0, x: 0, row: 0, fromSide: 1, caught: false },
+    runStats: { waterX: 0, iceX: 0, paradeX: 0, kibble: 0, dodged: false },
+    slowmoT: 0,
     queued: null,
     onDeath: null,             // set by main.js
     onScore: null
@@ -4093,6 +4295,7 @@ body { overscroll-behavior: none; }
     p.hopT = 0;
     p.onLog = null;
     if (dir === 'up') g.idleT = 0;
+    save.hops++;
     PP.Audio.hop(g.char.species === 'cat' ? 1.12 : 0.85);
   }
 
@@ -4125,20 +4328,32 @@ body { overscroll-behavior: none; }
     if (!g.bestCrossed && g.bestLineRow >= 3 && p.row > g.bestLineRow) {
       g.bestCrossed = true;
       floater('RECORD BROKEN', p.x, p.row + 0.6, '#f5c542');
+      puff(p.x, p.row, '#f5c542', 16, 2.6);
       PP.Audio.milestone();
+      checkDirectives();
     }
 
     var coin = World.coinAt(Math.round(p.x), p.row);
     if (coin) {
       coin.taken = true;
       g.runCoins += COIN_VALUE;
+      g.runStats.kibble += COIN_VALUE;
       floater('+' + COIN_VALUE, p.x, p.row, '#f5c542');
       puff(p.x, p.row, '#f5c542', 8, 1.6);
       PP.Audio.coin();
+      checkDirectives();
     }
 
     if (p.row > g.score) {
       g.score = p.row;
+      // The row now fully behind you counts as crossed.
+      var behind = World.row(g.score - 1);
+      if (behind) {
+        if (behind.type === 'water') g.runStats.waterX++;
+        else if (behind.type === 'ice') g.runStats.iceX++;
+        else if (behind.type === 'parade') g.runStats.paradeX++;
+      }
+      checkDirectives();
       if (g.onScore) g.onScore(g.score);
       if (g.score >= g.nextMilestone) {
         g.nextMilestone += 25;
@@ -4223,6 +4438,8 @@ body { overscroll-behavior: none; }
     p.hopping = false;
     g.mode = 'dying';
     g.deathT = 0;
+    // A beat of slow motion sells the impact; conversion is already slow.
+    if (kind !== 'caught') g.slowmoT = 0.45;
 
     if (kind === 'squash') {
       g.shake = 1;
@@ -4304,7 +4521,14 @@ body { overscroll-behavior: none; }
       if (v.t >= 0.45) {
         v.caught = !p.dead && Math.abs(p.x - v.x) < 0.6 && Math.abs(p.row - v.row) < 0.6;
         if (v.caught) die('van');
-        else g.idleT = 0;
+        else {
+          g.idleT = 0;
+          g.runStats.dodged = true;
+          save.dodges++;
+          persist();
+          floater('DODGED', p.x, p.row + 0.6, '#8ee36a');
+          checkDirectives();
+        }
         v.state = 'grab';
         v.t = 0;
       }
@@ -4395,6 +4619,7 @@ body { overscroll-behavior: none; }
 
     buy: function (id) {
       var c = PP.Characters.byId(id);
+      if (c.secret) { PP.Audio.deny(); return 'secret'; }
       if (Game.owns(id)) return 'owned';
       if (save.coins < c.price) { PP.Audio.deny(); return 'poor'; }
       save.coins -= c.price;
@@ -4438,6 +4663,9 @@ body { overscroll-behavior: none; }
       g.bestCrossed = false;
       g.van.state = 'idle';
       g.van.t = 0;
+      g.runStats = { waterX: 0, iceX: 0, paradeX: 0, kibble: 0, dodged: false };
+      g.slowmoT = 0;
+      refreshDirectives();
       g.queued = null;
       g.particles.length = 0;
       g.floaters.length = 0;
@@ -4478,12 +4706,13 @@ body { overscroll-behavior: none; }
     LOTTERY_COST: 100,
     lockedCount: function () {
       return PP.Characters.ROSTER.filter(function (c) {
-        return save.owned.indexOf(c.id) === -1;
+        return !c.secret && save.owned.indexOf(c.id) === -1;
       }).length;
     },
     lottery: function () {
+      // The State does not raffle off dissidents.
       var locked = PP.Characters.ROSTER.filter(function (c) {
-        return save.owned.indexOf(c.id) === -1;
+        return !c.secret && save.owned.indexOf(c.id) === -1;
       });
       if (!locked.length || (save.coins || 0) < Game.LOTTERY_COST) {
         PP.Audio.deny();
@@ -4505,9 +4734,30 @@ body { overscroll-behavior: none; }
       var newBest = g.score > (save.best || 0);
       if (newBest) save.best = g.score;
       save.coins = (save.coins || 0) + earned;
+      // Three clean escapes from the black car earn you the dissident.
+      var unlockedSecret = false;
+      if (save.dodges >= 3 && save.owned.indexOf('kotleta') === -1) {
+        save.owned.push('kotleta');
+        unlockedSecret = true;
+      }
       persist();
-      return { score: g.score, best: save.best, earned: earned, newBest: newBest, kind: g.player.deathKind };
+      return {
+        score: g.score, best: save.best, earned: earned, newBest: newBest,
+        kind: g.player.deathKind, unlockedSecret: unlockedSecret
+      };
     },
+
+    /* For the title screen: the three active directives, displayable. */
+    directiveList: function () {
+      ensureDirectives();
+      return save.directives.map(function (d) {
+        var tpl = templateById(d.id) || { label: d.id, reward: 0, type: '' };
+        var progText = '';
+        if (tpl.type === 'hops') progText = Math.min(save.hops, tpl.target) + '/' + tpl.target;
+        return { label: tpl.label, reward: tpl.reward, done: d.done, progText: progText };
+      });
+    },
+    dodgeCount: function () { return save.dodges; },
 
     playerScreenPos: function () {
       return {
@@ -4518,6 +4768,10 @@ body { overscroll-behavior: none; }
 
     update: function (dt) {
       if (g.mode === 'paused') return;
+      if (g.slowmoT > 0) {
+        g.slowmoT -= dt;
+        dt *= 0.3;
+      }
 
       if (g.mode === 'playing' || g.mode === 'dying' || g.mode === 'dead') {
         World.update(dt, g.player.row);
@@ -4606,6 +4860,20 @@ body { overscroll-behavior: none; }
     U.$('t-runs').textContent = Game.save.runs || 0;
     U.$('p-coins').textContent = Game.save.coins || 0;
     refreshLotteryButtons();
+    refreshDirectivesPanel();
+  }
+
+  function refreshDirectivesPanel() {
+    var host = U.$('directives');
+    if (!host) return;
+    var list = Game.directiveList();
+    var html = '<div class="dhead">State Directives</div>';
+    list.forEach(function (d) {
+      html += '<div class="drow' + (d.done ? ' done' : '') + '"><span>' + d.label +
+        (d.progText ? ' \u00b7 ' + d.progText : '') +
+        '</span><span class="rw">+' + d.reward + ' \ud83c\udf56</span></div>';
+    });
+    host.innerHTML = html;
   }
 
   function refreshLotteryButtons() {
@@ -4626,6 +4894,7 @@ body { overscroll-behavior: none; }
     host.innerHTML = '';
     PP.Characters.ROSTER.forEach(function (c) {
       var owned = Game.owns(c.id);
+      var hiddenSecret = c.secret && !owned;
       var card = document.createElement('div');
       card.className = 'card' + (Game.save.char === c.id ? ' selected' : '') + (owned ? '' : ' locked');
 
@@ -4634,18 +4903,23 @@ body { overscroll-behavior: none; }
 
       var name = document.createElement('div');
       name.className = 'name';
-      name.textContent = c.name;
+      name.textContent = hiddenSecret ? '?????' : c.name;
       card.appendChild(name);
 
       var tag = document.createElement('div');
       tag.className = 'tag';
-      tag.textContent = c.tag;
+      tag.textContent = hiddenSecret
+        ? 'Dodge the black car \u00d73 (' + Math.min(Game.dodgeCount(), 3) + '/3)'
+        : c.tag;
       card.appendChild(tag);
 
       var foot = document.createElement('div');
       if (owned) {
         foot.className = 'owned';
         foot.textContent = Game.save.char === c.id ? 'SELECTED' : 'ready';
+      } else if (hiddenSecret) {
+        foot.className = 'owned';
+        foot.textContent = 'classified';
       } else {
         foot.className = 'price' + ((Game.save.coins || 0) >= c.price ? '' : ' cant');
         foot.textContent = '🍖 ' + c.price;
@@ -4654,6 +4928,7 @@ body { overscroll-behavior: none; }
 
       card.addEventListener('click', function () {
         PP.Audio.unlock();
+        if (hiddenSecret) { PP.Audio.deny(); return; }
         if (!Game.owns(c.id)) {
           var res = Game.buy(c.id);
           if (res !== 'bought') { refreshStats(); buildRoster(); return; }
@@ -4666,7 +4941,21 @@ body { overscroll-behavior: none; }
       });
 
       host.appendChild(card);
-      PP.Render.drawPortrait(cnv, c);
+      if (hiddenSecret) {
+        // A redacted silhouette: the file exists, the photo does not.
+        var c2 = cnv.getContext('2d');
+        var dpr = Math.min(window.devicePixelRatio || 1, 2);
+        cnv.width = 76 * dpr; cnv.height = 76 * dpr;
+        c2.setTransform(dpr, 0, 0, dpr, 0, 0);
+        c2.fillStyle = 'rgba(255,255,255,0.06)';
+        c2.fillRect(8, 6, 60, 64);
+        c2.fillStyle = 'rgba(245,197,66,0.8)';
+        c2.font = '900 40px "Trebuchet MS", sans-serif';
+        c2.textAlign = 'center';
+        c2.fillText('?', 38, 52);
+      } else {
+        PP.Render.drawPortrait(cnv, c);
+      }
     });
   }
 
@@ -4678,11 +4967,25 @@ body { overscroll-behavior: none; }
     showScreen('screen-title');
   }
 
+  var hintTimer = null;
+
   function startRun() {
     Game.start();
     elScore.textContent = '0';
     elCoins.textContent = '0';
     hideScreens();
+    // Coach the press-and-release hop for the first few escapes.
+    var hint = U.$('hint');
+    if (hint && (Game.save.runs || 0) <= 3) {
+      hint.classList.remove('hidden');
+      if (hintTimer) clearTimeout(hintTimer);
+      hintTimer = setTimeout(function () { hint.classList.add('hidden'); }, 6000);
+    }
+  }
+
+  function hideHint() {
+    var hint = U.$('hint');
+    if (hint && !hint.classList.contains('hidden')) hint.classList.add('hidden');
   }
 
   function onDeath(result) {
@@ -4694,6 +4997,8 @@ body { overscroll-behavior: none; }
     U.$('o-best').textContent = result.best;
     U.$('o-coins').textContent = result.earned;
     U.$('o-newbest').classList.toggle('hidden', !result.newBest);
+    U.$('o-secret').classList.toggle('hidden', !result.unlockedSecret);
+    if (result.unlockedSecret) PP.Audio.unlockChime();
     refreshStats();
     showScreen('screen-over');
   }
@@ -4810,6 +5115,7 @@ body { overscroll-behavior: none; }
     onCharge: function () { Game.charge(); },
     onChargeCancel: function () { Game.uncharge(); },
     onMove: function (dir) {
+      hideHint();
       if (Game.isPlaying()) Game.move(dir);
       else if (Game.mode() === 'menu' && dir === 'up') startRun();
     },
