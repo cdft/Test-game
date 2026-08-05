@@ -565,7 +565,7 @@
 
   function updateTide(dt) {
     var d = World.difficulty(g.score);
-    var speed = 1.05 + d * 1.25;
+    var speed = 1.05 + d * 0.95;
 
     var gap = g.player.row - g.tide.row;
     // It closes fast when you get too far ahead — no safe lead, and the front

@@ -36,7 +36,7 @@
   /* ── Generation ─────────────────────────────────────────────────── */
 
   function difficulty(index) {
-    return U.clamp(index / 190, 0, 1);
+    return U.clamp(index / 320, 0, 1);
   }
 
   function nextType(index) {
@@ -57,7 +57,7 @@
     var t = U.weighted(table.filter(function (e) { return e[0] !== plan.type; }));
 
     var len;
-    if (t === 'road') len = U.randInt(1, d > 0.4 ? 4 : 3);
+    if (t === 'road') len = U.randInt(1, d > 0.6 ? 4 : 3);
     else if (t === 'water') len = U.randInt(1, d > 0.5 ? 3 : 2);
     else if (t === 'rail') len = U.randInt(1, 2);
     else if (t === 'parade') len = 1;
@@ -137,7 +137,7 @@
     var row = {
       index: index, type: 'road',
       dir: Math.random() < 0.5 ? -1 : 1,
-      speed: U.rand(2.1, 3.3) + d * 3.4,
+      speed: U.rand(2.1, 3.2) + d * 2.2,
       cars: []
     };
 
@@ -149,7 +149,7 @@
       widths.push(kind.w);
     }
     // Traffic thins out as it speeds up, so every lane stays crossable.
-    var minGap = 2.4 + row.speed * 0.28;
+    var minGap = 2.6 + row.speed * 0.34;
     var ps = layout(widths, minGap, minGap + 4.5, function () {
       var k = U.weighted(CAR_KINDS.map(function (c) { return [c, c.weight]; }));
       kinds.push(k);
