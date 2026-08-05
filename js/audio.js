@@ -193,6 +193,14 @@
       noise({ dur: 0.22, filter: 'lowpass', freq: 500, sweepTo: 140, gain: 0.4 });
     },
 
+    /* Through a sector gate: a proper little victory phrase. */
+    fanfare: function () {
+      [392, 523, 659, 784].forEach(function (f, i) {
+        tone({ type: 'square', from: f, to: f, dur: i === 3 ? 0.3 : 0.12, gain: 0.24, delay: i * 0.09 });
+      });
+      tone({ type: 'triangle', from: 196, to: 196, dur: 0.5, gain: 0.2, delay: 0.27 });
+    },
+
     milestone: function () {
       tone({ type: 'triangle', from: 660, to: 660, dur: 0.1, gain: 0.22 });
       tone({ type: 'triangle', from: 990, to: 990, dur: 0.14, gain: 0.22, delay: 0.1 });

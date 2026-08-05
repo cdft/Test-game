@@ -64,6 +64,11 @@ and disables touch scrolling, which is what makes it behave on a phone.
   onto your tile, and a secret police sedan tears across lawn, road or rail
   to collect you. You have about a second to move. On water and ice nobody
   needs to come for you — the river handles it.
+- **Sector borders** wall the route every 50 metres — concrete, barbed wire,
+  a watchtower, and one open gate. Slip through and the paperwork delays your
+  pursuers: a 25-kibble bounty, a fanfare, and the tide pushed back two rows.
+- **Momentum**: keep your forward hops within a beat of each other and a
+  10-hop streak doubles every kibble you grab, with speed lines to prove it.
 - **Kibble** (golden bones) is scattered on grass, worth 5 each, plus a bonus
   of 1 per 5 metres at the end of a run. Spend it on new comrades — directly,
   or through the lottery.

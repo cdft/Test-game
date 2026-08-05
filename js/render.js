@@ -370,6 +370,17 @@
         ctx.closePath();
         ctx.fill();
       }
+    } else if (row.type === 'checkpoint') {
+      ctx.fillStyle = '#6b6155';
+      ctx.fillRect(x0, top, x1, h);
+      if (patterns.ballast) {
+        ctx.globalAlpha = 0.4;
+        ctx.fillStyle = patterns.ballast;
+        ctx.fillRect(x0, top, x1, h);
+        ctx.globalAlpha = 1;
+      }
+      ctx.fillStyle = 'rgba(0,0,0,0.20)';
+      ctx.fillRect(x0, top, x1, h * 0.08);
     } else if (row.type === 'rail') {
       ctx.fillStyle = '#665d50';
       ctx.fillRect(x0, top, x1, h);
@@ -1162,6 +1173,103 @@
     ctx.restore();
   }
 
+  /* ── Sector borders ─────────────────────────────────────────────── */
+
+  function drawCheckpoint(row, cam, t) {
+    var s = view.tile;
+    var y = sy(row.index, cam) + view.rowH * 0.28;
+    var wallH = s * 1.05;
+    var lo = PP.World.CFG.X_MIN - 6, hi = PP.World.CFG.X_MAX + 6;
+
+    for (var x = lo; x <= hi; x++) {
+      if (Math.abs(x - row.gateX) <= 1) continue;
+      var px = sx(x, cam);
+      if (px < -s || px > view.w + s) continue;
+      // Concrete panel with a sunlit cap and seams.
+      ctx.fillStyle = '#8a8177';
+      ctx.fillRect(px - s * 0.5, y - wallH, s * 1.01, wallH);
+      ctx.fillStyle = 'rgba(0,0,0,0.12)';
+      ctx.fillRect(px + s * 0.46, y - wallH, s * 0.04, wallH);
+      ctx.fillStyle = 'rgba(255,214,150,0.28)';
+      ctx.fillRect(px - s * 0.5, y - wallH, s * 1.01, s * 0.06);
+      if (hash(row.index, x) < 0.3) {
+        ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(px - s * 0.2, y - wallH * (0.3 + hash(row.index, x + 50) * 0.4));
+        ctx.lineTo(px + s * 0.1, y - wallH * (0.1 + hash(row.index, x + 90) * 0.3));
+        ctx.stroke();
+      }
+      // Barbed wire along the top.
+      ctx.strokeStyle = '#3f3a34';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(px - s * 0.5, y - wallH - s * 0.08);
+      ctx.quadraticCurveTo(px, y - wallH - s * 0.16, px + s * 0.51, y - wallH - s * 0.08);
+      ctx.stroke();
+      for (var bb = 0; bb < 3; bb++) {
+        var bx4 = px - s * 0.3 + bb * s * 0.3;
+        ctx.beginPath();
+        ctx.moveTo(bx4 - 2.5, y - wallH - s * 0.14);
+        ctx.lineTo(bx4 + 2.5, y - wallH - s * 0.08);
+        ctx.moveTo(bx4 + 2.5, y - wallH - s * 0.14);
+        ctx.lineTo(bx4 - 2.5, y - wallH - s * 0.08);
+        ctx.stroke();
+      }
+    }
+
+    // The gate: striped posts and a barrier arm swung up — you may pass.
+    var gx = sx(row.gateX, cam);
+    [-1.5, 1.5].forEach(function (side) {
+      var px2 = gx + side * s;
+      ctx.fillStyle = '#c8c0b4';
+      ctx.fillRect(px2 - s * 0.06, y - s * 0.85, s * 0.12, s * 0.85);
+      for (var st4 = 0; st4 < 3; st4++) {
+        ctx.fillStyle = st4 % 2 ? '#f0e6d6' : '#c8102e';
+        ctx.fillRect(px2 - s * 0.06, y - s * 0.85 + st4 * s * 0.28, s * 0.12, s * 0.28);
+      }
+    });
+    ctx.save();
+    ctx.translate(gx - s * 1.5, y - s * 0.8);
+    ctx.rotate(-1.15);
+    var seg5 = s * 1.4 / 4;
+    for (var a5 = 0; a5 < 4; a5++) {
+      ctx.fillStyle = a5 % 2 ? '#f0e6d6' : '#c8102e';
+      ctx.fillRect(a5 * seg5, -s * 0.04, seg5 + 0.5, s * 0.08);
+    }
+    ctx.restore();
+
+    // Watchtower beside the gate, with a sweeping searchlight.
+    var tx2 = gx + s * 2.6;
+    ctx.fillStyle = '#5f574c';
+    ctx.fillRect(tx2 - s * 0.08, y - s * 1.7, s * 0.16, s * 1.7);
+    ctx.fillRect(tx2 - s * 0.34, y - s * 2.1, s * 0.68, s * 0.5);
+    ctx.fillStyle = '#4a443c';
+    ctx.fillRect(tx2 - s * 0.4, y - s * 2.18, s * 0.8, s * 0.1);
+    ctx.fillStyle = 'rgba(255,232,180,0.8)';
+    ctx.fillRect(tx2 - s * 0.24, y - s * 2.0, s * 0.48, s * 0.24);
+    ctx.fillStyle = '#c8102e';
+    CH.star(ctx, tx2, y - s * 2.28, s * 0.12);
+
+    var ang5 = Math.sin(t * 0.5 + row.index) * 0.55;
+    ctx.save();
+    ctx.translate(tx2, y - s * 1.9);
+    ctx.rotate(ang5);
+    ctx.globalCompositeOperation = 'lighter';
+    var bg5 = ctx.createLinearGradient(0, 0, 0, s * 3.2);
+    bg5.addColorStop(0, 'rgba(255,240,190,0.16)');
+    bg5.addColorStop(1, 'rgba(255,240,190,0)');
+    ctx.fillStyle = bg5;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(-s * 0.7, s * 3.2);
+    ctx.lineTo(s * 0.7, s * 3.2);
+    ctx.closePath();
+    ctx.fill();
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.restore();
+  }
+
   /* ── The black car ─────────────────────────────────────────────── */
 
   function drawVanCar(x, y, s, dir, dust, t) {
@@ -1470,7 +1578,7 @@
 
   /* ── Player + effects ───────────────────────────────────────────── */
 
-  function drawPlayer(p, cam, char, t, fear) {
+  function drawPlayer(p, cam, char, t, fear, hot) {
     if (p.dead && p.deathKind === 'water' && p.sinkT > 0.9) return;
     var x = sx(p.x, cam);
     var y = sy(p.row, cam) + view.rowH * 0.24;
@@ -1516,6 +1624,22 @@
       }
     }
     CH.draw(ctx, x, y, opts);
+
+    // Momentum: motion streaks trailing a hot streak.
+    if (hot && !p.dead) {
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.strokeStyle = 'rgba(255,220,150,0.35)';
+      ctx.lineWidth = Math.max(1.5, s * 0.04);
+      [-0.3, 0.3].forEach(function (off) {
+        ctx.beginPath();
+        ctx.moveTo(x + off * s, y + s * 0.1);
+        ctx.lineTo(x + off * s * 1.4, y + s * 0.66);
+        ctx.stroke();
+      });
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.restore();
+    }
 
     // The moment it takes: a red star rises over the new comrade.
     if (p.dead && p.deathKind === 'caught' && p.convertT > 0.5) {
@@ -1709,6 +1833,8 @@
         drawFloes(row, cam, t);
       } else if (row.type === 'parade') {
         for (var q = 0; q < row.cars.length; q++) drawSquad(row, row.cars[q], cam, t);
+      } else if (row.type === 'checkpoint') {
+        drawCheckpoint(row, cam, t);
       } else if (row.type === 'rail') {
         if (row.state === 'train') drawTrain(row, cam, t);
         drawRailSignals(row, cam, t);
@@ -1733,7 +1859,7 @@
       if (g.tide.row >= i) drawTideBand(row, cam, g.tide.row, t);
       if (Math.floor(g.tide.row) === i) drawTideFront(cam, g.tide.row, t);
 
-      if (i === playerDrawRow && g.showPlayer) drawPlayer(g.player, cam, g.playerChar || g.char, t, fear);
+      if (i === playerDrawRow && g.showPlayer) drawPlayer(g.player, cam, g.playerChar || g.char, t, fear, g.streak >= 10);
     }
 
     if (g.van && g.van.state !== 'idle' && g.showPlayer) drawVan(g.van, g, cam, t);

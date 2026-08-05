@@ -102,6 +102,13 @@ html, body {
 
 .hud-coins.big { font-size: 20px; }
 
+.combo {
+  margin-left: 6px;
+  color: var(--gold);
+  font-weight: 900;
+  animation: pulse 0.5s infinite alternate;
+}
+
 .icon-btn {
   width: 38px;
   height: 38px;

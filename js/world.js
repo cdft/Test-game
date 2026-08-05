@@ -225,6 +225,16 @@
     return row;
   }
 
+  /* Every 50th metre: a sector border. Concrete wall, barbed wire, one
+     open gate. The wall blocks everything but the gate tiles. */
+  function makeCheckpoint(index) {
+    return {
+      index: index, type: 'checkpoint',
+      gateX: U.randInt(CFG.X_MIN + 2, CFG.X_MAX - 2),
+      seed: Math.random()
+    };
+  }
+
   function makeRail(index) {
     return {
       index: index, type: 'rail',
@@ -239,6 +249,9 @@
   }
 
   function generate(index) {
+    // Sector borders land on the round numbers, interrupting whatever
+    // band was in progress — walls don't care about your plans.
+    if (index >= 50 && index % 50 === 0) return makeCheckpoint(index);
     var type = nextType(index);
     switch (type) {
       case 'safe': return makeGrass(index, true);
@@ -359,6 +372,7 @@
       if (x < CFG.X_MIN || x > CFG.X_MAX) return true;
       var r = rowAt(rowIndex);
       if (!r) return true;
+      if (r.type === 'checkpoint') return Math.abs(x - r.gateX) > 1;
       return r.type === 'grass' && !!r.blocked[x];
     },
 

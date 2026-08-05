@@ -133,6 +133,8 @@
     bestCrossed: false,
     van: { state: 'idle', t: 0, x: 0, row: 0, fromSide: 1, caught: false },
     runStats: { waterX: 0, iceX: 0, paradeX: 0, kibble: 0, dodged: false },
+    streak: 0,
+    lastFwdT: -9,
     slowmoT: 0,
     queued: null,
     onDeath: null,             // set by main.js
@@ -270,7 +272,12 @@
     p.hopping = true;
     p.hopT = 0;
     p.onLog = null;
-    if (dir === 'up') g.idleT = 0;
+    if (dir === 'up') {
+      g.idleT = 0;
+      var nowT = World.time();
+      g.streak = (nowT - g.lastFwdT < 0.9) ? g.streak + 1 : 1;
+      g.lastFwdT = nowT;
+    }
     save.hops++;
     PP.Audio.hop(g.char.species === 'cat' ? 1.12 : 0.85);
   }
@@ -312,9 +319,10 @@
     var coin = World.coinAt(Math.round(p.x), p.row);
     if (coin) {
       coin.taken = true;
-      g.runCoins += COIN_VALUE;
-      g.runStats.kibble += COIN_VALUE;
-      floater('+' + COIN_VALUE, p.x, p.row, '#f5c542');
+      var mult = g.streak >= 10 ? 2 : 1;   // momentum pays double
+      g.runCoins += COIN_VALUE * mult;
+      g.runStats.kibble += COIN_VALUE * mult;
+      floater('+' + (COIN_VALUE * mult), p.x, p.row, '#f5c542');
       puff(p.x, p.row, '#f5c542', 8, 1.6);
       PP.Audio.coin();
       checkDirectives();
@@ -328,6 +336,14 @@
         if (behind.type === 'water') g.runStats.waterX++;
         else if (behind.type === 'ice') g.runStats.iceX++;
         else if (behind.type === 'parade') g.runStats.paradeX++;
+        else if (behind.type === 'checkpoint') {
+          // Through the gate: the paperwork delays them.
+          g.runCoins += 25;
+          g.tide.row = Math.max(-7, g.tide.row - 2);
+          floater('SECTOR CLEARED +25', p.x, p.row + 1.0, '#f5c542');
+          g.flash = 0.22;
+          PP.Audio.fanfare();
+        }
       }
       checkDirectives();
       if (g.onScore) g.onScore(g.score);
@@ -640,6 +656,8 @@
       g.van.state = 'idle';
       g.van.t = 0;
       g.runStats = { waterX: 0, iceX: 0, paradeX: 0, kibble: 0, dodged: false };
+      g.streak = 0;
+      g.lastFwdT = -9;
       g.slowmoT = 0;
       refreshDirectives();
       g.queued = null;

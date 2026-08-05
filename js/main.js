@@ -355,6 +355,7 @@
       elCoins.textContent = Game.g.runCoins;
       var gap = Game.g.player.row - Game.g.tide.row;
       elWarning.classList.toggle('hidden', !(gap < 4.5 && Game.mode() === 'playing'));
+      U.$('combo').classList.toggle('hidden', !(Game.g.streak >= 10 && Game.mode() === 'playing'));
     }
 
     PP.Render.draw(Game.g);
