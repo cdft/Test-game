@@ -27,9 +27,9 @@
       title: 'REDISTRIBUTED',
       flavor: 'You have been issued a hat and an opinion. Welcome to the march, comrade.'
     },
-    falcon: {
-      title: 'AIRLIFTED',
-      flavor: 'You were selected for immediate relocation. The State Falcon does not accept appeals.'
+    van: {
+      title: 'DETAINED',
+      flavor: 'A black car happened to be passing. A black car is always passing.'
     }
   };
 

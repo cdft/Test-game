@@ -47,7 +47,7 @@
     nextMilestone: 25,
     bestLineRow: -1,           // where the record line sits for this run
     bestCrossed: false,
-    falcon: { state: 'idle', t: 0, x: 0, row: 0 },
+    van: { state: 'idle', t: 0, x: 0, row: 0, fromSide: 1, caught: false },
     queued: null,
     onDeath: null,             // set by main.js
     onScore: null
@@ -251,7 +251,7 @@
 
     if (p.dead) {
       if (p.deathKind === 'water') p.sinkT = Math.min(1, p.sinkT + dt * 1.4);
-      if (p.deathKind === 'falcon') p.sinkT = Math.min(1, p.sinkT + dt * 0.85);
+      if (p.deathKind === 'van') p.sinkT = Math.min(1, p.sinkT + dt * 1.8);
       if (p.deathKind === 'caught') {
         // Re-education: the colours drain, the hat arrives, and you fall in
         // step with the rank you were running from.
@@ -327,10 +327,10 @@
       g.shake = 0.35;
       PP.Audio.splash();
       PP.Music.fadeOut(0.5);
-    } else if (kind === 'falcon') {
+    } else if (kind === 'van') {
       g.shake = 0.45;
       puff(p.x, p.row, g.char.fur, 10, 2.0);
-      PP.Audio.snatch();
+      PP.Audio.doorSlam();
       PP.Music.fadeOut(0.5);
     } else {
       g.shake = 0.7;
@@ -364,42 +364,48 @@
     }
   }
 
-  /* ── The State Falcon ───────────────────────────────────────────────
-     The tide punishes hesitation from behind; the falcon punishes it from
-     above, so idling is never safe no matter how big your lead is. */
+  /* ── The black car ──────────────────────────────────────────────────
+     The tide punishes hesitation from behind; the black car punishes it
+     everywhere else. Stand around with a comfortable lead and a secret
+     police sedan tears onto your row, brakes at your tile, and takes you
+     in. It only drives on land — the rivers and the ice punish idling by
+     themselves. */
 
-  function updateFalcon(dt) {
-    var f = g.falcon;
+  function updateVan(dt) {
+    var v = g.van;
     var p = g.player;
     var gap = p.row - g.tide.row;
 
-    if (f.state === 'idle') {
-      if (g.idleT > 4.2 && gap > 6 && !p.dead) {
-        f.state = 'warn';
-        f.t = 0;
-        f.x = p.x;
-        f.row = p.row;
+    if (v.state === 'idle') {
+      var rt = World.row(Math.round(p.row));
+      var onLand = rt && rt.type !== 'water' && rt.type !== 'ice';
+      if (g.idleT > 4.2 && gap > 6 && !p.dead && onLand) {
+        v.state = 'warn';
+        v.t = 0;
+        v.x = Math.round(p.x);
+        v.row = Math.round(p.row);
+        v.fromSide = p.x >= 0 ? 1 : -1;   // enters from the nearer edge
+        v.caught = false;
         PP.Audio.screech();
       }
-    } else if (f.state === 'warn') {
-      f.t += dt;
-      if (f.t > 0.85) { f.state = 'dive'; f.t = 0; }
-    } else if (f.state === 'dive') {
-      f.t += dt;
-      if (f.t >= 0.5) {
-        var hit = !p.dead && Math.abs(p.x - f.x) < 0.6 && Math.abs(p.row - f.row) < 0.6;
-        if (hit) {
-          die('falcon');
-          f.state = 'carry';
-        } else {
-          f.state = 'miss';
-          g.idleT = 0;
-        }
-        f.t = 0;
+    } else if (v.state === 'warn') {
+      v.t += dt;
+      if (v.t > 0.9) { v.state = 'arrive'; v.t = 0; PP.Audio.engine(); }
+    } else if (v.state === 'arrive') {
+      v.t += dt;
+      if (v.t >= 0.45) {
+        v.caught = !p.dead && Math.abs(p.x - v.x) < 0.6 && Math.abs(p.row - v.row) < 0.6;
+        if (v.caught) die('van');
+        else g.idleT = 0;
+        v.state = 'grab';
+        v.t = 0;
       }
-    } else if (f.state === 'miss' || f.state === 'carry') {
-      f.t += dt;
-      if (f.state === 'miss' && f.t > 0.9) f.state = 'idle';
+    } else if (v.state === 'grab') {
+      v.t += dt;
+      if (v.t > (v.caught ? 0.7 : 0.35)) { v.state = 'depart'; v.t = 0; }
+    } else if (v.state === 'depart') {
+      v.t += dt;
+      if (v.t > 1.0) v.state = 'idle';
     }
   }
 
@@ -503,7 +509,7 @@
       g.splashes.length = 0;
       g.shake = 0;
       g.flash = 0;
-      g.falcon.state = 'idle';
+      g.van.state = 'idle';
       PP.Music.stop();
     },
 
@@ -522,8 +528,8 @@
       g.nextMilestone = 25;
       g.bestLineRow = (save.best || 0) >= 3 ? save.best : -1;
       g.bestCrossed = false;
-      g.falcon.state = 'idle';
-      g.falcon.t = 0;
+      g.van.state = 'idle';
+      g.van.t = 0;
       g.queued = null;
       g.particles.length = 0;
       g.floaters.length = 0;
@@ -611,7 +617,7 @@
           g.idleT += dt;
           updatePlayer(dt);
           updateTide(dt);
-          updateFalcon(dt);
+          updateVan(dt);
           updateTraffic(dt);
         } else {
           // The tide keeps rolling over the scene while the card comes up.

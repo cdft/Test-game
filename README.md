@@ -59,10 +59,11 @@ and disables touch scrolling, which is what makes it behave on a phone.
 - **May Day parades** cross the route in slow, dense squads. They will not
   trample you — they will recruit you. Walking into one starts the
   conversion on the spot.
-- **The State Falcon** handles anyone who thinks a big lead means they can
-  stand still. Idle too long and a shadow locks onto your tile; you have
-  under a second to move before the stoop lands. The tide covers hesitation
-  from behind, the falcon covers it from above.
+- **The black car** handles anyone who thinks a big lead means they can
+  stand still. Idle too long on dry land and tires screech, a ring locks
+  onto your tile, and a secret police sedan tears across lawn, road or rail
+  to collect you. You have about a second to move. On water and ice nobody
+  needs to come for you — the river handles it.
 - **Kibble** (golden bones) is scattered on grass, worth 5 each, plus a bonus
   of 1 per 5 metres at the end of a run. Spend it on new comrades — directly,
   or through the lottery.

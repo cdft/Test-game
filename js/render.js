@@ -1162,112 +1162,141 @@
     ctx.restore();
   }
 
-  /* ── The State Falcon ───────────────────────────────────────────── */
+  /* ── The black car ─────────────────────────────────────────────── */
 
-  function drawFalconBird(x, y, s, flap) {
+  function drawVanCar(x, y, s, dir, dust, t) {
     ctx.save();
+    ctx.fillStyle = 'rgba(40,24,58,0.32)';
+    U.ellipse(ctx, x, y, s * 1.1, s * 0.14);
+    ctx.fill();
     ctx.translate(x, y);
-    // Wings: two beating triangles, sun-rimmed so they read on a dark sky.
-    var wingY = Math.sin(flap) * s * 0.30;
-    ctx.fillStyle = '#4c3a54';
-    [-1, 1].forEach(function (sgn) {
-      ctx.beginPath();
-      ctx.moveTo(sgn * s * 0.16, -s * 0.05);
-      ctx.lineTo(sgn * s * 0.85, -s * 0.30 - wingY);
-      ctx.lineTo(sgn * s * 0.30, s * 0.10);
-      ctx.closePath();
+    ctx.scale(dir, 1);
+
+    var w = s * 2.3;
+    var bodyH = s * 0.42;
+    var base = -s * 0.06;
+
+    // Dust kicked up behind it — it is not using the road.
+    if (dust > 0.01) {
+      ctx.fillStyle = '#9a8a7a';
+      for (var k = 0; k < 4; k++) {
+        var ph = U.mod(t * 1.6 + k / 4, 1);
+        ctx.globalAlpha = (1 - ph) * 0.35 * dust;
+        U.ellipse(ctx, -w * 0.52 - ph * s * 0.9, base - s * 0.1 - ph * s * 0.3,
+          s * (0.08 + ph * 0.22), s * (0.07 + ph * 0.16));
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    // Wheels.
+    ctx.fillStyle = '#101014';
+    [-w * 0.32, w * 0.32].forEach(function (wx) {
+      U.ellipse(ctx, wx, base, s * 0.12, s * 0.12);
       ctx.fill();
-      ctx.strokeStyle = 'rgba(255,200,140,0.55)';
-      ctx.lineWidth = Math.max(1.5, s * 0.035);
-      ctx.beginPath();
-      ctx.moveTo(sgn * s * 0.16, -s * 0.05);
-      ctx.lineTo(sgn * s * 0.85, -s * 0.30 - wingY);
-      ctx.stroke();
     });
-    // Body + tail.
-    ctx.fillStyle = '#5a4560';
-    U.ellipse(ctx, 0, 0, s * 0.24, s * 0.30);
+
+    // Long black body, official and unhurried about being seen.
+    ctx.fillStyle = '#17171d';
+    U.roundRect(ctx, -w / 2, base - bodyH * 0.8, w, bodyH * 0.8, s * 0.08);
     ctx.fill();
-    ctx.beginPath();
-    ctx.moveTo(-s * 0.10, s * 0.22);
-    ctx.lineTo(0, s * 0.48);
-    ctx.lineTo(s * 0.10, s * 0.22);
-    ctx.closePath();
+    ctx.fillStyle = '#22222b';
+    U.roundRect(ctx, -w * 0.30, base - bodyH * 1.3, w * 0.60, bodyH * 0.58, s * 0.07);
     ctx.fill();
-    // Head, stern little cap, beak.
-    U.ellipse(ctx, 0, -s * 0.30, s * 0.15, s * 0.14);
+    // Curtained windows — nobody looks out, nobody looks in.
+    ctx.fillStyle = 'rgba(70,70,86,0.9)';
+    U.roundRect(ctx, -w * 0.24, base - bodyH * 1.2, w * 0.2, bodyH * 0.4, s * 0.03);
     ctx.fill();
-    ctx.fillStyle = '#5a6a4a';
-    U.roundRect(ctx, -s * 0.14, -s * 0.44, s * 0.28, s * 0.09, s * 0.04);
+    U.roundRect(ctx, w * 0.02, base - bodyH * 1.2, w * 0.2, bodyH * 0.4, s * 0.03);
     ctx.fill();
-    ctx.fillStyle = '#e0a03c';
-    ctx.beginPath();
-    ctx.moveTo(-s * 0.05, -s * 0.26);
-    ctx.lineTo(0, -s * 0.16);
-    ctx.lineTo(s * 0.05, -s * 0.26);
-    ctx.closePath();
+    // Roof light, sweeping.
+    var lampOn = Math.sin(t * 14) > 0;
+    ctx.fillStyle = lampOn ? '#ff4b3a' : '#7c1d16';
+    U.ellipse(ctx, 0, base - bodyH * 1.36, s * 0.07, s * 0.07);
     ctx.fill();
-    // Red star on the chest, large enough to read at distance.
+    if (lampOn) {
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.fillStyle = 'rgba(255,70,50,0.25)';
+      U.ellipse(ctx, 0, base - bodyH * 1.36, s * 0.3, s * 0.2);
+      ctx.fill();
+      ctx.globalCompositeOperation = 'source-over';
+    }
+    // Fender flag + star.
     ctx.fillStyle = '#c8102e';
-    CH.star(ctx, 0, s * 0.02, s * 0.12);
+    ctx.fillRect(w * 0.40, base - bodyH * 1.05, s * 0.03, s * 0.2);
+    ctx.beginPath();
+    ctx.moveTo(w * 0.40 + s * 0.03, base - bodyH * 1.05);
+    ctx.lineTo(w * 0.40 + s * 0.2, base - bodyH * 1.0);
+    ctx.lineTo(w * 0.40 + s * 0.03, base - bodyH * 0.94);
+    ctx.closePath();
+    ctx.fill();
+    CH.star(ctx, -w * 0.36, base - bodyH * 0.42, s * 0.1);
+    // Sun on the roof — even this car obeys the light.
+    ctx.fillStyle = 'rgba(255,214,150,0.2)';
+    ctx.fillRect(-w * 0.28, base - bodyH * 1.3 - 1.5, w * 0.56, 2.5);
+
+    headBeam(w * 0.5, base - s * 0.16, s);
     ctx.restore();
   }
 
-  function drawFalcon(f, g, cam, t) {
+  function drawVan(v, g, cam, t) {
     var s = view.tile;
-    var tx = sx(f.x, cam);
-    var ty = sy(f.row, cam) + view.rowH * 0.2;
+    var tx = sx(v.x, cam);
+    var ty = sy(v.row, cam) + view.rowH * 0.26;
+    var dir = -v.fromSide;                    // direction of travel
+    var edgeX = view.w / 2 + v.fromSide * (view.w / 2 + s * 3);
 
-    if (f.state === 'warn') {
-      // The shadow arrives before the bird does.
-      var k = U.clamp(f.t / 0.85, 0, 1);
-      ctx.save();
-      ctx.globalAlpha = 0.25 + k * 0.3;
-      ctx.fillStyle = '#160b26';
-      U.ellipse(ctx, tx, ty, s * (0.2 + k * 0.5), s * (0.08 + k * 0.2));
-      ctx.fill();
+    if (v.state === 'warn') {
+      // The locked tile, ringed — and headlights already at the kerb.
+      var k = U.clamp(v.t / 0.9, 0, 1);
       var blink3 = Math.sin(t * 16) > 0;
+      ctx.save();
       ctx.globalAlpha = (0.65 + k * 0.35) * (blink3 ? 1 : 0.45);
       ctx.strokeStyle = '#ff4b3a';
       ctx.lineWidth = Math.max(2.5, s * 0.06);
-      U.ellipse(ctx, tx, ty, s * (0.32 + k * 0.42), s * (0.13 + k * 0.17));
+      U.ellipse(ctx, tx, ty - view.rowH * 0.06, s * (0.32 + k * 0.42), s * (0.13 + k * 0.17));
       ctx.stroke();
       ctx.strokeStyle = '#f5c542';
       ctx.lineWidth = Math.max(1.5, s * 0.03);
-      U.ellipse(ctx, tx, ty, s * (0.16 + k * 0.2), s * (0.07 + k * 0.08));
+      U.ellipse(ctx, tx, ty - view.rowH * 0.06, s * (0.16 + k * 0.2), s * (0.07 + k * 0.08));
       ctx.stroke();
       ctx.restore();
-    } else if (f.state === 'dive') {
-      var k2 = U.clamp(f.t / 0.5, 0, 1);
-      var e2 = k2 * k2;
-      var bx2 = U.lerp(tx + view.w * 0.3, tx, e2);
-      var by2 = U.lerp(-s * 1.5, ty - s * 0.3, e2);
-      ctx.fillStyle = 'rgba(22,11,38,0.35)';
-      U.ellipse(ctx, tx, ty, s * 0.55, s * 0.22);
-      ctx.fill();
-      // Speed streaks trailing the stoop.
-      ctx.strokeStyle = 'rgba(255,220,180,0.30)';
-      ctx.lineWidth = 2;
-      for (var st3 = 0; st3 < 3; st3++) {
-        var off3 = (st3 - 1) * s * 0.16;
+      // A glow building at the screen edge on this row.
+      ctx.globalCompositeOperation = 'lighter';
+      var eg = ctx.createLinearGradient(edgeX, 0, edgeX + dir * s * 4, 0);
+      eg.addColorStop(0, 'rgba(255,200,120,' + (0.20 * k).toFixed(3) + ')');
+      eg.addColorStop(1, 'rgba(255,200,120,0)');
+      ctx.fillStyle = eg;
+      ctx.fillRect(Math.min(edgeX, edgeX + dir * s * 4), ty - s * 0.8, s * 4, s * 1.2);
+      ctx.globalCompositeOperation = 'source-over';
+    } else if (v.state === 'arrive') {
+      var k2 = U.clamp(v.t / 0.45, 0, 1);
+      var e2 = 1 - Math.pow(1 - k2, 3);
+      var vx2 = U.lerp(edgeX, tx, e2);
+      // Skid marks behind it.
+      ctx.strokeStyle = 'rgba(20,16,24,0.35)';
+      ctx.lineWidth = Math.max(2, s * 0.06);
+      [-1, 1].forEach(function (sgn) {
         ctx.beginPath();
-        ctx.moveTo(bx2 + s * 0.5 + off3, by2 - s * 0.9);
-        ctx.lineTo(bx2 + s * 0.15 + off3, by2 - s * 0.2);
+        ctx.moveTo(vx2 - dir * s * 1.4, ty + sgn * s * 0.1);
+        ctx.lineTo(edgeX, ty + sgn * s * 0.1);
         ctx.stroke();
+      });
+      drawVanCar(vx2, ty, s, dir, 1, t);
+    } else if (v.state === 'grab') {
+      drawVanCar(tx, ty, s, dir, 0.15, t);
+      if (v.caught) {
+        // The rear door stands open exactly as long as it needs to.
+        ctx.fillStyle = '#101014';
+        ctx.fillRect(tx - dir * s * 0.15, ty - s * 0.62, dir * s * 0.34, s * 0.5);
+        ctx.fillStyle = 'rgba(70,70,86,0.9)';
+        ctx.fillRect(tx - dir * s * 0.11, ty - s * 0.56, dir * s * 0.2, s * 0.18);
       }
-      drawFalconBird(bx2, by2, s * (0.8 + e2 * 0.3), t * 26);
-    } else if (f.state === 'carry') {
-      // Rising with the catch; the player is drawn rising in its row.
-      var p = g.player;
-      var px2 = sx(p.x, cam);
-      var py2 = sy(p.row, cam) + view.rowH * 0.24 - p.sinkT * s * 5 - s * 1.1;
-      ctx.globalAlpha = Math.max(0, 1 - Math.max(0, p.sinkT - 0.75) * 4);
-      drawFalconBird(px2, py2, s * 1.05, t * 20);
-      ctx.globalAlpha = 1;
-    } else if (f.state === 'miss') {
-      var k3 = U.clamp(f.t / 0.9, 0, 1);
-      drawFalconBird(tx - k3 * view.w * 0.4, ty - s * 0.3 - k3 * view.h * 0.5,
-        s * (1.1 - k3 * 0.4), t * 22);
+    } else if (v.state === 'depart') {
+      var k3 = U.clamp(v.t / 1.0, 0, 1);
+      var e3 = k3 * k3;
+      var vx3 = tx + dir * e3 * (view.w * 0.7 + s * 6);
+      drawVanCar(vx3, ty, s, dir, 1, t);
     }
   }
 
@@ -1475,10 +1504,10 @@
       } else if (p.deathKind === 'water') {
         opts.alpha = 1 - p.sinkT;
         opts.lift = -p.sinkT * s * 0.35;
-      } else if (p.deathKind === 'falcon') {
-        opts.lift = p.sinkT * s * 5;
-        opts.alpha = Math.max(0, 1 - Math.max(0, p.sinkT - 0.75) * 4);
-        opts.squash = -0.2;
+      } else if (p.deathKind === 'van') {
+        // Hustled into the back seat: a quick fade, no theatrics.
+        opts.alpha = Math.max(0, 1 - p.sinkT * 1.4);
+        opts.squash = 0.15;
       } else if (p.deathKind === 'caught') {
         // Hat drops on, then you start marching in time with the rest.
         opts.cap = 'ushanka';
@@ -1687,7 +1716,7 @@
       if (i === playerDrawRow && g.showPlayer) drawPlayer(g.player, cam, g.playerChar || g.char, t, fear);
     }
 
-    if (g.falcon && g.falcon.state !== 'idle' && g.showPlayer) drawFalcon(g.falcon, g, cam, t);
+    if (g.van && g.van.state !== 'idle' && g.showPlayer) drawVan(g.van, g, cam, t);
 
     // The last of the sun finds the escapee.
     if (g.showPlayer && !g.player.dead) {

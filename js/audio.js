@@ -156,16 +156,22 @@
       tone({ type: 'square', from: 620, to: 620, dur: 0.09, gain: 0.2, delay: 0.09 });
     },
 
-    /* The State Falcon announces itself... */
+    /* Tires announcing that a black car has found you... */
     screech: function () {
-      tone({ type: 'sawtooth', from: 1900, to: 650, dur: 0.5, gain: 0.22 });
-      noise({ dur: 0.4, filter: 'highpass', freq: 2400, gain: 0.12 });
+      noise({ dur: 0.55, filter: 'bandpass', freq: 2400, sweepTo: 900, gain: 0.3 });
+      tone({ type: 'sawtooth', from: 1500, to: 800, dur: 0.45, gain: 0.12 });
     },
 
-    /* ...and collects. */
-    snatch: function () {
-      noise({ dur: 0.3, filter: 'bandpass', freq: 700, sweepTo: 2000, gain: 0.35 });
-      tone({ type: 'sawtooth', from: 500, to: 1100, dur: 0.4, gain: 0.2 });
+    /* ...its engine gunning across the lawn... */
+    engine: function () {
+      tone({ type: 'sawtooth', from: 90, to: 260, dur: 0.45, gain: 0.3 });
+      noise({ dur: 0.45, filter: 'lowpass', freq: 700, sweepTo: 1300, gain: 0.2 });
+    },
+
+    /* ...and a door closing on the matter. */
+    doorSlam: function () {
+      noise({ dur: 0.14, filter: 'lowpass', freq: 900, sweepTo: 250, gain: 0.5 });
+      tone({ type: 'sine', from: 160, to: 70, dur: 0.16, gain: 0.3 });
     },
 
     /* Ice: a light landing, a worrying creak, a full break. */
