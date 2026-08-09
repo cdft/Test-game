@@ -1,0 +1,42 @@
+name: Publish the game to GitHub Pages
+
+# The game is plain static files, so Pages can serve the repository as-is.
+# `enablement: true` turns Pages on the first time this runs, so no manual
+# repository settings are required.
+
+on:
+  push:
+    branches:
+      - main
+      - claude/cats-dogs-game-prototype-gyzlsr
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Never let two deploys race; let an in-flight one finish.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: '.'
+
+      - id: deployment
+        uses: actions/deploy-pages@v4
