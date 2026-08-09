@@ -11,7 +11,9 @@ drawn from canvas primitives at runtime.
 
 ## Play
 
-Open `index.html` in any modern browser. That's it.
+**<https://cdft.github.io/Test-game/>** — no install, no account, works on phones.
+
+Or open `index.html` in any modern browser. That's it.
 
 If you'd rather serve it:
 

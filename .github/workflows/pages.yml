@@ -1,18 +1,13 @@
 name: Publish the game to GitHub Pages
 
-# The game is plain static files, so Pages can serve the repository as-is.
+# The game is plain static files, so Pages serves the repository as-is from the
+# `gh-pages` branch — pushing that branch is what switched Pages on in the first
+# place, since enabling it through the API needs admin rights the Actions token
+# does not have.
 #
-# Turning Pages ON for the first time needs repository-admin rights that the
-# Actions token does not have, so this workflow cannot switch it on by itself.
-# The `check` job asks the API whether Pages is configured for Actions, and the
-# `deploy` job is skipped entirely until it is — a skipped job passes, so the
-# check stays green, and publishing starts on the next push once you set:
-#
-#   Settings -> Pages -> Build and deployment -> Source: GitHub Actions
-#
-# The deploy job is kept separate because its `github-pages` environment only
-# exists once Pages is enabled; referencing it before that fails the job before
-# any step can run.
+# This job keeps `gh-pages` in step with the development branch, so
+# https://cdft.github.io/Test-game/ updates on its own after every push and
+# nobody has to remember a manual step.
 
 on:
   push:
@@ -22,50 +17,34 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
 
-# Never let two deploys race; let an in-flight one finish.
+# Never let two publishes race; let an in-flight one finish.
 concurrency:
   group: pages
   cancel-in-progress: false
 
 jobs:
-  check:
+  publish:
     runs-on: ubuntu-latest
-    outputs:
-      ready: ${{ steps.probe.outputs.ready }}
-    steps:
-      - id: probe
-        name: Is Pages configured to build from Actions?
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          build_type=$(gh api "repos/$GITHUB_REPOSITORY/pages" --jq .build_type 2>/dev/null || echo "")
-          if [ "$build_type" = "workflow" ]; then
-            echo "ready=true" >> "$GITHUB_OUTPUT"
-            echo "::notice title=Pages ready::Publishing the game."
-          else
-            echo "ready=false" >> "$GITHUB_OUTPUT"
-            echo "::notice title=Pages not enabled::Set Settings -> Pages -> Source to 'GitHub Actions'; the next push will publish the game. Skipping deploy."
-          fi
-
-  deploy:
-    needs: check
-    if: needs.check.outputs.ready == 'true'
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
-
-      - uses: actions/configure-pages@v5
-
-      - uses: actions/upload-pages-artifact@v3
         with:
-          path: '.'
+          fetch-depth: 0
 
-      - id: deployment
-        uses: actions/deploy-pages@v4
+      - name: Sanity-check the site before publishing
+        run: |
+          test -f index.html
+          test -f css/style.css
+          for f in util audio music characters world render input game main; do
+            test -f "js/$f.js"
+          done
+          # Every script index.html asks for must actually exist.
+          grep -o 'src="[^"]*"' index.html | sed 's/src="//;s/"//' | while read -r s; do
+            test -f "$s" || { echo "missing referenced file: $s"; exit 1; }
+          done
+          echo "site looks complete"
+
+      - name: Publish to gh-pages
+        run: |
+          git push --force origin "HEAD:gh-pages"
