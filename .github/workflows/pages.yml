@@ -1,8 +1,14 @@
 name: Publish the game to GitHub Pages
 
 # The game is plain static files, so Pages can serve the repository as-is.
-# `enablement: true` turns Pages on the first time this runs, so no manual
-# repository settings are required.
+#
+# Turning Pages ON for the first time needs repository-admin rights that the
+# Actions token does not have, so this workflow cannot switch it on by itself.
+# Instead it checks first and skips cleanly when Pages is not configured for
+# Actions yet — that keeps the check green — and starts publishing on the very
+# next push once the setting is in place:
+#
+#   Settings -> Pages -> Build and deployment -> Source: GitHub Actions
 
 on:
   push:
@@ -30,13 +36,27 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/configure-pages@v5
-        with:
-          enablement: true
+      - id: check
+        name: Check whether Pages is set up for Actions
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          build_type=$(gh api "repos/$GITHUB_REPOSITORY/pages" --jq .build_type 2>/dev/null || echo "")
+          if [ "$build_type" = "workflow" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Pages not enabled::Set Settings -> Pages -> Source to 'GitHub Actions' and this workflow will publish the game on the next push. Skipping deploy for now."
+          fi
 
-      - uses: actions/upload-pages-artifact@v3
+      - if: steps.check.outputs.ready == 'true'
+        uses: actions/configure-pages@v5
+
+      - if: steps.check.outputs.ready == 'true'
+        uses: actions/upload-pages-artifact@v3
         with:
           path: '.'
 
       - id: deployment
+        if: steps.check.outputs.ready == 'true'
         uses: actions/deploy-pages@v4
