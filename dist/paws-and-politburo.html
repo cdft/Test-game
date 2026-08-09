@@ -1,0 +1,5366 @@
+<title>Paws &amp; Politburo</title>
+<style>
+:root {
+  --red: #c8102e;
+  --red-dark: #7d0a1d;
+  --gold: #f5c542;
+  --ink: #16131a;
+  --paper: #f6efe2;
+  --panel: rgba(20, 16, 24, 0.92);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+  background: #0d0b10;
+  color: var(--paper);
+  font-family: "Trebuchet MS", "Segoe UI", Verdana, system-ui, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: none;
+}
+
+#app {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+#stage {
+  display: block;
+  width: 100%;
+  height: 100%;
+  image-rendering: optimizeSpeed;
+}
+
+.layer {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hidden { display: none !important; }
+
+/* ── HUD ──────────────────────────────────────────────────── */
+
+#hud {
+  align-items: flex-start;
+  justify-content: stretch;
+  pointer-events: none;
+  flex-direction: column;
+  padding: env(safe-area-inset-top, 0) 0 0 0;
+}
+
+.hud-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  width: 100%;
+  padding: 14px 16px;
+}
+
+.hud-score {
+  display: flex;
+  flex-direction: column;
+  line-height: 0.95;
+  text-shadow: 0 3px 0 rgba(0, 0, 0, 0.45);
+}
+
+.hud-score span {
+  font-size: 54px;
+  font-weight: 800;
+  letter-spacing: -1px;
+  color: #ffe9c4;
+  text-shadow: 0 3px 0 rgba(60, 10, 20, 0.55), 0 0 22px rgba(255, 180, 90, 0.3);
+}
+
+.hud-score small {
+  font-size: 11px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+
+.hud-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  pointer-events: auto;
+}
+
+.hud-coins {
+  background: rgba(0, 0, 0, 0.35);
+  border-radius: 999px;
+  padding: 7px 14px;
+  font-weight: 700;
+  font-size: 17px;
+}
+
+.hud-coins.big { font-size: 20px; }
+
+.combo {
+  margin-left: 6px;
+  color: var(--gold);
+  font-weight: 900;
+  animation: pulse 0.5s infinite alternate;
+}
+
+.icon-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  border: 0;
+  background: rgba(0, 0, 0, 0.35);
+  color: var(--paper);
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.icon-btn:hover { background: rgba(0, 0, 0, 0.55); }
+
+.warning {
+  align-self: center;
+  margin-top: 4px;
+  background: var(--red);
+  color: #fff;
+  font-weight: 800;
+  letter-spacing: 3px;
+  font-size: 13px;
+  padding: 6px 18px;
+  border-radius: 4px;
+  box-shadow: 0 4px 0 var(--red-dark);
+  animation: pulse 0.6s infinite alternate;
+}
+
+@keyframes pulse {
+  from { opacity: 0.55; transform: scale(0.98); }
+  to { opacity: 1; transform: scale(1.03); }
+}
+
+/* ── Screens ──────────────────────────────────────────────── */
+
+.screen {
+  background:
+    radial-gradient(120% 90% at 50% 0%, rgba(200, 16, 46, 0.35), transparent 60%),
+    rgba(8, 6, 10, 0.72);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  padding: 18px;
+  overflow-y: auto;
+}
+
+.panel {
+  background: var(--panel);
+  border: 2px solid rgba(245, 197, 66, 0.25);
+  border-radius: 18px;
+  padding: 26px 26px 30px;
+  width: min(440px, 100%);
+  text-align: center;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.6);
+}
+
+.panel.wide { width: min(640px, 100%); }
+
+.title {
+  font-size: clamp(28px, 8vw, 44px);
+  line-height: 1;
+  font-weight: 900;
+  letter-spacing: -1px;
+  color: var(--paper);
+  text-shadow: 0 4px 0 var(--red-dark);
+}
+
+.title .amp { color: var(--gold); }
+
+h2 {
+  font-size: clamp(22px, 6vw, 30px);
+  font-weight: 900;
+  letter-spacing: 1px;
+  color: var(--gold);
+}
+
+.tagline, .sub {
+  margin: 10px 0 18px;
+  font-size: 14px;
+  line-height: 1.45;
+  opacity: 0.8;
+}
+
+.stat-strip {
+  display: flex;
+  gap: 10px;
+  margin: 4px 0 20px;
+}
+
+.stat-strip > div {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  padding: 10px 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.stat-strip b { font-size: 24px; }
+
+.stat-strip small {
+  font-size: 10px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  opacity: 0.6;
+}
+
+.btn {
+  display: inline-block;
+  border: 0;
+  border-radius: 12px;
+  background: var(--red);
+  color: #fff;
+  font-weight: 800;
+  letter-spacing: 1px;
+  font-size: 15px;
+  padding: 12px 22px;
+  cursor: pointer;
+  box-shadow: 0 5px 0 var(--red-dark);
+  transition: transform 0.06s, box-shadow 0.06s;
+  font-family: inherit;
+}
+
+.btn:active { transform: translateY(4px); box-shadow: 0 1px 0 var(--red-dark); }
+
+.btn.big { width: 100%; font-size: 20px; padding: 15px; }
+
+.btn.ghost {
+  background: rgba(255, 255, 255, 0.09);
+  box-shadow: 0 5px 0 rgba(0, 0, 0, 0.35);
+  font-weight: 700;
+}
+
+.row-btns {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.btn.lottery {
+  background: linear-gradient(180deg, #d9a832, #b8862a);
+  box-shadow: 0 5px 0 #7a5a18;
+  color: #2c1f08;
+}
+
+.btn.lottery:disabled {
+  filter: grayscale(0.8) brightness(0.7);
+  cursor: default;
+  transform: none;
+}
+
+/* ── The People's Lottery ─────────────────────────────────────── */
+
+#prize-stage {
+  position: relative;
+  height: 200px;
+  margin: 6px 0 10px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#crate {
+  position: absolute;
+  left: 50%;
+  top: 18px;
+  transform: translateX(-50%);
+}
+
+#crate .chute {
+  width: 92px;
+  height: 46px;
+  margin: 0 auto 4px;
+  border-radius: 92px 92px 0 0;
+  background:
+    repeating-linear-gradient(90deg, #c8102e 0 14px, #f0e6d6 14px 28px);
+  opacity: 0.95;
+}
+
+#crate .crate-box {
+  width: 74px;
+  height: 62px;
+  margin: 0 auto;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #9a7a50, #7d5a33);
+  border: 3px solid #5f4325;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#crate .crate-star {
+  color: #c8102e;
+  font-size: 30px;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+
+#crate.drop {
+  animation: crate-drop 0.9s cubic-bezier(0.22, 1.4, 0.36, 1) both;
+}
+
+#crate.shake {
+  animation: crate-shake 0.55s ease-in-out both;
+}
+
+#crate.burst {
+  animation: crate-burst 0.35s ease-in both;
+}
+
+@keyframes crate-drop {
+  from { transform: translateX(-50%) translateY(-240px); }
+  to { transform: translateX(-50%) translateY(0); }
+}
+
+@keyframes crate-shake {
+  0%, 100% { transform: translateX(-50%) rotate(0); }
+  20% { transform: translateX(-54%) rotate(-5deg); }
+  40% { transform: translateX(-46%) rotate(5deg); }
+  60% { transform: translateX(-53%) rotate(-4deg); }
+  80% { transform: translateX(-47%) rotate(4deg); }
+}
+
+@keyframes crate-burst {
+  to { transform: translateX(-50%) scale(1.6); opacity: 0; }
+}
+
+#prize-reveal {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+#prize-reveal.pop {
+  animation: prize-pop 0.45s cubic-bezier(0.22, 1.6, 0.36, 1) both;
+}
+
+@keyframes prize-pop {
+  from { transform: scale(0.2); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+#prize-portrait { width: 90px; height: 90px; }
+
+#prize-name {
+  font-size: 20px;
+  font-weight: 900;
+  color: var(--gold);
+  letter-spacing: 0.5px;
+}
+
+#prize-tag { font-size: 12px; opacity: 0.7; }
+
+.confetti {
+  position: absolute;
+  width: 8px;
+  height: 12px;
+  top: 40%;
+  left: 50%;
+  opacity: 0;
+  animation: confetti-fly 1s ease-out forwards;
+}
+
+@keyframes confetti-fly {
+  0% { opacity: 1; transform: translate(0, 0) rotate(0); }
+  100% { opacity: 0; transform: translate(var(--cx), var(--cy)) rotate(var(--cr)); }
+}
+
+.directives {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin: 0 0 14px;
+}
+
+.directives .drow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border-left: 3px solid var(--red);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 12px;
+  text-align: left;
+}
+
+.directives .drow.done {
+  border-left-color: #8ee36a;
+  opacity: 0.55;
+  text-decoration: line-through;
+}
+
+.directives .drow .rw {
+  color: var(--gold);
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.directives .dhead {
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  opacity: 0.55;
+  text-align: left;
+}
+
+.hint {
+  align-self: center;
+  margin-top: 8px;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(245, 197, 66, 0.4);
+  color: var(--paper);
+  font-size: 12px;
+  letter-spacing: 1px;
+  padding: 7px 16px;
+  border-radius: 999px;
+  animation: pulse 1s infinite alternate;
+  transition: opacity 0.5s;
+}
+
+.fine {
+  margin-top: 16px;
+  font-size: 11px;
+  letter-spacing: 1px;
+  opacity: 0.45;
+}
+
+.newbest {
+  color: var(--gold);
+  font-weight: 900;
+  letter-spacing: 3px;
+  margin-bottom: 14px;
+  animation: pulse 0.7s infinite alternate;
+}
+
+.help {
+  text-align: left;
+  list-style: none;
+  margin-bottom: 18px;
+}
+
+.help li {
+  font-size: 13.5px;
+  line-height: 1.4;
+  padding: 7px 0 7px 20px;
+  position: relative;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.help li::before {
+  content: "★";
+  position: absolute;
+  left: 0;
+  color: var(--red);
+}
+
+.help b { color: var(--gold); }
+
+.keys {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+  font-size: 11px;
+  opacity: 0.7;
+}
+
+.key {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  height: 26px;
+  padding: 0 6px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-bottom: 2px solid rgba(0, 0, 0, 0.5);
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.or { opacity: 0.5; }
+
+/* ── Roster ───────────────────────────────────────────────── */
+
+.roster {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 10px;
+  margin-bottom: 18px;
+  max-height: 52vh;
+  overflow-y: auto;
+  padding: 2px;
+}
+
+.card {
+  background: rgba(255, 255, 255, 0.06);
+  border: 2px solid transparent;
+  border-radius: 12px;
+  padding: 8px 6px 10px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  transition: transform 0.08s, background 0.12s;
+}
+
+.card:hover { transform: translateY(-2px); background: rgba(255, 255, 255, 0.11); }
+.card.selected { border-color: var(--gold); background: rgba(245, 197, 66, 0.14); }
+.card.locked { opacity: 0.75; }
+.card canvas { width: 76px; height: 76px; }
+
+.card .name {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+}
+
+.card .tag {
+  font-size: 10px;
+  opacity: 0.6;
+  min-height: 12px;
+  line-height: 1.1;
+}
+
+.card .price {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--gold);
+}
+
+.card .price.cant { color: #ff8b8b; }
+.card .owned { font-size: 11px; opacity: 0.5; }
+
+.pick-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+@media (max-width: 420px) {
+  .panel { padding: 20px 16px 24px; }
+  .hud-score span { font-size: 42px; }
+}
+
+/* ── Bundled-page overrides ────────────────────────────────────── */
+#app {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100dvh;
+  overflow: hidden;
+  background: #0d0b10;
+}
+#stage { touch-action: none; overscroll-behavior: none; }
+body { overscroll-behavior: none; }
+</style>
+
+<div id="app">
+  <canvas id="stage"></canvas>
+
+  <!-- ── In-game HUD ─────────────────────────────────────────── -->
+  <div id="hud" class="layer hidden">
+    <div class="hud-row">
+      <div class="hud-score"><span id="score">0</span><small>metres to freedom</small></div>
+      <div class="hud-right">
+        <div class="hud-coins">🍖 <span id="coins">0</span><span id="combo" class="combo hidden">×2</span></div>
+        <button id="btn-mute" class="icon-btn" title="Mute (M)">🔊</button>
+        <button id="btn-pause" class="icon-btn" title="Pause (P / Esc)">❚❚</button>
+      </div>
+    </div>
+    <div id="warning" class="warning hidden">THE COLLECTIVE IS CLOSING IN</div>
+    <div id="hint" class="hint hidden">hold &amp; release to hop &nbsp;·&nbsp; swipe to dodge</div>
+  </div>
+
+  <!-- ── Title ───────────────────────────────────────────────── -->
+  <div id="screen-title" class="layer screen">
+    <div class="panel">
+      <h1 class="title">PAWS <span class="amp">&amp;</span> POLITBURO</h1>
+      <p class="tagline">Every cat and dog for themselves. The Collective is coming.</p>
+      <div class="stat-strip">
+        <div><b id="t-best">0</b><small>best run</small></div>
+        <div><b id="t-coins">0</b><small>kibble</small></div>
+        <div><b id="t-runs">0</b><small>escapes attempted</small></div>
+      </div>
+      <div id="directives" class="directives"></div>
+      <button id="btn-play" class="btn big">RUN FOR IT</button>
+      <div class="row-btns">
+        <button id="btn-lottery" class="btn lottery">People's Lottery · 🍖 100</button>
+      </div>
+      <div class="row-btns">
+        <button id="btn-pick" class="btn ghost">Choose comrade</button>
+        <button id="btn-help" class="btn ghost">How to play</button>
+      </div>
+      <p class="fine">Arrows / WASD to hop &nbsp;·&nbsp; swipe or tap on touch</p>
+    </div>
+  </div>
+
+  <!-- ── Character select ────────────────────────────────────── -->
+  <div id="screen-pick" class="layer screen hidden">
+    <div class="panel wide">
+      <h2>PICK YOUR DEFECTOR</h2>
+      <p class="sub">Kibble is earned on the run. Spend it on friends.</p>
+      <div id="roster" class="roster"></div>
+      <div class="pick-foot">
+        <div class="hud-coins big">🍖 <span id="p-coins">0</span></div>
+        <button id="btn-pick-back" class="btn">Back</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Help ────────────────────────────────────────────────── -->
+  <div id="screen-help" class="layer screen hidden">
+    <div class="panel">
+      <h2>HOW TO ESCAPE</h2>
+      <ul class="help">
+        <li><b>Hop forward.</b> Every row you gain is a metre closer to freedom.</li>
+        <li><b>Never stop.</b> Dawdle and the red tide behind you speeds up. It does not get tired.</li>
+        <li><b>Roads</b> are full of requisitioned trucks and tanks. They do not brake for pets.</li>
+        <li><b>Canals</b> drown non-swimmers. Ride the logs — and don't let them carry you off the map.</li>
+        <li><b>Rails</b> flash red before the People's Express arrives. One second of warning is generous.</li>
+        <li><b>Kibble</b> unlocks new comrades from the title screen.</li>
+      </ul>
+      <div class="keys">
+        <span class="key">↑</span><span class="key">←</span><span class="key">↓</span><span class="key">→</span>
+        <span class="or">or</span>
+        <span class="key">W</span><span class="key">A</span><span class="key">S</span><span class="key">D</span>
+        <span class="or">·</span> <span class="key wide">P</span> pause <span class="or">·</span> <span class="key wide">M</span> mute
+      </div>
+      <button id="btn-help-back" class="btn">Back</button>
+    </div>
+  </div>
+
+  <!-- ── Pause ───────────────────────────────────────────────── -->
+  <div id="screen-pause" class="layer screen hidden">
+    <div class="panel">
+      <h2>DETENTE</h2>
+      <p class="sub">The tide waits. Politely.</p>
+      <button id="btn-resume" class="btn big">Resume</button>
+      <button id="btn-quit" class="btn ghost">Give up, go home</button>
+    </div>
+  </div>
+
+  <!-- ── The People's Lottery ────────────────────────────────── -->
+  <div id="screen-prize" class="layer screen hidden">
+    <div class="panel">
+      <h2>THE PEOPLE'S LOTTERY</h2>
+      <p class="sub">Everyone wins. Eventually.</p>
+      <div id="prize-stage">
+        <div id="crate" class="hidden">
+          <div class="chute"></div>
+          <div class="crate-box"><span class="crate-star">★</span></div>
+        </div>
+        <div id="prize-reveal" class="hidden">
+          <canvas id="prize-portrait" width="76" height="76"></canvas>
+          <div id="prize-name"></div>
+          <div id="prize-tag"></div>
+        </div>
+      </div>
+      <div class="row-btns">
+        <button id="btn-lottery-again" class="btn lottery">Again · 🍖 100</button>
+        <button id="btn-lottery-done" class="btn ghost">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Game over ───────────────────────────────────────────── -->
+  <div id="screen-over" class="layer screen hidden">
+    <div class="panel">
+      <h2 id="over-title">REDISTRIBUTED</h2>
+      <p id="over-flavor" class="sub">Your assets now belong to everyone.</p>
+      <div class="stat-strip">
+        <div><b id="o-score">0</b><small>metres</small></div>
+        <div><b id="o-best">0</b><small>best</small></div>
+        <div><b id="o-coins">0</b><small>kibble earned</small></div>
+      </div>
+      <div id="o-newbest" class="newbest hidden">NEW PERSONAL RECORD</div>
+      <div id="o-secret" class="newbest hidden">KOTLETA HAS FOUND YOU · SECRET COMRADE</div>
+      <button id="btn-again" class="btn big">RUN AGAIN</button>
+      <div class="row-btns">
+        <button id="btn-over-pick" class="btn ghost">Change comrade</button>
+        <button id="btn-menu" class="btn ghost">Title screen</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* Small helpers shared by every module. Everything hangs off window.PP
+   so the game runs straight off the filesystem (no modules, no server). */
+(function (global) {
+  'use strict';
+
+  var PP = global.PP || (global.PP = {});
+
+  var U = {
+    clamp: function (v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; },
+
+    lerp: function (a, b, t) { return a + (b - a) * t; },
+
+    /* Frame-rate independent easing toward a target. */
+    approach: function (a, b, rate, dt) {
+      return b + (a - b) * Math.exp(-rate * dt);
+    },
+
+    rand: function (lo, hi) { return lo + Math.random() * (hi - lo); },
+
+    randInt: function (lo, hi) { return Math.floor(lo + Math.random() * (hi - lo + 1)); },
+
+    pick: function (arr) { return arr[Math.floor(Math.random() * arr.length)]; },
+
+    /* Weighted pick. `table` is [[value, weight], ...]. */
+    weighted: function (table) {
+      var total = 0, i;
+      for (i = 0; i < table.length; i++) total += table[i][1];
+      var r = Math.random() * total;
+      for (i = 0; i < table.length; i++) {
+        r -= table[i][1];
+        if (r <= 0) return table[i][0];
+      }
+      return table[table.length - 1][0];
+    },
+
+    /* Positive modulo — JS's % keeps the sign of the dividend. */
+    mod: function (a, n) { return ((a % n) + n) % n; },
+
+    roundRect: function (ctx, x, y, w, h, r) {
+      r = Math.min(r, Math.abs(w) / 2, Math.abs(h) / 2);
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.lineTo(x + w - r, y);
+      ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+      ctx.lineTo(x + w, y + h - r);
+      ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+      ctx.lineTo(x + r, y + h);
+      ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+      ctx.lineTo(x, y + r);
+      ctx.quadraticCurveTo(x, y, x + r, y);
+      ctx.closePath();
+    },
+
+    ellipse: function (ctx, x, y, rx, ry) {
+      ctx.beginPath();
+      ctx.ellipse(x, y, Math.max(rx, 0.01), Math.max(ry, 0.01), 0, 0, Math.PI * 2);
+    },
+
+    /* #rrggbb -> lighter/darker by amt in [-1, 1]. */
+    shade: function (hex, amt) {
+      var n = parseInt(hex.slice(1), 16);
+      var r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+      var t = amt < 0 ? 0 : 255;
+      var p = Math.abs(amt);
+      r = Math.round((t - r) * p + r);
+      g = Math.round((t - g) * p + g);
+      b = Math.round((t - b) * p + b);
+      return 'rgb(' + r + ',' + g + ',' + b + ')';
+    },
+
+    /* Blend two #rrggbb colours. Returns hex so the result can be fed back
+       into shade() and the rest of the colour helpers. */
+    mixHex: function (a, b, t) {
+      t = t < 0 ? 0 : t > 1 ? 1 : t;
+      var na = parseInt(a.slice(1), 16), nb = parseInt(b.slice(1), 16);
+      var r = Math.round(((na >> 16) & 255) + ((((nb >> 16) & 255)) - ((na >> 16) & 255)) * t);
+      var g = Math.round(((na >> 8) & 255) + ((((nb >> 8) & 255)) - ((na >> 8) & 255)) * t);
+      var bl = Math.round((na & 255) + ((nb & 255) - (na & 255)) * t);
+      return '#' + (0x1000000 + (r << 16) + (g << 8) + bl).toString(16).slice(1);
+    },
+
+    /* localStorage that never throws (private mode, file:// quirks, ...). */
+    store: {
+      get: function (key, fallback) {
+        try {
+          var raw = global.localStorage.getItem(key);
+          return raw === null ? fallback : JSON.parse(raw);
+        } catch (e) { return fallback; }
+      },
+      set: function (key, value) {
+        try { global.localStorage.setItem(key, JSON.stringify(value)); } catch (e) { /* ignore */ }
+      }
+    },
+
+    $: function (id) { return document.getElementById(id); },
+
+    on: function (el, type, fn, opts) { if (el) el.addEventListener(type, fn, opts || false); }
+  };
+
+  PP.U = U;
+})(window);
+</script>
+<script>
+/* Tiny synthesised sound bank — no asset files, everything is WebAudio. */
+(function (global) {
+  'use strict';
+
+  var PP = global.PP;
+  var U = PP.U;
+
+  var ctx = null;
+  var master = null;
+  var muted = U.store.get('pp.muted', false);
+
+  function ensure() {
+    if (ctx) return ctx;
+    var AC = global.AudioContext || global.webkitAudioContext;
+    if (!AC) return null;
+    try {
+      ctx = new AC();
+      master = ctx.createGain();
+      master.gain.value = 0.32;
+      master.connect(ctx.destination);
+    } catch (e) { ctx = null; }
+    return ctx;
+  }
+
+  /* One shot: oscillator with a frequency ramp and a percussive envelope. */
+  function tone(opts) {
+    if (muted) return;
+    var c = ensure();
+    if (!c) return;
+    if (c.state === 'suspended') c.resume();
+
+    var t0 = c.currentTime + (opts.delay || 0);
+    var dur = opts.dur || 0.12;
+    var osc = c.createOscillator();
+    var gain = c.createGain();
+
+    osc.type = opts.type || 'square';
+    osc.frequency.setValueAtTime(opts.from, t0);
+    if (opts.to && opts.to !== opts.from) {
+      osc.frequency.exponentialRampToValueAtTime(Math.max(opts.to, 1), t0 + dur);
+    }
+
+    var peak = (opts.gain === undefined ? 0.6 : opts.gain);
+    gain.gain.setValueAtTime(0.0001, t0);
+    gain.gain.exponentialRampToValueAtTime(peak, t0 + 0.008);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+
+    osc.connect(gain);
+    gain.connect(master);
+    osc.start(t0);
+    osc.stop(t0 + dur + 0.02);
+  }
+
+  /* Filtered noise burst — splashes, crashes, engine rumble. */
+  function noise(opts) {
+    if (muted) return;
+    var c = ensure();
+    if (!c) return;
+    if (c.state === 'suspended') c.resume();
+
+    var dur = opts.dur || 0.25;
+    var frames = Math.floor(c.sampleRate * dur);
+    var buf = c.createBuffer(1, frames, c.sampleRate);
+    var data = buf.getChannelData(0);
+    for (var i = 0; i < frames; i++) data[i] = Math.random() * 2 - 1;
+
+    var src = c.createBufferSource();
+    src.buffer = buf;
+
+    var filter = c.createBiquadFilter();
+    filter.type = opts.filter || 'lowpass';
+    filter.frequency.setValueAtTime(opts.freq || 900, c.currentTime);
+    if (opts.sweepTo) {
+      filter.frequency.exponentialRampToValueAtTime(opts.sweepTo, c.currentTime + dur);
+    }
+
+    var gain = c.createGain();
+    gain.gain.setValueAtTime(opts.gain || 0.35, c.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + dur);
+
+    src.connect(filter);
+    filter.connect(gain);
+    gain.connect(master);
+    src.start();
+  }
+
+  var Audio = {
+    isMuted: function () { return muted; },
+
+    /* Shared with the music sequencer so both run on one context. */
+    context: ensure,
+    destination: function () { return master; },
+
+    toggleMute: function () {
+      muted = !muted;
+      U.store.set('pp.muted', muted);
+      if (PP.Music) PP.Music.setMuted(muted);
+      if (!muted) Audio.blip();
+      return muted;
+    },
+
+    /* Browsers only allow audio after a gesture; call this from any input. */
+    unlock: function () {
+      var c = ensure();
+      if (c && c.state === 'suspended') c.resume();
+    },
+
+    hop: function (mul) {
+      mul = mul || 1;
+      tone({ type: 'square', from: 420 * mul, to: 700 * mul, dur: 0.09, gain: 0.22 });
+    },
+    bump: function () { tone({ type: 'square', from: 150, to: 90, dur: 0.09, gain: 0.2 }); },
+    blip: function () { tone({ type: 'square', from: 600, to: 900, dur: 0.07, gain: 0.2 }); },
+
+    coin: function () {
+      tone({ type: 'square', from: 880, to: 880, dur: 0.06, gain: 0.25 });
+      tone({ type: 'square', from: 1320, to: 1320, dur: 0.1, gain: 0.25, delay: 0.06 });
+    },
+
+    splash: function () {
+      noise({ dur: 0.45, freq: 1600, sweepTo: 200, gain: 0.4 });
+      tone({ type: 'sine', from: 300, to: 80, dur: 0.35, gain: 0.2 });
+    },
+
+    squash: function () {
+      noise({ dur: 0.3, freq: 500, sweepTo: 120, gain: 0.5 });
+      tone({ type: 'sawtooth', from: 180, to: 50, dur: 0.3, gain: 0.3 });
+    },
+
+    horn: function () {
+      tone({ type: 'sawtooth', from: 220, to: 210, dur: 0.5, gain: 0.22 });
+      tone({ type: 'sawtooth', from: 165, to: 158, dur: 0.5, gain: 0.2 });
+    },
+
+    caught: function () {
+      tone({ type: 'sawtooth', from: 300, to: 60, dur: 0.9, gain: 0.35 });
+      noise({ dur: 0.9, freq: 700, sweepTo: 120, gain: 0.3 });
+    },
+
+    unlockChime: function () {
+      [523, 659, 784, 1047].forEach(function (f, i) {
+        tone({ type: 'triangle', from: f, to: f, dur: 0.16, gain: 0.28, delay: i * 0.08 });
+      });
+    },
+
+    deny: function () { tone({ type: 'square', from: 200, to: 120, dur: 0.18, gain: 0.25 }); },
+
+    /* A car shaving past. */
+    whoosh: function () {
+      noise({ dur: 0.16, filter: 'bandpass', freq: 900, sweepTo: 2600, gain: 0.3 });
+    },
+
+    /* An impatient driver. */
+    beep: function () {
+      tone({ type: 'square', from: 620, to: 620, dur: 0.06, gain: 0.2 });
+      tone({ type: 'square', from: 620, to: 620, dur: 0.09, gain: 0.2, delay: 0.09 });
+    },
+
+    /* Tires announcing that a black car has found you... */
+    screech: function () {
+      noise({ dur: 0.55, filter: 'bandpass', freq: 2400, sweepTo: 900, gain: 0.3 });
+      tone({ type: 'sawtooth', from: 1500, to: 800, dur: 0.45, gain: 0.12 });
+    },
+
+    /* ...its engine gunning across the lawn... */
+    engine: function () {
+      tone({ type: 'sawtooth', from: 90, to: 260, dur: 0.45, gain: 0.3 });
+      noise({ dur: 0.45, filter: 'lowpass', freq: 700, sweepTo: 1300, gain: 0.2 });
+    },
+
+    /* ...and a door closing on the matter. */
+    doorSlam: function () {
+      noise({ dur: 0.14, filter: 'lowpass', freq: 900, sweepTo: 250, gain: 0.5 });
+      tone({ type: 'sine', from: 160, to: 70, dur: 0.16, gain: 0.3 });
+    },
+
+    /* Ice: a light landing, a worrying creak, a full break. */
+    iceLand: function () {
+      tone({ type: 'triangle', from: 900, to: 700, dur: 0.06, gain: 0.14 });
+    },
+    iceCrack: function () {
+      noise({ dur: 0.12, filter: 'highpass', freq: 2800, gain: 0.28 });
+      tone({ type: 'square', from: 950, to: 480, dur: 0.1, gain: 0.14 });
+    },
+    iceBreak: function () {
+      noise({ dur: 0.3, filter: 'lowpass', freq: 1600, sweepTo: 300, gain: 0.4 });
+      tone({ type: 'sine', from: 350, to: 110, dur: 0.28, gain: 0.2 });
+    },
+
+    /* The lottery crate arriving from a considerate sky. */
+    crateDrop: function () {
+      tone({ type: 'sine', from: 220, to: 60, dur: 0.22, gain: 0.35 });
+      noise({ dur: 0.22, filter: 'lowpass', freq: 500, sweepTo: 140, gain: 0.4 });
+    },
+
+    /* Through a sector gate: a proper little victory phrase. */
+    fanfare: function () {
+      [392, 523, 659, 784].forEach(function (f, i) {
+        tone({ type: 'square', from: f, to: f, dur: i === 3 ? 0.3 : 0.12, gain: 0.24, delay: i * 0.09 });
+      });
+      tone({ type: 'triangle', from: 196, to: 196, dur: 0.5, gain: 0.2, delay: 0.27 });
+    },
+
+    milestone: function () {
+      tone({ type: 'triangle', from: 660, to: 660, dur: 0.1, gain: 0.22 });
+      tone({ type: 'triangle', from: 990, to: 990, dur: 0.14, gain: 0.22, delay: 0.1 });
+    }
+  };
+
+  PP.Audio = Audio;
+})(window);
+</script>
+<script>
+/* An 8-bit march for the soundtrack.
+ *
+ * Original composition — a minor-key parade tune with the genre's furniture:
+ * a stomping root-and-fifth bass, fanfare leaps in fourths and fifths, and a
+ * snare on the backbeat. Three voices, all synthesised: pulse lead, triangle
+ * bass, filtered-noise drums.
+ *
+ * Notes are scheduled ahead of the audio clock rather than fired from
+ * setInterval, so the beat doesn't wobble when the game drops a frame. */
+(function (global) {
+  'use strict';
+
+  var PP = global.PP;
+  var U = PP.U;
+
+  var BPM = 116;            // parade pace
+  var URGENT_BPM = 132;     // when the tide is breathing down your neck
+  var LOOKAHEAD = 0.14;     // seconds of notes queued in advance
+  var TICK = 25;            // scheduler wake-up, ms
+
+  /* ── The tune ───────────────────────────────────────────────────────
+     Written in D minor. Melody as [midi, length-in-16ths]; 0 is a rest.
+     60 = middle C, so D4 = 62. */
+  var A_MELODY = [
+    [62, 4], [62, 4], [69, 4], [69, 4],          // D  D  A  A
+    [70, 4], [69, 4], [67, 4], [65, 4],          // Bb A  G  F
+    [64, 4], [65, 4], [67, 4], [64, 4],          // E  F  G  E
+    [62, 8], [0, 8],
+    [65, 4], [65, 4], [72, 4], [72, 4],          // F  F  C  C
+    [74, 4], [72, 4], [70, 4], [69, 4],          // D  C  Bb A
+    [67, 4], [69, 4], [70, 4], [67, 4],          // G  A  Bb G
+    [69, 8], [0, 8]
+  ];
+
+  var B_MELODY = [
+    [74, 4], [74, 4], [74, 4], [72, 4],          // D  D  D  C
+    [70, 4], [72, 4], [74, 8],
+    [69, 4], [70, 4], [72, 4], [70, 4],
+    [69, 4], [67, 4], [65, 8],
+    [67, 4], [69, 4], [70, 4], [72, 4],
+    [74, 8], [72, 8],
+    [70, 4], [69, 4], [67, 4], [65, 4],
+    [64, 8], [57, 8]                             // land on the dominant
+  ];
+
+  /* One chord root per bar, 16 bars total. */
+  var CHORDS = [
+    38, 46, 45, 38, 41, 38, 43, 45,              // D  Bb A  D  F  D  G  A
+    38, 43, 45, 38, 43, 38, 43, 45
+  ];
+
+  var STEPS_PER_BAR = 16;
+  var BARS = 16;
+  var TOTAL_STEPS = STEPS_PER_BAR * BARS;
+
+  /* Expand a [note, length] melody into { step: [midi, len] }. */
+  function expand(melody, startStep) {
+    var map = {}, step = startStep;
+    for (var i = 0; i < melody.length; i++) {
+      var note = melody[i][0], len = melody[i][1];
+      if (note) map[step] = [note, len];
+      step += len;
+    }
+    return map;
+  }
+
+  var LEAD = {};
+  (function () {
+    var a = expand(A_MELODY, 0);
+    var b = expand(B_MELODY, 8 * STEPS_PER_BAR);
+    var k;
+    for (k in a) if (Object.prototype.hasOwnProperty.call(a, k)) LEAD[k] = a[k];
+    for (k in b) if (Object.prototype.hasOwnProperty.call(b, k)) LEAD[k] = b[k];
+  })();
+
+  var ctx = null, bus = null, timer = null;
+  var playing = false, muted = false, urgent = false;
+  var step = 0, nextTime = 0;
+
+  function midiToFreq(m) { return 440 * Math.pow(2, (m - 69) / 12); }
+
+  function stepSeconds() {
+    return 60 / (urgent ? URGENT_BPM : BPM) / 4;   // one 16th note
+  }
+
+  /* ── Voices ─────────────────────────────────────────────────────── */
+
+  function pulse(freq, at, dur, gainPeak, type) {
+    var osc = ctx.createOscillator();
+    var g = ctx.createGain();
+    osc.type = type || 'square';
+    osc.frequency.setValueAtTime(freq, at);
+    g.gain.setValueAtTime(0.0001, at);
+    g.gain.linearRampToValueAtTime(gainPeak, at + 0.012);
+    g.gain.setValueAtTime(gainPeak * 0.75, at + Math.max(0.02, dur * 0.55));
+    g.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+    osc.connect(g);
+    g.connect(bus);
+    osc.start(at);
+    osc.stop(at + dur + 0.02);
+  }
+
+  function drum(at, kind) {
+    var dur = kind === 'kick' ? 0.14 : 0.11;
+    if (kind === 'kick') {
+      var osc = ctx.createOscillator();
+      var g = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(150, at);
+      osc.frequency.exponentialRampToValueAtTime(45, at + dur);
+      g.gain.setValueAtTime(0.5, at);
+      g.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+      osc.connect(g);
+      g.connect(bus);
+      osc.start(at);
+      osc.stop(at + dur + 0.02);
+      return;
+    }
+    // Snare: a short burst of high-passed noise.
+    var frames = Math.floor(ctx.sampleRate * dur);
+    var buf = ctx.createBuffer(1, frames, ctx.sampleRate);
+    var data = buf.getChannelData(0);
+    for (var i = 0; i < frames; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / frames);
+    var src = ctx.createBufferSource();
+    src.buffer = buf;
+    var hp = ctx.createBiquadFilter();
+    hp.type = 'highpass';
+    hp.frequency.value = kind === 'snare' ? 1400 : 5000;
+    var sg = ctx.createGain();
+    sg.gain.value = kind === 'snare' ? 0.30 : 0.07;
+    src.connect(hp);
+    hp.connect(sg);
+    sg.connect(bus);
+    src.start(at);
+  }
+
+  /* ── Sequencer ──────────────────────────────────────────────────── */
+
+  function scheduleStep(s, at) {
+    var bar = Math.floor(s / STEPS_PER_BAR);
+    var beat = s % STEPS_PER_BAR;
+    var sec = stepSeconds();
+
+    // Lead.
+    var note = LEAD[s];
+    if (note) {
+      pulse(midiToFreq(note[0]), at, note[1] * sec * 0.92, 0.10);
+      // A fifth above, quieter — cheap brass thickness.
+      pulse(midiToFreq(note[0] + 7), at, note[1] * sec * 0.92, 0.035);
+    }
+
+    // Bass: root, fifth, root, fifth on the quarters. Marching feet.
+    if (beat % 4 === 0) {
+      var root = CHORDS[bar % CHORDS.length];
+      var n = (beat === 0 || beat === 8) ? root : root + 7;
+      pulse(midiToFreq(n - 12), at, sec * 3.4, 0.20, 'triangle');
+    }
+
+    // Drums.
+    if (beat === 0 || beat === 8) drum(at, 'kick');
+    if (beat === 4 || beat === 12) drum(at, 'snare');
+    if (beat % 2 === 0) drum(at, 'hat');
+    // Fill into each 4-bar phrase.
+    if (bar % 4 === 3 && beat >= 12) drum(at, 'snare');
+  }
+
+  function scheduler() {
+    if (!playing || !ctx) return;
+    while (nextTime < ctx.currentTime + LOOKAHEAD) {
+      scheduleStep(step, nextTime);
+      nextTime += stepSeconds();
+      step = (step + 1) % TOTAL_STEPS;
+    }
+  }
+
+  var Music = {
+    setMuted: function (m) {
+      muted = m;
+      if (muted) Music.stop();
+    },
+
+    isPlaying: function () { return playing; },
+
+    start: function () {
+      if (playing || muted) return;
+      ctx = PP.Audio.context();
+      if (!ctx) return;
+      if (ctx.state === 'suspended') ctx.resume();
+      if (!bus) {
+        bus = ctx.createGain();
+        bus.gain.value = 0.5;               // sits under the effects
+        bus.connect(PP.Audio.destination() || ctx.destination);
+      }
+      // Cancel any fade still in flight, or a quick restart begins silent.
+      bus.gain.cancelScheduledValues(ctx.currentTime);
+      bus.gain.setValueAtTime(0.5, ctx.currentTime);
+      playing = true;
+      step = 0;
+      nextTime = ctx.currentTime + 0.08;
+      timer = global.setInterval(scheduler, TICK);
+      scheduler();
+    },
+
+    stop: function () {
+      playing = false;
+      if (timer) { global.clearInterval(timer); timer = null; }
+    },
+
+    /* Pick the tempo up when the Collective closes in. */
+    setUrgent: function (on) { urgent = !!on; },
+
+    /* Cut the music but let whatever is already queued ring out. */
+    fadeOut: function (seconds) {
+      if (!bus || !ctx) { Music.stop(); return; }
+      var now = ctx.currentTime;
+      bus.gain.cancelScheduledValues(now);
+      bus.gain.setValueAtTime(bus.gain.value, now);
+      bus.gain.exponentialRampToValueAtTime(0.0001, now + (seconds || 0.6));
+      Music.stop();
+      global.setTimeout(function () {
+        if (bus) bus.gain.setValueAtTime(0.5, ctx.currentTime);
+      }, (seconds || 0.6) * 1000 + 60);
+    },
+
+    /* The march wins: a short, smug cadence when you are caught. */
+    victoryOfTheCollective: function () {
+      if (muted) return;
+      var c = PP.Audio.context();
+      if (!c) return;
+      ctx = c;
+      if (!bus) {
+        bus = ctx.createGain();
+        bus.gain.value = 0.5;
+        bus.connect(PP.Audio.destination() || ctx.destination);
+      }
+      bus.gain.setValueAtTime(0.5, ctx.currentTime);
+      var t0 = ctx.currentTime + 0.05;
+      [[57, 0], [62, 0.16], [65, 0.32], [69, 0.48], [74, 0.64]].forEach(function (e) {
+        pulse(midiToFreq(e[0]), t0 + e[1], 0.22, 0.13);
+        pulse(midiToFreq(e[0] - 12), t0 + e[1], 0.22, 0.16, 'triangle');
+      });
+      drum(t0 + 0.64, 'kick');
+      drum(t0 + 0.80, 'snare');
+    }
+  };
+
+  muted = PP.Audio.isMuted();
+  PP.Music = Music;
+})(window);
+</script>
+<script>
+/* The roster, plus the procedural critter renderer used for the player,
+   the enemy drivers and the marchers in the red tide. No sprite sheets:
+   every animal is drawn from primitives so it scales to any resolution. */
+(function (global) {
+  'use strict';
+
+  var PP = global.PP;
+  var U = PP.U;
+
+  /* ── Roster ─────────────────────────────────────────────────────────
+     species  cat | dog   (drives ears, tail and face details)
+     price    0 means unlocked from the start                         */
+  var ROSTER = [
+    {
+      id: 'mittens', name: 'Mittens', species: 'cat', price: 0,
+      tag: 'Refused to share the sunbeam',
+      fur: '#e08a3c', belly: '#f7dcae', accent: '#3fa9d6', eye: '#2b2118',
+      ears: 'cat', tail: 'long', stripes: true
+    },
+    {
+      id: 'biscuit', name: 'Biscuit', species: 'dog', price: 0,
+      tag: 'Short legs, long memory',
+      fur: '#e8b060', belly: '#fdf1dc', accent: '#c8102e', eye: '#241a12',
+      ears: 'perk', tail: 'stub', short: true
+    },
+    {
+      id: 'boris', name: 'Boris', species: 'dog', price: 60,
+      tag: 'Deserted the sled team',
+      fur: '#8d99a8', belly: '#f2f5f8', accent: '#2f4d6e', eye: '#5fc6e8',
+      ears: 'perk', tail: 'fluffy', mask: true
+    },
+    {
+      id: 'duchess', name: 'Duchess', species: 'cat', price: 90,
+      tag: 'Owned three cushions. Three.',
+      fur: '#efe6d8', belly: '#fffaf0', accent: '#b07fd0', eye: '#4ea3e0',
+      ears: 'cat', tail: 'long', points: true
+    },
+    {
+      id: 'sputnik', name: 'Sputnik', species: 'cat', price: 120,
+      tag: 'Defected by balloon, twice',
+      fur: '#33313c', belly: '#5a5866', accent: '#f5c542', eye: '#8ee36a',
+      ears: 'cat', tail: 'long', goggles: true
+    },
+    {
+      id: 'pierogi', name: 'Pierogi', species: 'dog', price: 150,
+      tag: 'Smuggled out in a bread basket',
+      fur: '#6a4325', belly: '#c8975f', accent: '#e4a11b', eye: '#1e1610',
+      ears: 'floppy', tail: 'long', short: true
+    },
+    {
+      id: 'marshal', name: 'Marshal Fluff', species: 'cat', price: 220,
+      tag: 'Declared herself a sovereign state',
+      fur: '#f0d79a', belly: '#fff5dd', accent: '#c8102e', eye: '#e08a3c',
+      ears: 'cat', tail: 'fluffy', crown: true, fluffy: true
+    },
+    {
+      id: 'kotleta', name: 'Kotleta', species: 'cat', price: -1, secret: true,
+      tag: 'Was never here. You saw nothing.',
+      fur: '#7b7469', belly: '#a99f92', accent: '#3a3f4a', eye: '#cfd8e0',
+      ears: 'cat', tail: 'long', glasses: true, flatcap: true
+    },
+    {
+      id: 'laika', name: 'Laika', species: 'dog', price: 300,
+      tag: 'Came back. Wants a word.',
+      fur: '#cfc6bb', belly: '#ffffff', accent: '#d0d6dd', eye: '#3a2f26',
+      ears: 'perk', tail: 'curl', helmet: true, patch: true
+    }
+  ];
+
+  var BY_ID = {};
+  ROSTER.forEach(function (c) { BY_ID[c.id] = c; });
+
+  /* Palette used for the regime's own cats and dogs. */
+  var ENEMY_SKINS = [
+    { fur: '#7a7f88', belly: '#b9bdc4', eye: '#1a1a1a', species: 'cat', ears: 'cat', tail: 'long' },
+    { fur: '#5c5148', belly: '#8f8378', eye: '#1a1a1a', species: 'dog', ears: 'floppy', tail: 'long' },
+    { fur: '#3f4148', belly: '#6b6e77', eye: '#1a1a1a', species: 'dog', ears: 'perk', tail: 'stub' },
+    { fur: '#9a8f80', belly: '#cec4b6', eye: '#1a1a1a', species: 'cat', ears: 'cat', tail: 'fluffy' }
+  ];
+
+  /* ── Renderer ───────────────────────────────────────────────────────
+     Draws a chunky, blocky animal with its feet at (x, y).
+     opts: { size, char, facing: 'up'|'down'|'left'|'right',
+             squash: -1..1, lift: px, alpha, cap: 'ushanka'|'cap'|null } */
+  function drawCritter(ctx, x, y, opts) {
+    var c = opts.char || ROSTER[0];
+    var s = opts.size;
+    var facing = opts.facing || 'down';
+    var squash = opts.squash || 0;
+    var lift = opts.lift || 0;
+
+    var bodyW = s * (c.fluffy ? 0.70 : 0.62);
+    var bodyH = s * (c.short ? 0.32 : 0.38);
+    var headW = bodyW * 0.94;
+    var headH = s * 0.40;
+    var legH = s * (c.short ? 0.07 : 0.12);
+
+    var sideOn = (facing === 'left' || facing === 'right');
+    var away = (facing === 'up');
+    var flip = (facing === 'left') ? -1 : 1;
+
+    ctx.save();
+    ctx.globalAlpha = opts.alpha === undefined ? 1 : opts.alpha;
+
+    /* Contact shadow stays on the ground even while the critter is airborne. */
+    ctx.save();
+    ctx.globalAlpha = (opts.alpha === undefined ? 1 : opts.alpha) * (0.28 - Math.min(lift, s) / s * 0.12);
+    ctx.fillStyle = '#251536';
+    U.ellipse(ctx, x, y, bodyW * 0.62, bodyW * 0.24);
+    ctx.fill();
+    ctx.restore();
+
+    ctx.translate(x, y - lift);
+    ctx.scale(flip * (1 + squash * 0.35), 1 - squash * 0.35);
+
+    var dark = U.shade(c.fur, -0.28);
+    var light = U.shade(c.fur, 0.18);
+
+    /* Tail (behind the body). Sways idly; tucks low when afraid. */
+    ctx.strokeStyle = dark;
+    ctx.lineCap = 'round';
+    var tailBaseY = -legH - bodyH * 0.55;
+    var fear = opts.fear || 0;
+    var tnow = PP.World ? PP.World.time() : 0;
+    var sway = Math.sin(tnow * 2.1) * s * 0.05 * (1 - fear);
+    if (c.tail === 'long' || c.tail === 'curl') {
+      ctx.lineWidth = s * 0.09;
+      ctx.beginPath();
+      ctx.moveTo(-bodyW * 0.42, tailBaseY);
+      if (c.tail === 'curl') {
+        ctx.quadraticCurveTo(-bodyW * 0.95 + sway, tailBaseY - s * 0.30 + fear * s * 0.34,
+          -bodyW * 0.35, tailBaseY - s * 0.42 + fear * s * 0.38);
+      } else {
+        ctx.quadraticCurveTo(-bodyW * 0.95 + sway, tailBaseY + s * 0.02 + fear * s * 0.18,
+          -bodyW * 0.80 + sway * 0.6, tailBaseY - s * 0.34 + fear * s * 0.40);
+      }
+      ctx.stroke();
+    } else if (c.tail === 'fluffy') {
+      ctx.fillStyle = dark;
+      U.ellipse(ctx, -bodyW * 0.62, tailBaseY - s * 0.06, s * 0.17, s * 0.24);
+      ctx.fill();
+    } else {
+      ctx.lineWidth = s * 0.10;
+      ctx.beginPath();
+      ctx.moveTo(-bodyW * 0.40, tailBaseY);
+      ctx.lineTo(-bodyW * 0.62, tailBaseY - s * 0.10);
+      ctx.stroke();
+    }
+
+    /* Legs. */
+    ctx.fillStyle = dark;
+    var legW = bodyW * 0.22;
+    U.roundRect(ctx, -bodyW * 0.34, -legH, legW, legH + 1, legW * 0.35);
+    ctx.fill();
+    U.roundRect(ctx, bodyW * 0.34 - legW, -legH, legW, legH + 1, legW * 0.35);
+    ctx.fill();
+
+    /* Body. */
+    var bodyTop = -legH - bodyH;
+    ctx.fillStyle = c.fur;
+    U.roundRect(ctx, -bodyW / 2, bodyTop, bodyW, bodyH, bodyW * 0.22);
+    ctx.fill();
+    if (!away) {
+      ctx.fillStyle = c.belly;
+      U.roundRect(ctx, -bodyW * 0.26, bodyTop + bodyH * 0.28, bodyW * 0.52, bodyH * 0.78, bodyW * 0.16);
+      ctx.fill();
+    }
+    if (c.patch) {
+      ctx.fillStyle = U.shade(c.fur, -0.45);
+      U.ellipse(ctx, bodyW * 0.22, bodyTop + bodyH * 0.45, bodyW * 0.16, bodyH * 0.3);
+      ctx.fill();
+    }
+
+    /* Head. */
+    var headBottom = bodyTop + bodyH * 0.16;
+    var headTop = headBottom - headH;
+    var hx = -headW / 2;
+
+    /* Ears go behind the head block so they read as silhouette. */
+    ctx.fillStyle = c.fur;
+    if (c.ears === 'cat' || c.ears === 'perk') {
+      var earW = headW * (c.ears === 'cat' ? 0.30 : 0.26);
+      var earH = headH * (c.ears === 'cat' ? 0.52 : 0.44);
+      earH *= (1 - 0.42 * fear);            // ears pin back when afraid
+      [-1, 1].forEach(function (sgn) {
+        var ex = sgn * headW * 0.30;
+        ctx.beginPath();
+        ctx.moveTo(ex - earW / 2, headTop + earH * 0.5);
+        ctx.lineTo(ex + sgn * earW * (0.10 + 0.45 * fear), headTop - earH * 0.55);
+        ctx.lineTo(ex + earW / 2, headTop + earH * 0.5);
+        ctx.closePath();
+        ctx.fill();
+        if (!away) {
+          ctx.fillStyle = U.shade(c.belly, -0.06);
+          ctx.beginPath();
+          ctx.moveTo(ex - earW * 0.24, headTop + earH * 0.34);
+          ctx.lineTo(ex, headTop - earH * 0.18);
+          ctx.lineTo(ex + earW * 0.24, headTop + earH * 0.34);
+          ctx.closePath();
+          ctx.fill();
+          ctx.fillStyle = c.fur;
+        }
+      });
+    } else { /* floppy */
+      ctx.fillStyle = U.shade(c.fur, -0.18);
+      [-1, 1].forEach(function (sgn) {
+        U.roundRect(ctx, sgn * headW * 0.42 - headW * 0.14, headTop + headH * 0.06,
+          headW * 0.28, headH * 0.78, headW * 0.13);
+        ctx.fill();
+      });
+      ctx.fillStyle = c.fur;
+    }
+
+    ctx.fillStyle = c.fur;
+    U.roundRect(ctx, hx, headTop, headW, headH, headW * 0.26);
+    ctx.fill();
+
+    if (c.points) { /* siamese mask */
+      ctx.fillStyle = U.shade(c.fur, -0.42);
+      U.roundRect(ctx, hx + headW * 0.16, headTop + headH * 0.30, headW * 0.68, headH * 0.66, headW * 0.2);
+      ctx.fill();
+    }
+    if (c.mask) {
+      ctx.fillStyle = c.belly;
+      U.roundRect(ctx, hx + headW * 0.20, headTop + headH * 0.34, headW * 0.60, headH * 0.62, headW * 0.2);
+      ctx.fill();
+    }
+
+    if (away) {
+      /* Back of the head — a couple of tufts, no face. */
+      ctx.fillStyle = U.shade(c.fur, -0.12);
+      U.roundRect(ctx, hx + headW * 0.18, headTop + headH * 0.22, headW * 0.64, headH * 0.42, headW * 0.18);
+      ctx.fill();
+    } else {
+      var faceY = headTop + headH * 0.52;
+      var eyeDX = headW * (sideOn ? 0.16 : 0.22);
+      var eyeOffset = sideOn ? headW * 0.16 : 0;
+
+      /* Eyes. */
+      ctx.fillStyle = '#fff';
+      [-1, 1].forEach(function (sgn) {
+        if (sideOn && sgn < 0) return;
+        U.ellipse(ctx, eyeOffset + sgn * eyeDX, faceY, headW * 0.105, headW * 0.125);
+        ctx.fill();
+      });
+      ctx.fillStyle = c.eye;
+      [-1, 1].forEach(function (sgn) {
+        if (sideOn && sgn < 0) return;
+        U.ellipse(ctx, eyeOffset + sgn * eyeDX + (sideOn ? headW * 0.02 : 0), faceY,
+          headW * (c.species === 'cat' ? 0.045 : 0.06), headW * 0.085);
+        ctx.fill();
+      });
+      // A pinpoint catchlight makes the eyes read as alive.
+      ctx.fillStyle = 'rgba(255,255,255,0.85)';
+      [-1, 1].forEach(function (sgn) {
+        if (sideOn && sgn < 0) return;
+        U.ellipse(ctx, eyeOffset + sgn * eyeDX + headW * 0.025, faceY - headW * 0.03,
+          headW * 0.024, headW * 0.028);
+        ctx.fill();
+      });
+
+      /* Muzzle + nose. */
+      var muzY = faceY + headH * 0.26;
+      ctx.fillStyle = c.belly;
+      U.ellipse(ctx, eyeOffset * 0.6, muzY, headW * (c.species === 'dog' ? 0.26 : 0.22), headH * 0.16);
+      ctx.fill();
+      ctx.fillStyle = c.species === 'dog' ? '#2a2020' : '#e08a9a';
+      ctx.beginPath();
+      ctx.moveTo(eyeOffset * 0.6 - headW * 0.05, muzY - headH * 0.06);
+      ctx.lineTo(eyeOffset * 0.6 + headW * 0.05, muzY - headH * 0.06);
+      ctx.lineTo(eyeOffset * 0.6, muzY + headH * 0.02);
+      ctx.closePath();
+      ctx.fill();
+
+      /* Whiskers. */
+      if (c.species === 'cat') {
+        ctx.strokeStyle = 'rgba(255,255,255,0.75)';
+        ctx.lineWidth = Math.max(1, s * 0.012);
+        [-1, 1].forEach(function (sgn) {
+          if (sideOn && sgn < 0) return;
+          ctx.beginPath();
+          ctx.moveTo(eyeOffset * 0.6 + sgn * headW * 0.14, muzY);
+          ctx.lineTo(eyeOffset * 0.6 + sgn * headW * 0.46, muzY - headH * 0.06);
+          ctx.moveTo(eyeOffset * 0.6 + sgn * headW * 0.14, muzY + headH * 0.04);
+          ctx.lineTo(eyeOffset * 0.6 + sgn * headW * 0.44, muzY + headH * 0.10);
+          ctx.stroke();
+        });
+      }
+
+      if (c.glasses) {
+        ctx.fillStyle = '#20242c';
+        [-1, 1].forEach(function (sgn) {
+          if (sideOn && sgn < 0) return;
+          U.ellipse(ctx, eyeOffset + sgn * eyeDX, faceY, headW * 0.115, headW * 0.115);
+          ctx.fill();
+        });
+        ctx.strokeStyle = '#20242c';
+        ctx.lineWidth = Math.max(1.5, s * 0.02);
+        ctx.beginPath();
+        ctx.moveTo(eyeOffset - eyeDX + headW * 0.115, faceY);
+        ctx.lineTo(eyeOffset + eyeDX - headW * 0.115, faceY);
+        ctx.stroke();
+        ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+        ctx.lineWidth = Math.max(1, s * 0.012);
+        [-1, 1].forEach(function (sgn) {
+          if (sideOn && sgn < 0) return;
+          ctx.beginPath();
+          ctx.arc(eyeOffset + sgn * eyeDX - headW * 0.03, faceY - headW * 0.03, headW * 0.05, Math.PI, Math.PI * 1.5);
+          ctx.stroke();
+        });
+      }
+
+      if (c.goggles) {
+        ctx.strokeStyle = '#6b5a3e';
+        ctx.lineWidth = s * 0.05;
+        ctx.beginPath();
+        ctx.moveTo(hx, headTop + headH * 0.30);
+        ctx.lineTo(hx + headW, headTop + headH * 0.30);
+        ctx.stroke();
+        ctx.fillStyle = 'rgba(180,220,255,0.85)';
+        [-1, 1].forEach(function (sgn) {
+          U.ellipse(ctx, sgn * headW * 0.22, headTop + headH * 0.30, headW * 0.16, headW * 0.13);
+          ctx.fill();
+        });
+      }
+    }
+
+    /* Collar / accessories. */
+    if (c.accent) {
+      ctx.fillStyle = c.accent;
+      U.roundRect(ctx, hx + headW * 0.06, headBottom - headH * 0.02, headW * 0.88, s * 0.055, s * 0.03);
+      ctx.fill();
+      ctx.fillStyle = U.shade(c.accent, 0.35);
+      U.ellipse(ctx, 0, headBottom + s * 0.045, s * 0.035, s * 0.035);
+      ctx.fill();
+    }
+
+    if (c.crown) {
+      ctx.fillStyle = '#f5c542';
+      ctx.beginPath();
+      ctx.moveTo(-headW * 0.30, headTop - headH * 0.02);
+      ctx.lineTo(-headW * 0.30, headTop - headH * 0.34);
+      ctx.lineTo(-headW * 0.12, headTop - headH * 0.16);
+      ctx.lineTo(0, headTop - headH * 0.40);
+      ctx.lineTo(headW * 0.12, headTop - headH * 0.16);
+      ctx.lineTo(headW * 0.30, headTop - headH * 0.34);
+      ctx.lineTo(headW * 0.30, headTop - headH * 0.02);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    if (c.helmet) {
+      ctx.fillStyle = 'rgba(230,240,250,0.55)';
+      ctx.beginPath();
+      ctx.arc(0, headTop + headH * 0.42, headW * 0.62, Math.PI * 1.06, Math.PI * 1.94);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = '#cfd8e3';
+      ctx.lineWidth = s * 0.03;
+      ctx.stroke();
+    }
+
+    if (c.flatcap) {
+      ctx.fillStyle = '#6a655c';
+      U.roundRect(ctx, hx + headW * 0.02, headTop - headH * 0.14, headW * 0.96, headH * 0.26, headW * 0.12);
+      ctx.fill();
+      ctx.fillStyle = '#59554d';
+      U.roundRect(ctx, hx + headW * 0.3, headTop + headH * 0.08, headW * 0.72, headH * 0.09, headW * 0.04);
+      ctx.fill();
+    }
+
+    /* Regime headgear, used for drivers, marchers and the newly converted.
+       capT animates the hat dropping onto the head. */
+    var capT = opts.capT === undefined ? 1 : U.clamp(opts.capT, 0, 1);
+    if (opts.cap && capT > 0.02) {
+      ctx.save();
+      ctx.globalAlpha *= capT;
+      ctx.translate(0, -(1 - capT) * headH * 1.1);
+    }
+    if (opts.cap === 'ushanka' && capT > 0.02) {
+      ctx.fillStyle = '#4a3a2c';
+      U.roundRect(ctx, hx - headW * 0.06, headTop - headH * 0.26, headW * 1.12, headH * 0.42, headW * 0.18);
+      ctx.fill();
+      ctx.fillStyle = '#c8102e';
+      star(ctx, 0, headTop - headH * 0.06, headW * 0.17);
+    } else if (opts.cap === 'cap' && capT > 0.02) {
+      ctx.fillStyle = '#5a6a4a';
+      U.roundRect(ctx, hx - headW * 0.04, headTop - headH * 0.16, headW * 1.08, headH * 0.30, headW * 0.1);
+      ctx.fill();
+      ctx.fillStyle = '#3d4834';
+      U.roundRect(ctx, hx, headTop + headH * 0.10, headW, headH * 0.10, headW * 0.05);
+      ctx.fill();
+      ctx.fillStyle = '#c8102e';
+      star(ctx, 0, headTop - headH * 0.01, headW * 0.14);
+    }
+    if (opts.cap && capT > 0.02) ctx.restore();
+
+    ctx.restore();
+  }
+
+  /* Five-pointed star, used a lot around here. */
+  function star(ctx, cx, cy, r) {
+    ctx.beginPath();
+    for (var i = 0; i < 10; i++) {
+      var rad = (i % 2 === 0) ? r : r * 0.42;
+      var a = -Math.PI / 2 + i * Math.PI / 5;
+      var px = cx + Math.cos(a) * rad;
+      var py = cy + Math.sin(a) * rad;
+      if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  PP.Characters = {
+    ROSTER: ROSTER,
+    byId: function (id) { return BY_ID[id] || ROSTER[0]; },
+    enemySkin: function (i) { return ENEMY_SKINS[U.mod(i, ENEMY_SKINS.length)]; },
+    draw: drawCritter,
+    star: star
+  };
+})(window);
+</script>
+<script>
+/* Endless row generator + simulation. The world is an infinite ribbon of
+   rows; row 0 is the back yard you start in and every row forward is one
+   metre closer to the border. Rows are generated lazily and pruned behind. */
+(function (global) {
+  'use strict';
+
+  var PP = global.PP;
+  var U = PP.U;
+
+  var CFG = {
+    // The playfield is narrow enough that both edges stay on screen even
+    // when the camera is clamped, so nothing important happens out of sight.
+    X_MIN: -7,          // leftmost tile the player may occupy
+    X_MAX: 7,           // rightmost
+    TRACK_MIN: -14,     // where traffic and logs spawn/despawn
+    TRACK_MAX: 14,
+    SAFE_ROWS: 4,       // opening rows with nothing in them
+    AHEAD: 26,          // rows kept generated in front of the player
+    BEHIND: 14          // rows kept alive behind the player
+  };
+  CFG.TRACK_LEN = CFG.TRACK_MAX - CFG.TRACK_MIN;
+
+  var CAR_KINDS = [
+    { kind: 'truck', w: 2.5, weight: 3, color: '#8f2f2f' },
+    { kind: 'jeep', w: 1.9, weight: 3, color: '#4c5a3a' },
+    { kind: 'sedan', w: 2.0, weight: 2, color: '#22242a' },
+    { kind: 'tractor', w: 2.2, weight: 2, color: '#c8102e' },
+    { kind: 'tank', w: 3.0, weight: 1, color: '#5a5f4c' }
+  ];
+
+  var rows = {};        // index -> row object
+  var maxGenerated = -1;
+  var plan = { type: 'safe', left: 0, dirBias: 1 };
+  var time = 0;
+
+  /* ── Generation ─────────────────────────────────────────────────── */
+
+  function difficulty(index) {
+    return U.clamp(index / 320, 0, 1);
+  }
+
+  function nextType(index) {
+    if (index < CFG.SAFE_ROWS) return 'safe';
+    if (plan.left > 0) { plan.left--; return plan.type; }
+
+    var d = difficulty(index);
+    var table = [
+      ['grass', 30 - d * 8],
+      ['road', 30 + d * 10],
+      ['water', 16 + d * 3],
+      ['rail', 6 + d * 4],
+      ['parade', index > 12 ? 7 + d * 5 : 0],
+      ['ice', index > 25 ? 8 + d * 5 : 0]
+    ];
+    // Never repeat the same band twice in a row: it makes reading the
+    // board hard and water-after-water is unfair at speed.
+    var t = U.weighted(table.filter(function (e) { return e[0] !== plan.type; }));
+
+    var len;
+    if (t === 'road') len = U.randInt(1, d > 0.6 ? 4 : 3);
+    else if (t === 'water') len = U.randInt(1, d > 0.5 ? 3 : 2);
+    else if (t === 'rail') len = U.randInt(1, 2);
+    else if (t === 'parade') len = 1;
+    else if (t === 'ice') len = U.randInt(1, d > 0.5 ? 2 : 1);
+    else len = U.randInt(1, 2);
+
+    plan.type = t;
+    plan.left = len - 1;
+    return t;
+  }
+
+  function makeGrass(index, safe) {
+    var d = difficulty(index);
+    var row = { index: index, type: 'grass', decor: [], blocked: {}, coin: null };
+    var free = [];
+    var x;
+    for (x = CFG.X_MIN; x <= CFG.X_MAX; x++) free.push(x);
+
+    if (!safe) {
+      var count = U.randInt(1, 3 + Math.round(d * 3));
+      for (var i = 0; i < count && free.length > 5; i++) {
+        var pick = U.randInt(0, free.length - 1);
+        x = free.splice(pick, 1)[0];
+        row.blocked[x] = true;
+        row.decor.push({
+          x: x,
+          kind: U.weighted([['tree', 6], ['bush', 3], ['rock', 2], ['bust', 1.2], ['banner', 1]]),
+          h: U.rand(0.8, 1.7),
+          seed: Math.random()
+        });
+      }
+      if (Math.random() < 0.35 && free.length) {
+        row.coin = { x: free[U.randInt(0, free.length - 1)], taken: false, bob: Math.random() * 6 };
+      }
+    } else if (index === 0) {
+      row.fence = true;   // the garden gate you are leaving behind
+    }
+    return row;
+  }
+
+  /* Lay items out around the loop so that the gaps sum to exactly one lap.
+     Everything wraps forever after that, which means spacing is preserved,
+     items never overlap, and there is no giant hole at the seam.
+     `widths` is truncated in place if the items cannot all fit. */
+  function layout(widths, minGap, maxGap, grow) {
+    var i, sum = 0;
+    for (i = 0; i < widths.length; i++) sum += widths[i];
+    // Too few items would leave gaps wider than maxGap; too many won't fit.
+    while (grow && widths.length < 14 && (CFG.TRACK_LEN - sum) / widths.length > maxGap) {
+      var extra = grow();
+      widths.push(extra);
+      sum += extra;
+    }
+    while (widths.length > 1 && (CFG.TRACK_LEN - sum) / widths.length < minGap) {
+      sum -= widths.pop();
+    }
+
+    var n = widths.length;
+    var base = U.clamp((CFG.TRACK_LEN - sum) / n, minGap, maxGap);
+
+    // Jitter the gaps, with the jitters summing to zero so the lap still closes.
+    var jitter = [], jsum = 0;
+    for (i = 0; i < n; i++) { var v = U.rand(-1, 1); jitter.push(v); jsum += v; }
+    var amp = Math.max(0, Math.min(base - minGap, maxGap - base)) * 0.45;
+
+    var p = U.rand(0, CFG.TRACK_LEN);
+    var out = [];
+    for (i = 0; i < n; i++) {
+      out.push(p);
+      p += widths[i] + base + (jitter[i] - jsum / n) * amp;
+    }
+    return out;
+  }
+
+  function makeRoad(index) {
+    var d = difficulty(index);
+    var row = {
+      index: index, type: 'road',
+      dir: Math.random() < 0.5 ? -1 : 1,
+      speed: U.rand(2.1, 3.2) + d * 2.2,
+      cars: []
+    };
+
+    var count = U.randInt(2, 3 + Math.round(d * 2));
+    var kinds = [], widths = [], i;
+    for (i = 0; i < count; i++) {
+      var kind = U.weighted(CAR_KINDS.map(function (k) { return [k, k.weight]; }));
+      kinds.push(kind);
+      widths.push(kind.w);
+    }
+    // Traffic thins out as it speeds up, so every lane stays crossable.
+    var minGap = 2.6 + row.speed * 0.34;
+    var ps = layout(widths, minGap, minGap + 4.5, function () {
+      var k = U.weighted(CAR_KINDS.map(function (c) { return [c, c.weight]; }));
+      kinds.push(k);
+      return k.w;
+    });
+    for (i = 0; i < ps.length; i++) {
+      row.cars.push({
+        p: ps[i], w: kinds[i].w, kind: kinds[i].kind, color: kinds[i].color,
+        skin: U.randInt(0, 3), seed: Math.random()
+      });
+    }
+    return row;
+  }
+
+  function makeWater(index) {
+    var d = difficulty(index);
+    var row = {
+      index: index, type: 'water',
+      dir: Math.random() < 0.5 ? -1 : 1,
+      speed: U.rand(1.0, 1.8) + d * 1.2,
+      logs: []
+    };
+
+    var count = U.randInt(5, 7);
+    var widths = [], i;
+    for (i = 0; i < count; i++) widths.push(U.pick([2, 3, 3, 4]));
+    // Open water never exceeds ~3 tiles, so a log is always on its way.
+    var ps = layout(widths, 1.5, 3.1, function () { return U.pick([2, 3]); });
+    for (i = 0; i < ps.length; i++) {
+      row.logs.push({
+        p: ps[i], w: widths[i],
+        kind: Math.random() < 0.25 ? 'raft' : 'log',
+        seed: Math.random()
+      });
+    }
+    return row;
+  }
+
+  /* A May Day column: squads of marchers crossing like slow, wide,
+     very committed vehicles. Touching one doesn't squash you — it
+     recruits you. */
+  function makeParade(index) {
+    var d = difficulty(index);
+    var row = {
+      index: index, type: 'parade',
+      dir: Math.random() < 0.5 ? -1 : 1,
+      speed: U.rand(1.0, 1.5) + d * 0.8,
+      cars: []
+    };
+    var count = U.randInt(3, 4);
+    var widths = [], i;
+    for (i = 0; i < count; i++) widths.push(U.pick([2.2, 2.8, 3.4]));
+    var ps = layout(widths, 1.7, 3.2, function () { return U.pick([2.2, 2.8]); });
+    for (i = 0; i < ps.length; i++) {
+      row.cars.push({
+        p: ps[i], w: widths[i], kind: 'squad',
+        skin: U.randInt(0, 3), seed: Math.random()
+      });
+    }
+    return row;
+  }
+
+  /* A frozen river: static floes you can stand on — briefly. Weight on a
+     floe cracks it, then sinks it; it bobs back up once you're gone. */
+  function makeIce(index) {
+    var row = { index: index, type: 'ice', floes: {} };
+    var run = 0;
+    for (var x = CFG.X_MIN; x <= CFG.X_MAX; x++) {
+      if (Math.random() < 0.3 && run < 2) { run++; continue; }
+      run = 0;
+      row.floes[x] = { state: 'solid', standT: 0, recoverT: 0, pressed: false, seed: Math.random() };
+    }
+    return row;
+  }
+
+  /* Every 50th metre: a sector border. Concrete wall, barbed wire, one
+     open gate. The wall blocks everything but the gate tiles. */
+  function makeCheckpoint(index) {
+    return {
+      index: index, type: 'checkpoint',
+      gateX: U.randInt(CFG.X_MIN + 2, CFG.X_MAX - 2),
+      seed: Math.random()
+    };
+  }
+
+  function makeRail(index) {
+    return {
+      index: index, type: 'rail',
+      dir: Math.random() < 0.5 ? -1 : 1,
+      state: 'idle',
+      timer: U.rand(1.2, 4.0),
+      trainX: 0,
+      trainW: U.rand(9, 15),
+      speed: 26 + difficulty(index) * 10,
+      lit: 0
+    };
+  }
+
+  function generate(index) {
+    // Sector borders land on the round numbers, interrupting whatever
+    // band was in progress — walls don't care about your plans.
+    if (index >= 50 && index % 50 === 0) return makeCheckpoint(index);
+    var type = nextType(index);
+    switch (type) {
+      case 'safe': return makeGrass(index, true);
+      case 'grass': return makeGrass(index, false);
+      case 'road': return makeRoad(index);
+      case 'water': return makeWater(index);
+      case 'rail': return makeRail(index);
+      case 'parade': return makeParade(index);
+      case 'ice': return makeIce(index);
+    }
+  }
+
+  function rowAt(index) {
+    if (index < 0) return null;
+    var r = rows[index];
+    if (r) return r;
+    // Generate in order so the band planner stays coherent.
+    for (var i = maxGenerated + 1; i <= index; i++) {
+      rows[i] = generate(i);
+      maxGenerated = i;
+    }
+    return rows[index];
+  }
+
+  /* ── Queries ────────────────────────────────────────────────────── */
+
+  function carX(row, car) {
+    var p = U.mod(car.p, CFG.TRACK_LEN);
+    return row.dir > 0 ? CFG.TRACK_MIN + p : CFG.TRACK_MAX - p;
+  }
+
+  function logX(row, lg) {
+    var p = U.mod(lg.p, CFG.TRACK_LEN);
+    return row.dir > 0 ? CFG.TRACK_MIN + p : CFG.TRACK_MAX - p;
+  }
+
+  var World = {
+    CFG: CFG,
+    rows: rows,
+
+    reset: function () {
+      for (var k in rows) if (Object.prototype.hasOwnProperty.call(rows, k)) delete rows[k];
+      maxGenerated = -1;
+      plan = { type: 'safe', left: 0, dirBias: 1 };
+      time = 0;
+      // Prime the opening stretch.
+      for (var i = 0; i <= CFG.SAFE_ROWS + 6; i++) rowAt(i);
+    },
+
+    time: function () { return time; },
+    row: rowAt,
+    difficulty: difficulty,
+    carX: carX,
+    logX: logX,
+
+    update: function (dt, playerRow) {
+      time += dt;
+      var lo = Math.floor(playerRow) - CFG.BEHIND;
+      var hi = Math.floor(playerRow) + CFG.AHEAD;
+      var i, r, j;
+
+      for (i = Math.max(0, lo); i <= hi; i++) {
+        r = rowAt(i);
+        if (!r) continue;
+
+        if (r.type === 'road' || r.type === 'parade') {
+          for (j = 0; j < r.cars.length; j++) r.cars[j].p += r.speed * dt;
+        } else if (r.type === 'ice') {
+          for (var fk in r.floes) {
+            var fl = r.floes[fk];
+            if (fl.state === 'sunk') {
+              fl.recoverT -= dt;
+              if (fl.recoverT <= 0) { fl.state = 'solid'; fl.standT = 0; }
+            } else if (!fl.pressed && fl.standT > 0) {
+              fl.standT = Math.max(0, fl.standT - dt * 1.4);
+              if (fl.standT < 0.8) fl.state = 'solid';
+            }
+            fl.pressed = false;
+          }
+        } else if (r.type === 'water') {
+          for (j = 0; j < r.logs.length; j++) r.logs[j].p += r.speed * dt;
+        } else if (r.type === 'rail') {
+          r.timer -= dt;
+          if (r.state === 'idle') {
+            if (r.timer <= 0) {
+              r.state = 'warn';
+              r.timer = 1.35;
+              r.lit = 0;
+              if (Math.abs(i - playerRow) < 9) PP.Audio.horn();
+            }
+          } else if (r.state === 'warn') {
+            r.lit += dt;
+            if (r.timer <= 0) {
+              r.state = 'train';
+              r.trainX = r.dir > 0 ? CFG.TRACK_MIN - r.trainW : CFG.TRACK_MAX + r.trainW;
+            }
+          } else {
+            r.trainX += r.dir * r.speed * dt;
+            var done = r.dir > 0
+              ? r.trainX - r.trainW / 2 > CFG.TRACK_MAX
+              : r.trainX + r.trainW / 2 < CFG.TRACK_MIN;
+            if (done) {
+              r.state = 'idle';
+              r.timer = U.rand(2.2, 5.0);
+            }
+          }
+        }
+      }
+
+      // Prune what nobody can see any more.
+      for (var key in rows) {
+        if (Object.prototype.hasOwnProperty.call(rows, key) && (+key) < lo - 4) delete rows[key];
+      }
+    },
+
+    /* Is this tile walkable? Off-map and scenery both block. */
+    isBlocked: function (x, rowIndex) {
+      if (x < CFG.X_MIN || x > CFG.X_MAX) return true;
+      var r = rowAt(rowIndex);
+      if (!r) return true;
+      if (r.type === 'checkpoint') return Math.abs(x - r.gateX) > 1;
+      return r.type === 'grass' && !!r.blocked[x];
+    },
+
+    /* The log/raft under this point, or null. A landing that catches the very
+       end of a log counts — the alternative is losing runs to a few pixels. */
+    logUnder: function (x, rowIndex) {
+      var r = rowAt(rowIndex);
+      if (!r || r.type !== 'water') return null;
+      for (var i = 0; i < r.logs.length; i++) {
+        var lg = r.logs[i];
+        var lx = logX(r, lg);
+        if (x > lx - lg.w / 2 - 0.45 && x < lx + lg.w / 2 + 0.45) return lg;
+      }
+      return null;
+    },
+
+    /* A vehicle overlapping this point, or null. */
+    carAt: function (x, rowIndex, halfWidth) {
+      var r = rowAt(rowIndex);
+      if (!r || (r.type !== 'road' && r.type !== 'parade')) return null;
+      for (var i = 0; i < r.cars.length; i++) {
+        var car = r.cars[i];
+        var cx = carX(r, car);
+        if (Math.abs(cx - x) < car.w / 2 + halfWidth) return car;
+      }
+      return null;
+    },
+
+    /* The floe under this tile, or null. */
+    floeAt: function (x, rowIndex) {
+      var r = rowAt(rowIndex);
+      if (!r || r.type !== 'ice') return null;
+      return r.floes[Math.round(x)] || null;
+    },
+
+    trainAt: function (x, rowIndex, halfWidth) {
+      var r = rowAt(rowIndex);
+      if (!r || r.type !== 'rail' || r.state !== 'train') return false;
+      return Math.abs(r.trainX - x) < r.trainW / 2 + halfWidth;
+    },
+
+    coinAt: function (x, rowIndex) {
+      var r = rowAt(rowIndex);
+      if (!r || !r.coin || r.coin.taken || r.coin.x !== x) return null;
+      return r.coin;
+    }
+  };
+
+  PP.World = World;
+})(window);
+</script>
+<script>
+/* All drawing. A faux-3D side-on view: the world is a stack of horizontal
+   bands, near rows are lower on screen, everything is drawn far-to-near so
+   tall scenery occludes correctly.
+
+   The scene is lit by one low sun at the upper right. Everything follows
+   that: long shadows fall to the lower left, sun-facing edges catch a warm
+   highlight, water blushes near the horizon, and a full-screen dusk grade
+   cools the foreground where the night (and the Collective) is coming from. */
+(function (global) {
+  'use strict';
+
+  var PP = global.PP;
+  var U = PP.U;
+  var CH = PP.Characters;
+
+  var canvas, ctx;
+  var view = { w: 0, h: 0, dpr: 1, tile: 48, rowH: 42, baseY: 0 };
+  var horizonY = 0;          // set each frame before the rows are drawn
+
+  /* Deterministic per-tile randomness — same result every frame, no state. */
+  function hash(a, b) {
+    var h = (a | 0) * 374761393 + (b | 0) * 668265263 + 1013904223;
+    h = (h ^ (h >>> 13)) >>> 0;
+    h = (h * 1274126177) >>> 0;
+    return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+  }
+
+  /* Small tiling noise textures, built once and reused as fill patterns. */
+  var patterns = {};
+
+  function makePattern(name, size, paint) {
+    var c = document.createElement('canvas');
+    c.width = c.height = size;
+    var g = c.getContext('2d');
+    paint(g, size);
+    patterns[name] = ctx.createPattern(c, 'repeat');
+  }
+
+  function buildPatterns() {
+    makePattern('asphalt', 64, function (g, s) {
+      for (var i = 0; i < 110; i++) {
+        g.fillStyle = hash(i, 37) < 0.45 ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.11)';
+        g.fillRect(Math.floor(hash(i, 11) * s), Math.floor(hash(i, 23) * s), 2, 2);
+      }
+    });
+    makePattern('ballast', 64, function (g, s) {
+      for (var i = 0; i < 80; i++) {
+        var c2 = hash(i, 83);
+        g.fillStyle = c2 < 0.33 ? 'rgba(255,255,255,0.10)'
+          : (c2 < 0.66 ? 'rgba(0,0,0,0.17)' : 'rgba(122,100,78,0.20)');
+        g.fillRect(Math.floor(hash(i, 51) * s), Math.floor(hash(i, 67) * s), 2, 2);
+      }
+    });
+  }
+
+  function resize() {
+    var w = canvas.clientWidth || global.innerWidth;
+    var h = canvas.clientHeight || global.innerHeight;
+    var dpr = Math.min(global.devicePixelRatio || 1, 2);
+
+    canvas.width = Math.round(w * dpr);
+    canvas.height = Math.round(h * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    view.w = w;
+    view.h = h;
+    view.dpr = dpr;
+    // Fit roughly 11 columns across, but never let tiles get silly.
+    view.tile = U.clamp(Math.min(w / 11, h / 12), 26, 96);
+    view.rowH = view.tile * 0.84;
+    view.baseY = h * 0.64;
+  }
+
+  function sx(wx, cam) { return view.w / 2 + (wx - cam.x) * view.tile; }
+  function sy(row, cam) { return view.baseY - (row - cam.row) * view.rowH; }
+
+  /* The one light source: a long soft shadow cast toward the lower left. */
+  function longShadow(x, y, len, girth, alpha) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(1, 0.45);
+    ctx.rotate(2.62);
+    ctx.globalAlpha *= (alpha === undefined ? 0.14 : alpha);
+    ctx.fillStyle = '#160b26';
+    U.ellipse(ctx, len * 0.5, 0, len * 0.55, girth);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  /* ── Backdrop ───────────────────────────────────────────────────── */
+
+  function drawSky(cam, t) {
+    var hz = horizonY;
+    var g = ctx.createLinearGradient(0, 0, 0, hz + 40);
+    g.addColorStop(0, '#191026');
+    g.addColorStop(0.42, '#43203f');
+    g.addColorStop(0.72, '#8a4148');
+    g.addColorStop(0.92, '#d8874f');
+    g.addColorStop(1, '#f4b463');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, view.w, hz + 42);
+
+    // First stars, only high where the dusk is already deep.
+    ctx.fillStyle = '#ffe9c8';
+    var i;
+    for (i = 0; i < 24; i++) {
+      var stx = hash(i, 91) * view.w;
+      var sty = hash(i, 57) * hz * 0.42;
+      var tw = 0.1 + 0.5 * Math.max(0, Math.sin(t * (1.2 + hash(i, 3)) + i * 2.1));
+      ctx.globalAlpha = Math.max(0, tw * (1 - sty / (hz * 0.5)));
+      ctx.fillRect(stx, sty, 1.6, 1.6);
+    }
+    ctx.globalAlpha = 1;
+
+    // Slow flat clouds, barely lighter than the sky.
+    for (i = 0; i < 4; i++) {
+      var cw = view.w * (0.14 + 0.1 * hash(i, 9));
+      var cx = U.mod(hash(i, 11) * view.w + t * (2.5 + i) - cam.x * view.tile * 0.04, view.w + cw * 2) - cw;
+      var cy = hz * (0.2 + 0.15 * hash(i, 7));
+      ctx.fillStyle = 'rgba(46,29,62,0.42)';
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, cw * 0.55, cw * 0.14, 0, 0, Math.PI * 2);
+      ctx.ellipse(cx - cw * 0.3, cy + cw * 0.04, cw * 0.32, cw * 0.1, 0, 0, Math.PI * 2);
+      ctx.ellipse(cx + cw * 0.33, cy + cw * 0.05, cw * 0.3, cw * 0.09, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // The low sun, with a halo and a flat band of flare along the horizon.
+    var sunX = view.w * 0.72, sunY = hz - view.h * 0.045;
+    var sunR = Math.min(view.w, view.h) * 0.05;
+    var halo = ctx.createRadialGradient(sunX, sunY, sunR * 0.4, sunX, sunY, sunR * 3.4);
+    halo.addColorStop(0, 'rgba(255,196,120,0.36)');
+    halo.addColorStop(1, 'rgba(255,196,120,0)');
+    ctx.fillStyle = halo;
+    U.ellipse(ctx, sunX, sunY, sunR * 3.4, sunR * 3.4);
+    ctx.fill();
+    ctx.fillStyle = '#ffedc2';
+    U.ellipse(ctx, sunX, sunY, sunR, sunR);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,180,100,0.12)';
+    U.ellipse(ctx, sunX, sunY, view.w * 0.4, sunR * 0.55);
+    ctx.fill();
+
+    // Skyline in two parallax layers; the far one owns the smokestacks.
+    var off2 = U.mod(cam.x * view.tile * 0.12, 90);
+    for (i = -1; i < view.w / 90 + 2; i++) {
+      var bx2 = i * 90 - off2;
+      var bh2 = 22 + ((i * 29) % 4) * 11;
+      ctx.fillStyle = 'rgba(88,52,84,0.42)';
+      ctx.fillRect(bx2, hz - bh2, 70, bh2);
+      if (((i % 5) + 5) % 5 === 2) {
+        ctx.fillRect(bx2 + 52, hz - bh2 - 26, 9, 26);
+        ctx.fillStyle = '#9c8ba0';
+        for (var sm = 0; sm < 3; sm++) {
+          var ph = U.mod(t * 0.22 + sm / 3 + i * 0.13, 1);
+          ctx.globalAlpha = (1 - ph) * 0.28;
+          U.ellipse(ctx, bx2 + 56 + ph * 26 + Math.sin(t + sm) * 3,
+            hz - bh2 - 28 - ph * 30, 6 + ph * 10, 5 + ph * 7);
+          ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+      }
+    }
+    var off = U.mod(cam.x * view.tile * 0.25, 120);
+    for (i = -1; i < view.w / 120 + 2; i++) {
+      var bx = i * 120 - off;
+      var bh = 38 + ((i * 37) % 5) * 15;
+      ctx.fillStyle = 'rgba(34,22,44,0.88)';
+      ctx.fillRect(bx, hz - bh, 96, bh);
+      ctx.fillStyle = 'rgba(255,186,110,0.14)';
+      for (var wy = 0; wy < bh - 14; wy += 14) {
+        for (var wx2 = 0; wx2 < 80; wx2 += 18) {
+          if (((i * 7 + wy + wx2) % 5) < 2) ctx.fillRect(bx + 8 + wx2, hz - bh + 8 + wy, 8, 7);
+        }
+      }
+    }
+
+    // Warm haze pooling where the city meets the ground.
+    var hzg = ctx.createLinearGradient(0, hz - 26, 0, hz + 56);
+    hzg.addColorStop(0, 'rgba(244,180,99,0)');
+    hzg.addColorStop(1, 'rgba(150,84,66,0.5)');
+    ctx.fillStyle = hzg;
+    ctx.fillRect(0, hz - 26, view.w, 84);
+  }
+
+  /* ── Terrain bands ──────────────────────────────────────────────── */
+
+  function drawBand(row, cam, t) {
+    var top = sy(row.index, cam) - view.rowH / 2;
+    var h = view.rowH;
+    var x0 = 0, x1 = view.w;
+    var col, c0, c1;
+    var above, below;
+
+    if (row.type === 'grass') {
+      var even = row.index % 2 === 0;
+      ctx.fillStyle = even ? '#569441' : '#5fa049';
+      ctx.fillRect(x0, top, x1, h);
+
+      // The Crossy signature: per-tile checkering, kept very quiet.
+      c0 = Math.floor(cam.x - (view.w / view.tile) / 2) - 1;
+      c1 = c0 + Math.ceil(view.w / view.tile) + 2;
+      ctx.fillStyle = 'rgba(255,250,215,0.055)';
+      for (col = c0; col <= c1; col++) {
+        if (U.mod(col + row.index, 2) === 0) {
+          ctx.fillRect(sx(col, cam) - view.tile / 2, top, view.tile + 0.5, h);
+        }
+      }
+
+      // Mottled darker patches and the odd wildflower, fixed per tile.
+      for (col = c0; col <= c1; col++) {
+        var r1 = hash(row.index * 13 + 5, col);
+        if (r1 < 0.14) {
+          ctx.fillStyle = 'rgba(26,64,22,0.12)';
+          U.ellipse(ctx, sx(col, cam) + (r1 * 6 - 0.4) * view.tile * 0.5,
+            top + h * (0.25 + U.mod(r1 * 91, 0.5)), view.tile * 0.3, view.tile * 0.12);
+          ctx.fill();
+        }
+        var r2 = hash(row.index * 13 + 9, col);
+        if (r2 < 0.1 && !(row.blocked && row.blocked[col])) {
+          var fx = sx(col, cam) + (r2 * 8 - 0.45) * view.tile * 0.6;
+          var fy = top + h * (0.3 + U.mod(r2 * 137, 0.45));
+          ctx.fillStyle = ['#ef8a6a', '#b48ad0', '#e8e0f2'][(r2 * 997 | 0) % 3];
+          U.ellipse(ctx, fx, fy, view.tile * 0.035, view.tile * 0.035);
+          ctx.fill();
+          ctx.fillStyle = 'rgba(255,246,200,0.5)';
+          U.ellipse(ctx, fx, fy, view.tile * 0.010, view.tile * 0.010);
+          ctx.fill();
+        }
+      }
+
+      // Sun catches the far edge; the near edge steps down into shadow.
+      ctx.fillStyle = 'rgba(255,240,190,0.10)';
+      ctx.fillRect(x0, top, x1, h * 0.09);
+      ctx.fillStyle = 'rgba(0,0,0,0.14)';
+      ctx.fillRect(x0, top + h * 0.92, x1, h * 0.08);
+    } else if (row.type === 'road') {
+      ctx.fillStyle = '#37333e';
+      ctx.fillRect(x0, top, x1, h);
+      if (patterns.asphalt) {
+        ctx.globalAlpha = 0.55;
+        ctx.fillStyle = patterns.asphalt;
+        ctx.fillRect(x0, top, x1, h);
+        ctx.globalAlpha = 1;
+      }
+      // Wheel-worn tracks where the traffic actually runs.
+      ctx.fillStyle = 'rgba(0,0,0,0.10)';
+      ctx.fillRect(x0, top + h * 0.30, x1, h * 0.13);
+      ctx.fillRect(x0, top + h * 0.62, x1, h * 0.13);
+      ctx.fillStyle = 'rgba(0,0,0,0.20)';
+      ctx.fillRect(x0, top, x1, h * 0.08);
+
+      above = PP.World.row(row.index + 1);
+      below = row.index > 0 ? PP.World.row(row.index - 1) : null;
+      if (above && above.type === 'road') {
+        // Shared boundary between two lanes: a dashed divider, anchored
+        // to the world so it doesn't swim when the camera pans.
+        ctx.strokeStyle = 'rgba(238,224,196,0.32)';
+        ctx.lineWidth = Math.max(2, view.tile * 0.045);
+        ctx.setLineDash([view.tile * 0.45, view.tile * 0.5]);
+        ctx.lineDashOffset = U.mod(cam.x * view.tile, view.tile * 0.95);
+        ctx.beginPath();
+        ctx.moveTo(0, top + 1);
+        ctx.lineTo(view.w, top + 1);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.lineDashOffset = 0;
+      } else {
+        ctx.fillStyle = 'rgba(238,224,196,0.30)';
+        ctx.fillRect(x0, top + h * 0.05, x1, Math.max(2, h * 0.035));
+      }
+      if (!(below && below.type === 'road')) {
+        ctx.fillStyle = 'rgba(238,224,196,0.30)';
+        ctx.fillRect(x0, top + h * 0.92, x1, Math.max(2, h * 0.035));
+      }
+    } else if (row.type === 'water') {
+      // Water blushes toward the horizon, reflecting the dusk.
+      var wf = U.clamp(1 - (top - horizonY) / (view.h * 0.55), 0, 1);
+      var grad = ctx.createLinearGradient(0, top, 0, top + h);
+      grad.addColorStop(0, U.mixHex('#1c4d78', '#8a5a64', wf * 0.55));
+      grad.addColorStop(1, U.mixHex('#2b6f9d', '#a06a5e', wf * 0.35));
+      ctx.fillStyle = grad;
+      ctx.fillRect(x0, top, x1, h);
+
+      // Specular glints drifting with the current.
+      ctx.fillStyle = 'rgba(255,230,190,0.5)';
+      for (var k = 0; k < 9; k++) {
+        var gp = U.mod(hash(row.index, k) * (view.w + 80) +
+          t * row.dir * row.speed * view.tile * 0.55, view.w + 80) - 40;
+        var gy = top + h * (0.18 + U.mod(hash(row.index, k + 40) * 7, 0.62));
+        ctx.globalAlpha = Math.max(0, 0.16 + 0.16 * Math.sin(t * 2.4 + k * 1.7 + row.index));
+        ctx.fillRect(gp, gy, view.tile * (0.16 + hash(row.index, k + 80) * 0.22), Math.max(1.5, view.tile * 0.03));
+      }
+      ctx.globalAlpha = 1;
+
+      // Faint travelling ripple arcs.
+      ctx.strokeStyle = 'rgba(255,255,255,0.10)';
+      ctx.lineWidth = 2;
+      for (k = 0; k < 6; k++) {
+        var phase = t * (row.dir > 0 ? 26 : -26) + k * 100 + row.index * 31;
+        var rx = U.mod(phase, view.w + 120) - 60;
+        var ry = top + h * (0.25 + ((k * 3 + row.index) % 3) * 0.22);
+        ctx.beginPath();
+        ctx.arc(rx, ry + 6, 12, Math.PI * 1.15, Math.PI * 1.85);
+        ctx.stroke();
+      }
+
+      above = PP.World.row(row.index + 1);
+      below = row.index > 0 ? PP.World.row(row.index - 1) : null;
+      if (!(above && above.type === 'water')) {
+        ctx.fillStyle = 'rgba(0,0,0,0.25)';       // bank shadow
+        ctx.fillRect(x0, top, x1, h * 0.10);
+      }
+      if (!(below && below.type === 'water')) {
+        ctx.fillStyle = 'rgba(255,255,255,0.14)'; // waterline sparkle
+        ctx.fillRect(x0, top + h - 2, x1, 2);
+      }
+    } else if (row.type === 'ice') {
+      // A frozen river: pale, glassy, faintly blushing at the horizon.
+      var wf2 = U.clamp(1 - (top - horizonY) / (view.h * 0.55), 0, 1);
+      var ig = ctx.createLinearGradient(0, top, 0, top + h);
+      ig.addColorStop(0, U.mixHex('#7fa8c4', '#a88a92', wf2 * 0.4));
+      ig.addColorStop(1, U.mixHex('#93bdd4', '#b29592', wf2 * 0.0 + 0));
+      ctx.fillStyle = ig;
+      ctx.fillRect(x0, top, x1, h);
+      // Frost sparkles.
+      ctx.fillStyle = '#ffffff';
+      for (var sp2 = 0; sp2 < 10; sp2++) {
+        var spx2 = hash(row.index, sp2 + 200) * view.w;
+        var spy2 = top + h * (0.15 + U.mod(hash(row.index, sp2 + 300) * 7, 0.7));
+        ctx.globalAlpha = Math.max(0, 0.25 * Math.sin(t * 2 + sp2 * 2.2 + row.index));
+        ctx.fillRect(spx2, spy2, 2, 2);
+      }
+      ctx.globalAlpha = 1;
+      above = PP.World.row(row.index + 1);
+      below = row.index > 0 ? PP.World.row(row.index - 1) : null;
+      if (!(above && above.type === 'ice')) {
+        ctx.fillStyle = 'rgba(0,0,0,0.20)';
+        ctx.fillRect(x0, top, x1, h * 0.09);
+      }
+      if (!(below && below.type === 'ice')) {
+        ctx.fillStyle = 'rgba(255,255,255,0.18)';
+        ctx.fillRect(x0, top + h - 2, x1, 2);
+      }
+    } else if (row.type === 'parade') {
+      // A paved parade route with a red runner and bunting.
+      ctx.fillStyle = '#4a4450';
+      ctx.fillRect(x0, top, x1, h);
+      if (patterns.asphalt) {
+        ctx.globalAlpha = 0.4;
+        ctx.fillStyle = patterns.asphalt;
+        ctx.fillRect(x0, top, x1, h);
+        ctx.globalAlpha = 1;
+      }
+      ctx.fillStyle = 'rgba(165,20,36,0.30)';
+      ctx.fillRect(x0, top + h * 0.24, x1, h * 0.55);
+      ctx.fillStyle = 'rgba(245,197,66,0.25)';
+      ctx.fillRect(x0, top + h * 0.24, x1, 2);
+      ctx.fillRect(x0, top + h * 0.79 - 2, x1, 2);
+      ctx.fillStyle = 'rgba(0,0,0,0.20)';
+      ctx.fillRect(x0, top, x1, h * 0.08);
+      // Bunting along the far edge, anchored to the world.
+      var bstep = view.tile * 0.5;
+      for (var bx3 = U.mod(-cam.x * view.tile, bstep) - bstep; bx3 < view.w; bx3 += bstep) {
+        ctx.fillStyle = ((bx3 / bstep) | 0) % 2 ? '#c8102e' : '#f5c542';
+        ctx.beginPath();
+        ctx.moveTo(bx3, top + 2);
+        ctx.lineTo(bx3 + bstep * 0.5, top + 2);
+        ctx.lineTo(bx3 + bstep * 0.25, top + h * 0.14);
+        ctx.closePath();
+        ctx.fill();
+      }
+    } else if (row.type === 'checkpoint') {
+      ctx.fillStyle = '#6b6155';
+      ctx.fillRect(x0, top, x1, h);
+      if (patterns.ballast) {
+        ctx.globalAlpha = 0.4;
+        ctx.fillStyle = patterns.ballast;
+        ctx.fillRect(x0, top, x1, h);
+        ctx.globalAlpha = 1;
+      }
+      ctx.fillStyle = 'rgba(0,0,0,0.20)';
+      ctx.fillRect(x0, top, x1, h * 0.08);
+    } else if (row.type === 'rail') {
+      ctx.fillStyle = '#665d50';
+      ctx.fillRect(x0, top, x1, h);
+      if (patterns.ballast) {
+        ctx.globalAlpha = 0.6;
+        ctx.fillStyle = patterns.ballast;
+        ctx.fillRect(x0, top, x1, h);
+        ctx.globalAlpha = 1;
+      }
+      ctx.fillStyle = 'rgba(0,0,0,0.16)';
+      ctx.fillRect(x0, top, x1, h * 0.09);
+      // Sleepers, anchored to the world.
+      ctx.fillStyle = '#463a2d';
+      var step = view.tile * 0.55;
+      for (var sxp = U.mod(-cam.x * view.tile, step) - step; sxp < view.w; sxp += step) {
+        ctx.fillRect(sxp, top + h * 0.2, step * 0.42, h * 0.6);
+      }
+      // Rails: dark base, bright sun glint along the top edge.
+      ctx.fillStyle = '#57504a';
+      ctx.fillRect(x0, top + h * 0.30, x1, Math.max(2.5, h * 0.075));
+      ctx.fillRect(x0, top + h * 0.63, x1, Math.max(2.5, h * 0.075));
+      ctx.fillStyle = 'rgba(235,222,200,0.55)';
+      ctx.fillRect(x0, top + h * 0.30, x1, 1.5);
+      ctx.fillRect(x0, top + h * 0.63, x1, 1.5);
+    }
+  }
+
+  /* ── Scenery ────────────────────────────────────────────────────── */
+
+  function drawFence(row, cam) {
+    var y = sy(row.index, cam) + view.rowH * 0.30;
+    var s = view.tile;
+    var gapL = sx(-0.55, cam), gapR = sx(0.55, cam);
+
+    ctx.fillStyle = '#7a5c3a';
+    for (var x = PP.World.CFG.X_MIN - 1; x <= PP.World.CFG.X_MAX + 1; x += 1) {
+      if (x === 0) continue;                    // the gate you bolted through
+      var px = sx(x, cam);
+      ctx.fillRect(px - s * 0.05, y - s * 0.42, s * 0.10, s * 0.42);
+    }
+    // Rails, split around the open gate.
+    [[0, gapL], [gapR, view.w]].forEach(function (seg) {
+      var w2 = Math.max(0, seg[1] - seg[0]);
+      ctx.fillRect(seg[0], y - s * 0.34, w2, s * 0.07);
+      ctx.fillRect(seg[0], y - s * 0.18, w2, s * 0.07);
+    });
+    ctx.fillStyle = 'rgba(0,0,0,0.15)';
+    ctx.fillRect(0, y - s * 0.11, view.w, s * 0.04);
+
+    // Both gate leaves flung wide toward the camera, still swinging.
+    var t2 = PP.World.time();
+    [[gapL, 1], [gapR, -1]].forEach(function (gate) {
+      ctx.save();
+      longShadow(gate[0] + gate[1] * s * 0.2, y + s * 0.06, s * 0.4, s * 0.08, 0.1);
+      ctx.translate(gate[0], y - s * 0.30);
+      ctx.rotate(gate[1] * (0.92 + Math.sin(t2 * 1.1 + gate[1]) * 0.05));
+      ctx.fillStyle = '#9a7a50';
+      ctx.fillRect(0, -s * 0.035, s * 0.46 * gate[1], s * 0.07);
+      ctx.fillRect(0, s * 0.10, s * 0.46 * gate[1], s * 0.07);
+      ctx.fillRect(gate[1] * s * 0.38, -s * 0.05, gate[1] * s * 0.08, s * 0.26);
+      ctx.restore();
+    });
+
+    // The supper you abandoned: a tipped bowl, kibble everywhere.
+    var bx = sx(0.85, cam), by = y + s * 0.14;
+    ctx.fillStyle = '#8a352d';
+    U.ellipse(ctx, bx, by, s * 0.12, s * 0.05);
+    ctx.fill();
+    ctx.fillStyle = '#b34a3f';
+    U.ellipse(ctx, bx - s * 0.02, by - s * 0.035, s * 0.10, s * 0.04);
+    ctx.fill();
+    ctx.fillStyle = '#e8c07a';
+    [[-0.22, 0.05], [-0.3, 0.1], [-0.16, 0.12]].forEach(function (kb) {
+      U.ellipse(ctx, bx + kb[0] * s, by + kb[1] * s, s * 0.025, s * 0.02);
+      ctx.fill();
+    });
+  }
+
+  function drawDecor(row, d, cam, t) {
+    var x = sx(d.x, cam);
+    var y = sy(row.index, cam) + view.rowH * 0.22;
+    var s = view.tile;
+
+    ctx.save();
+    if (d.kind === 'tree') {
+      var th = s * d.h;
+      var sway = Math.sin(t * 1.4 + d.seed * 9) * s * 0.02;
+      longShadow(x, y, th * 1.0, s * 0.28);
+      ctx.fillStyle = 'rgba(40,24,58,0.24)';
+      U.ellipse(ctx, x, y, s * 0.30, s * 0.11);
+      ctx.fill();
+
+      if (d.seed < 0.35) {
+        // Conifer: a stack of shaded wedges.
+        ctx.fillStyle = '#4c3722';
+        ctx.fillRect(x - s * 0.07, y - th * 0.3, s * 0.14, th * 0.3);
+        var layers = 3;
+        for (var li = 0; li < layers; li++) {
+          var f = li / layers;
+          var lw = s * (0.44 - f * 0.13);
+          var base = y - th * (0.22 + f * 0.30);
+          var tip = y - th * (0.58 + f * 0.30);
+          ctx.fillStyle = li % 2 ? '#356e3b' : '#2c5b33';
+          ctx.beginPath();
+          ctx.moveTo(x - lw + sway * f, base);
+          ctx.lineTo(x + sway * (f + 0.5), tip);
+          ctx.lineTo(x + lw + sway * f, base);
+          ctx.closePath();
+          ctx.fill();
+          // Sun-side edge.
+          ctx.fillStyle = 'rgba(255,214,140,0.14)';
+          ctx.beginPath();
+          ctx.moveTo(x + sway * (f + 0.5), tip);
+          ctx.lineTo(x + lw + sway * f, base);
+          ctx.lineTo(x + lw * 0.55 + sway * f, base);
+          ctx.closePath();
+          ctx.fill();
+        }
+      } else {
+        ctx.fillStyle = '#5b3d26';
+        ctx.fillRect(x - s * 0.09, y - th * 0.45, s * 0.18, th * 0.45);
+        var lay = 3;
+        for (var i = 0; i < lay; i++) {
+          var ff = i / (lay - 1);
+          ctx.fillStyle = i === 0 ? '#2f6b34' : (i === 1 ? '#38803d' : '#43964a');
+          U.ellipse(ctx, x + sway * (0.4 + ff), y - th * (0.42 + ff * 0.42),
+            s * (0.42 - ff * 0.10), s * (0.28 - ff * 0.06));
+          ctx.fill();
+        }
+        // Warm rim where the sun grazes the canopy.
+        ctx.fillStyle = 'rgba(255,214,140,0.18)';
+        U.ellipse(ctx, x + s * 0.15 + sway * 1.4, y - th * 0.88, s * 0.16, s * 0.09);
+        ctx.fill();
+      }
+    } else if (d.kind === 'bush') {
+      longShadow(x, y, s * 0.45, s * 0.20);
+      ctx.fillStyle = 'rgba(40,24,58,0.22)';
+      U.ellipse(ctx, x, y, s * 0.30, s * 0.10);
+      ctx.fill();
+      ctx.fillStyle = '#356f39';
+      U.ellipse(ctx, x - s * 0.13, y - s * 0.14, s * 0.22, s * 0.18);
+      ctx.fill();
+      U.ellipse(ctx, x + s * 0.13, y - s * 0.16, s * 0.20, s * 0.17);
+      ctx.fill();
+      ctx.fillStyle = '#40853f';
+      U.ellipse(ctx, x, y - s * 0.26, s * 0.26, s * 0.21);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(255,214,140,0.16)';
+      U.ellipse(ctx, x + s * 0.12, y - s * 0.34, s * 0.10, s * 0.06);
+      ctx.fill();
+      // A few berries.
+      ctx.fillStyle = '#c94f4f';
+      for (var bi = 0; bi < 3; bi++) {
+        U.ellipse(ctx, x + (hash(row.index, bi + 7) - 0.5) * s * 0.4,
+          y - s * (0.12 + hash(row.index, bi + 17) * 0.2), s * 0.025, s * 0.025);
+        ctx.fill();
+      }
+    } else if (d.kind === 'rock') {
+      longShadow(x, y, s * 0.5, s * 0.22);
+      ctx.fillStyle = 'rgba(40,24,58,0.22)';
+      U.ellipse(ctx, x, y, s * 0.32, s * 0.11);
+      ctx.fill();
+      ctx.fillStyle = '#8d8a86';
+      ctx.beginPath();
+      ctx.moveTo(x - s * 0.30, y);
+      ctx.lineTo(x - s * 0.20, y - s * 0.34);
+      ctx.lineTo(x + s * 0.06, y - s * 0.42);
+      ctx.lineTo(x + s * 0.30, y - s * 0.12);
+      ctx.lineTo(x + s * 0.24, y);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = 'rgba(255,236,190,0.28)';
+      ctx.beginPath();
+      ctx.moveTo(x + s * 0.06, y - s * 0.42);
+      ctx.lineTo(x + s * 0.30, y - s * 0.12);
+      ctx.lineTo(x + s * 0.10, y - s * 0.16);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = 'rgba(53,111,57,0.5)';
+      U.ellipse(ctx, x - s * 0.16, y - s * 0.05, s * 0.09, s * 0.04);
+      ctx.fill();
+    } else if (d.kind === 'bust') {
+      longShadow(x, y, s * 0.9, s * 0.26);
+      ctx.fillStyle = 'rgba(40,24,58,0.24)';
+      U.ellipse(ctx, x, y, s * 0.34, s * 0.12);
+      ctx.fill();
+      ctx.fillStyle = '#8b8177';
+      ctx.fillRect(x - s * 0.24, y - s * 0.52, s * 0.48, s * 0.52);
+      ctx.fillStyle = '#9c9288';
+      ctx.fillRect(x - s * 0.30, y - s * 0.58, s * 0.60, s * 0.10);
+      ctx.fillStyle = '#b4a99c';
+      U.roundRect(ctx, x - s * 0.17, y - s * 0.98, s * 0.34, s * 0.40, s * 0.10);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(x - s * 0.16, y - s * 0.94);
+      ctx.lineTo(x - s * 0.10, y - s * 1.14);
+      ctx.lineTo(x - s * 0.03, y - s * 0.94);
+      ctx.closePath();
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(x + s * 0.03, y - s * 0.94);
+      ctx.lineTo(x + s * 0.10, y - s * 1.14);
+      ctx.lineTo(x + s * 0.16, y - s * 0.94);
+      ctx.closePath();
+      ctx.fill();
+      // Sunlit cheek.
+      ctx.fillStyle = 'rgba(255,222,170,0.25)';
+      U.ellipse(ctx, x + s * 0.09, y - s * 0.82, s * 0.05, s * 0.09);
+      ctx.fill();
+      ctx.fillStyle = '#c8102e';
+      CH.star(ctx, x, y - s * 0.30, s * 0.11);
+    } else if (d.kind === 'banner') {
+      var wave = Math.sin(t * 3 + d.seed * 9) * s * 0.06;
+      longShadow(x, y, s * 1.0, s * 0.10);
+      ctx.fillStyle = 'rgba(40,24,58,0.22)';
+      U.ellipse(ctx, x, y, s * 0.14, s * 0.06);
+      ctx.fill();
+      ctx.fillStyle = '#6d6259';
+      ctx.fillRect(x - s * 0.03, y - s * 1.25, s * 0.06, s * 1.25);
+      ctx.fillStyle = '#c8102e';
+      ctx.beginPath();
+      ctx.moveTo(x + s * 0.02, y - s * 1.22);
+      ctx.lineTo(x + s * 0.56 + wave, y - s * 1.16);
+      ctx.lineTo(x + s * 0.56 + wave, y - s * 0.68);
+      ctx.lineTo(x + s * 0.02, y - s * 0.74);
+      ctx.closePath();
+      ctx.fill();
+      // Shaded fold.
+      ctx.fillStyle = 'rgba(0,0,0,0.15)';
+      ctx.beginPath();
+      ctx.moveTo(x + s * 0.28 + wave * 0.5, y - s * 1.19);
+      ctx.lineTo(x + s * 0.40 + wave * 0.8, y - s * 1.18);
+      ctx.lineTo(x + s * 0.40 + wave * 0.8, y - s * 0.71);
+      ctx.lineTo(x + s * 0.28 + wave * 0.5, y - s * 0.72);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = '#f5c542';
+      CH.star(ctx, x + s * 0.29 + wave * 0.5, y - s * 0.96, s * 0.13);
+    }
+    ctx.restore();
+  }
+
+  function drawCoin(row, cam, t) {
+    var c = row.coin;
+    if (!c || c.taken) return;
+    var x = sx(c.x, cam);
+    var bob = Math.sin(t * 3 + c.bob) * view.tile * 0.07;
+    var y = sy(row.index, cam) + view.rowH * 0.10 + bob;
+    var s = view.tile;
+    var squeeze = Math.abs(Math.cos(t * 2.2 + c.bob));
+    var groundY = sy(row.index, cam) + view.rowH * 0.24;
+
+    ctx.save();
+    longShadow(x, groundY, s * 0.3, s * 0.09, 0.1);
+    ctx.fillStyle = 'rgba(40,24,58,0.22)';
+    U.ellipse(ctx, x, groundY, s * 0.16, s * 0.06);
+    ctx.fill();
+
+    ctx.translate(x, y);
+    ctx.scale(0.35 + squeeze * 0.65, 1);
+    // A gold bone: universal currency for cats and dogs alike.
+    ctx.fillStyle = '#f5c542';
+    U.roundRect(ctx, -s * 0.20, -s * 0.06, s * 0.40, s * 0.12, s * 0.05);
+    ctx.fill();
+    [-1, 1].forEach(function (sg) {
+      U.ellipse(ctx, sg * s * 0.20, -s * 0.07, s * 0.09, s * 0.08);
+      ctx.fill();
+      U.ellipse(ctx, sg * s * 0.20, s * 0.07, s * 0.09, s * 0.08);
+      ctx.fill();
+    });
+    ctx.fillStyle = 'rgba(255,255,255,0.55)';
+    U.roundRect(ctx, -s * 0.14, -s * 0.04, s * 0.20, s * 0.035, s * 0.02);
+    ctx.fill();
+    ctx.restore();
+
+    // An occasional four-point sparkle.
+    var sp = Math.sin(t * 2.6 + c.bob * 2);
+    if (sp > 0.82) {
+      var a = (sp - 0.82) / 0.18;
+      ctx.save();
+      ctx.globalAlpha = a * 0.9;
+      ctx.strokeStyle = '#fff3cf';
+      ctx.lineWidth = 1.5;
+      var spx = x + s * 0.16, spy = y - s * 0.12, r = s * 0.09 * a;
+      ctx.beginPath();
+      ctx.moveTo(spx - r, spy); ctx.lineTo(spx + r, spy);
+      ctx.moveTo(spx, spy - r); ctx.lineTo(spx, spy + r);
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+
+  /* ── Vehicles ───────────────────────────────────────────────────── */
+
+  function headBeam(lampX, lampY, s) {
+    ctx.globalCompositeOperation = 'lighter';
+    var grad = ctx.createLinearGradient(lampX, 0, lampX + s * 2.0, 0);
+    grad.addColorStop(0, 'rgba(255,190,110,0.18)');
+    grad.addColorStop(1, 'rgba(255,190,110,0)');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.moveTo(lampX, lampY);
+    ctx.lineTo(lampX + s * 2.0, lampY - s * 0.40);
+    ctx.lineTo(lampX + s * 2.0, lampY + s * 0.32);
+    ctx.closePath();
+    ctx.fill();
+    var rg = ctx.createRadialGradient(lampX - s * 0.06, lampY, 0, lampX - s * 0.06, lampY, s * 0.12);
+    rg.addColorStop(0, 'rgba(255,217,160,0.28)');
+    rg.addColorStop(1, 'rgba(255,217,160,0)');
+    ctx.fillStyle = rg;
+    U.ellipse(ctx, lampX - s * 0.06, lampY, s * 0.12, s * 0.12);
+    ctx.fill();
+    ctx.globalCompositeOperation = 'source-over';
+    // The lamp itself, so the glow has a visible source.
+    ctx.fillStyle = '#ffd9a0';
+    U.ellipse(ctx, lampX - s * 0.02, lampY, s * 0.04, s * 0.04);
+    ctx.fill();
+  }
+
+  function exhaust(px, py, s, t, seed, scale) {
+    ctx.fillStyle = '#8d867c';
+    for (var k = 0; k < 3; k++) {
+      var ph = U.mod(t * 0.8 + seed * 5 + k / 3, 1);
+      ctx.globalAlpha = (1 - ph) * 0.15;
+      U.ellipse(ctx, px - ph * s * 0.55 * scale, py - ph * s * 0.5 * scale,
+        s * (0.05 + ph * 0.14) * scale, s * (0.05 + ph * 0.12) * scale);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function drawCar(row, car, cam, t) {
+    var x = sx(PP.World.carX(row, car), cam);
+    var y = sy(row.index, cam) + view.rowH * 0.26;
+    var s = view.tile;
+    var w = car.w * s;
+    var dir = row.dir;
+
+    if (x < -w - s * 2.5 || x > view.w + w + s * 2.5) return;
+
+    ctx.save();
+    longShadow(x, y + s * 0.02, w * 0.5, s * 0.15, 0.12);
+    ctx.fillStyle = 'rgba(40,24,58,0.32)';
+    U.ellipse(ctx, x, y, w * 0.46, s * 0.12);
+    ctx.fill();
+
+    // Suspension bob — treads only rumble.
+    var bob = car.kind === 'tank'
+      ? Math.sin(t * 23 + car.seed * 40) * s * 0.004
+      : Math.sin(t * 7 + car.seed * 31) * s * 0.013;
+
+    ctx.translate(x, y + bob);
+    ctx.scale(dir, 1);
+
+    var bodyH = s * 0.42;
+    var base = -s * 0.06;
+
+    // Wheels — and they actually roll: one spoke keyed to distance
+    // travelled, plus an off-centre hub glint.
+    ctx.fillStyle = '#1b1b20';
+    [-w * 0.30, w * 0.30].forEach(function (wx) {
+      U.ellipse(ctx, wx, base, s * 0.11, s * 0.11);
+      ctx.fill();
+    });
+    if (car.kind !== 'tank') {
+      var ang = car.p * 9;
+      ctx.strokeStyle = 'rgba(255,255,255,0.22)';
+      ctx.lineWidth = 1.5;
+      [-w * 0.30, w * 0.30].forEach(function (wx) {
+        ctx.beginPath();
+        ctx.moveTo(wx - Math.cos(ang) * s * 0.07, base - Math.sin(ang) * s * 0.07);
+        ctx.lineTo(wx + Math.cos(ang) * s * 0.07, base + Math.sin(ang) * s * 0.07);
+        ctx.stroke();
+        ctx.fillStyle = 'rgba(255,255,255,0.30)';
+        U.ellipse(ctx, wx, base, s * 0.026, s * 0.026);
+        ctx.fill();
+      });
+    }
+
+    if (car.kind === 'tank') {
+      ctx.fillStyle = '#2a2a2e';
+      U.roundRect(ctx, -w / 2, base - s * 0.16, w, s * 0.22, s * 0.09);
+      ctx.fill();
+      // Tread links, crawling with the direction of travel.
+      ctx.fillStyle = 'rgba(255,255,255,0.10)';
+      var linkStep = s * 0.16;
+      var linkOff = U.mod(t * row.speed * view.tile * 0.4, linkStep);
+      for (var lx = -w / 2 + linkOff; lx < w / 2; lx += linkStep) {
+        ctx.fillRect(lx, base + s * 0.005, s * 0.05, s * 0.035);
+      }
+      ctx.fillStyle = car.color;
+      U.roundRect(ctx, -w / 2 + s * 0.04, base - bodyH, w - s * 0.08, bodyH - s * 0.12, s * 0.06);
+      ctx.fill();
+      ctx.fillStyle = U.shade(car.color, 0.16);
+      U.roundRect(ctx, -w * 0.14, base - bodyH - s * 0.26, w * 0.44, s * 0.28, s * 0.07);
+      ctx.fill();
+      ctx.fillRect(w * 0.28, base - bodyH - s * 0.16, w * 0.30, s * 0.06);
+      ctx.fillStyle = '#c8102e';
+      CH.star(ctx, -w * 0.22, base - bodyH * 0.55, s * 0.11);
+      exhaust(-w * 0.45, base - bodyH, s, t, car.seed, 1.2);
+    } else if (car.kind === 'truck') {
+      ctx.fillStyle = U.shade(car.color, -0.2);
+      U.roundRect(ctx, -w / 2, base - bodyH, w * 0.62, bodyH, s * 0.05);
+      ctx.fill();
+      ctx.fillStyle = '#8a7a63';
+      U.roundRect(ctx, -w / 2 + s * 0.02, base - bodyH - s * 0.20, w * 0.58, s * 0.24, s * 0.08);
+      ctx.fill();
+      // Tarp ropes.
+      ctx.strokeStyle = 'rgba(40,24,58,0.24)';
+      ctx.lineWidth = 1.5;
+      for (var rp = 1; rp < 4; rp++) {
+        var rx2 = -w / 2 + s * 0.02 + (w * 0.58) * rp / 4;
+        ctx.beginPath();
+        ctx.moveTo(rx2, base - bodyH - s * 0.20);
+        ctx.lineTo(rx2, base - bodyH + s * 0.04);
+        ctx.stroke();
+      }
+      ctx.fillStyle = car.color;
+      U.roundRect(ctx, w * 0.10, base - bodyH, w * 0.40, bodyH, s * 0.06);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(255,225,170,0.75)';
+      U.roundRect(ctx, w * 0.18, base - bodyH + s * 0.05, w * 0.24, s * 0.15, s * 0.03);
+      ctx.fill();
+      ctx.fillStyle = '#c8102e';
+      CH.star(ctx, -w * 0.20, base - bodyH * 0.5, s * 0.10);
+      exhaust(-w * 0.46, base - bodyH - s * 0.18, s, t, car.seed, 1);
+    } else if (car.kind === 'tractor') {
+      ctx.fillStyle = '#1b1b20';
+      U.ellipse(ctx, w * 0.28, base + s * 0.02, s * 0.17, s * 0.17);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.12)';
+      U.ellipse(ctx, w * 0.28, base + s * 0.02, s * 0.09, s * 0.09);
+      ctx.fill();
+      ctx.fillStyle = car.color;
+      U.roundRect(ctx, -w / 2, base - bodyH * 0.8, w * 0.9, bodyH * 0.8, s * 0.05);
+      ctx.fill();
+      ctx.fillStyle = U.shade(car.color, -0.25);
+      ctx.fillRect(-w * 0.34, base - bodyH * 1.35, s * 0.10, bodyH * 0.55);
+      ctx.fillStyle = '#f5c542';
+      CH.star(ctx, -w * 0.10, base - bodyH * 0.45, s * 0.09);
+      exhaust(-w * 0.30, base - bodyH * 1.35, s, t, car.seed, 0.8);
+    } else {
+      ctx.fillStyle = car.color;
+      U.roundRect(ctx, -w / 2, base - bodyH * 0.8, w, bodyH * 0.8, s * 0.07);
+      ctx.fill();
+      ctx.fillStyle = U.shade(car.color, 0.12);
+      U.roundRect(ctx, -w * 0.28, base - bodyH * 1.28, w * 0.58, bodyH * 0.55, s * 0.06);
+      ctx.fill();
+      // Dusk-lit glass: cool with a warm sun streak.
+      ctx.fillStyle = 'rgba(150,190,215,0.8)';
+      U.roundRect(ctx, -w * 0.22, base - bodyH * 1.2, w * 0.22, bodyH * 0.38, s * 0.03);
+      ctx.fill();
+      U.roundRect(ctx, w * 0.04, base - bodyH * 1.2, w * 0.22, bodyH * 0.38, s * 0.03);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(255,210,150,0.35)';
+      var stL = dir > 0 ? w * 0.06 : -w * 0.14;
+      ctx.fillRect(stL, base - bodyH * 1.18, w * 0.08, bodyH * 0.32);
+      ctx.fillStyle = '#c8102e';
+      CH.star(ctx, -w * 0.38, base - bodyH * 0.42, s * 0.09);
+    }
+
+    // Sun catches every roof.
+    ctx.fillStyle = 'rgba(255,214,150,0.26)';
+    ctx.fillRect(-w * 0.46, base - (car.kind === 'tank' ? bodyH + s * 0.24 : bodyH * (car.kind === 'sedan' || car.kind === 'jeep' ? 1.26 : 1.0)) - 1.5, w * 0.9, 2.5);
+
+    // Lights: warm beam forward, ember behind.
+    headBeam(w * 0.48, base - s * 0.16, s);
+    ctx.fillStyle = 'rgba(255,80,60,0.22)';
+    U.ellipse(ctx, -w * 0.48, base - s * 0.14, s * 0.09, s * 0.07);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,90,70,0.95)';
+    U.ellipse(ctx, -w * 0.48, base - s * 0.14, s * 0.035, s * 0.035);
+    ctx.fill();
+
+    // The driver: someone's very loyal pet.
+    if (car.kind !== 'tank') {
+      var skin = CH.enemySkin(car.skin);
+      ctx.save();
+      ctx.translate(car.kind === 'truck' ? w * 0.24 : 0, base - bodyH * (car.kind === 'truck' ? 1.0 : 1.28));
+      CH.draw(ctx, 0, s * 0.30, {
+        size: s * 0.52, char: skin, facing: 'right',
+        cap: car.seed < 0.5 ? 'ushanka' : 'cap'
+      });
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+
+  function drawTrain(row, cam, t) {
+    var s = view.tile;
+    var x = sx(row.trainX, cam);
+    var w = row.trainW * s;
+    var y = sy(row.index, cam) + view.rowH * 0.26;
+
+    ctx.save();
+    ctx.fillStyle = 'rgba(40,24,58,0.35)';
+    ctx.fillRect(x - w / 2, y - s * 0.05, w, s * 0.12);
+    ctx.translate(x, y);
+    ctx.scale(row.dir, 1);
+
+    var h = s * 0.62;
+    // Speed streaks trailing the cars.
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.strokeStyle = 'rgba(255,220,180,0.10)';
+    ctx.lineWidth = Math.max(2, s * 0.05);
+    for (var st2 = 0; st2 < 3; st2++) {
+      var sy2 = -h * (0.25 + st2 * 0.25);
+      ctx.beginPath();
+      ctx.moveTo(-w / 2 - s * (0.4 + st2 * 0.5), sy2);
+      ctx.lineTo(-w / 2 + s * 1.2, sy2);
+      ctx.stroke();
+    }
+    ctx.globalCompositeOperation = 'source-over';
+
+    ctx.fillStyle = '#6d1622';
+    U.roundRect(ctx, -w / 2, -h, w, h, s * 0.10);
+    ctx.fill();
+    ctx.fillStyle = '#8d1f2d';
+    U.roundRect(ctx, -w / 2 + s * 0.06, -h + s * 0.05, w - s * 0.12, h * 0.35, s * 0.06);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,232,180,0.8)';
+    for (var i = 0; i < row.trainW - 1; i++) {
+      ctx.fillRect(-w / 2 + s * 0.35 + i * s, -h + s * 0.12, s * 0.42, s * 0.18);
+    }
+    ctx.fillStyle = 'rgba(255,214,150,0.14)';
+    ctx.fillRect(-w / 2, -h - 1.5, w, 2.5);
+    ctx.fillStyle = '#f5c542';
+    CH.star(ctx, w * 0.36, -h * 0.42, s * 0.16);
+
+    // Stack smoke pouring off the engine.
+    ctx.fillStyle = '#a99aa5';
+    for (var k = 0; k < 5; k++) {
+      var ph = U.mod(t * 0.7 + k / 5, 1);
+      ctx.globalAlpha = (1 - ph) * 0.45;
+      U.ellipse(ctx, w / 2 - s * 0.5 - ph * s * 2.4, -h - s * 0.25 - ph * s * 0.9,
+        s * (0.1 + ph * 0.3), s * (0.09 + ph * 0.22));
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+
+    headBeam(w / 2 - s * 0.08, -h * 0.55, s * 1.6);
+    ctx.restore();
+  }
+
+  function drawRailSignals(row, cam, t) {
+    if (row.state === 'idle') return;
+    var s = view.tile;
+    var y = sy(row.index, cam) + view.rowH * 0.24;
+    // The boom arm drops through the warning with a little overshoot,
+    // and stays down while the train passes.
+    var k = row.state === 'warn' ? U.clamp(row.lit / 1.0, 0, 1) : 1;
+    var ease = 1 - Math.pow(1 - k, 3);
+    if (row.state === 'warn') ease += Math.sin(Math.min(k * 1.2, 1) * Math.PI) * 0.05;
+    [-1, 1].forEach(function (side) {
+      // World-anchored: the posts stand just outside the corridor and
+      // stay put no matter where the camera pans.
+      var x = sx(side < 0 ? PP.World.CFG.X_MIN - 0.8 : PP.World.CFG.X_MAX + 0.8, cam);
+      if (x < -s || x > view.w + s) return;
+      ctx.fillStyle = '#4a4038';
+      ctx.fillRect(x - s * 0.04, y - s * 0.9, s * 0.08, s * 0.9);
+      ctx.save();
+      ctx.translate(x, y - s * 0.86);
+      ctx.rotate(-side * ease * Math.PI / 2);
+      var seg = s * 0.85 / 4;
+      for (var a2 = 0; a2 < 4; a2++) {
+        ctx.fillStyle = a2 % 2 ? '#f0e6d6' : '#c8102e';
+        ctx.fillRect(-s * 0.035, -s * 0.85 + a2 * seg, s * 0.07, seg + 0.5);
+      }
+      ctx.restore();
+      // Lamps blink in anti-phase, so the crossing is never dark mid-warning.
+      var lit2 = Math.sin(t * 8 + (side > 0 ? Math.PI : 0)) > 0;
+      ctx.fillStyle = lit2 ? '#ff3b30' : '#a03028';
+      U.ellipse(ctx, x, y - s * 0.98, s * 0.13, s * 0.13);
+      ctx.fill();
+      if (lit2) {
+        var halo2 = ctx.createRadialGradient(x, y - s * 0.98, 0, x, y - s * 0.98, s * 0.42);
+        halo2.addColorStop(0, 'rgba(255,59,48,0.38)');
+        halo2.addColorStop(1, 'rgba(255,59,48,0)');
+        ctx.fillStyle = halo2;
+        U.ellipse(ctx, x, y - s * 0.98, s * 0.42, s * 0.42);
+        ctx.fill();
+      }
+    });
+  }
+
+  function drawLog(row, lg, cam, t) {
+    var x = sx(PP.World.logX(row, lg), cam);
+    var s = view.tile;
+    var w = lg.w * s;
+    var bob = Math.sin(t * 2.1 + lg.seed * 12) * s * 0.02;
+    var y = sy(row.index, cam) + view.rowH * 0.20 + bob;
+    if (x < -w || x > view.w + w) return;
+
+    ctx.save();
+    // Reflection-shadow, wobbling gently on the surface.
+    var wob = Math.sin(t * 3 + lg.seed * 9) * 2;
+    ctx.fillStyle = 'rgba(8,20,40,0.28)';
+    U.ellipse(ctx, x - s * 0.08 + wob, y + s * 0.13, w * 0.46, s * 0.09);
+    ctx.fill();
+
+    // Wake rippling off the trailing end.
+    ctx.strokeStyle = 'rgba(255,255,255,0.20)';
+    ctx.lineWidth = 1.5;
+    var tail = x - row.dir * (w / 2 + s * 0.08);
+    for (var wk = 0; wk < 2; wk++) {
+      var wph = U.mod(t * 1.6 + wk * 0.5 + lg.seed, 1);
+      ctx.globalAlpha = (1 - wph) * 0.5;
+      ctx.beginPath();
+      ctx.arc(tail - row.dir * wph * s * 0.5, y + s * 0.02, s * (0.08 + wph * 0.1),
+        Math.PI * 0.2, Math.PI * 0.8);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+
+    if (lg.kind === 'raft') {
+      ctx.fillStyle = '#9a6b3d';
+      U.roundRect(ctx, x - w / 2, y - s * 0.18, w, s * 0.26, s * 0.05);
+      ctx.fill();
+      // Waterline: the raft sits in the river, not on it.
+      ctx.fillStyle = 'rgba(12,35,58,0.35)';
+      U.roundRect(ctx, x - w / 2, y + s * 0.02, w, s * 0.06, s * 0.03);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+      ctx.lineWidth = 2;
+      for (var i = 1; i < lg.w * 2; i++) {
+        var px = x - w / 2 + (i * w) / (lg.w * 2);
+        ctx.beginPath();
+        ctx.moveTo(px, y - s * 0.18);
+        ctx.lineTo(px, y + s * 0.08);
+        ctx.stroke();
+      }
+      ctx.fillStyle = 'rgba(255,214,150,0.18)';
+      ctx.fillRect(x - w / 2, y - s * 0.18, w, 2);
+      // Crate with an optimistic slogan on it.
+      ctx.fillStyle = '#7d5a33';
+      U.roundRect(ctx, x + w * 0.22, y - s * 0.52, s * 0.34, s * 0.34, s * 0.04);
+      ctx.fill();
+      ctx.fillStyle = '#c8102e';
+      CH.star(ctx, x + w * 0.22 + s * 0.17, y - s * 0.35, s * 0.10);
+    } else {
+      ctx.fillStyle = '#7d5230';
+      U.roundRect(ctx, x - w / 2, y - s * 0.22, w, s * 0.34, s * 0.16);
+      ctx.fill();
+      // Waterline: the log sits in the river, not on it.
+      ctx.fillStyle = 'rgba(12,35,58,0.35)';
+      U.roundRect(ctx, x - w / 2, y + s * 0.03, w, s * 0.09, s * 0.05);
+      ctx.fill();
+      ctx.fillStyle = '#8e6039';
+      U.roundRect(ctx, x - w / 2 + s * 0.05, y - s * 0.20, w - s * 0.1, s * 0.14, s * 0.07);
+      ctx.fill();
+      // Wet gleam along the sun side.
+      ctx.fillStyle = 'rgba(255,214,150,0.22)';
+      U.roundRect(ctx, x + w / 2 - s * 0.08 - (w - s * 0.5), y - s * 0.215, w - s * 0.5, s * 0.045, s * 0.02);
+      ctx.fill();
+      ctx.fillStyle = '#a9763f';
+      [-1, 1].forEach(function (sg) {
+        U.ellipse(ctx, x + sg * (w / 2 - s * 0.02), y - s * 0.05, s * 0.07, s * 0.17);
+        ctx.fill();
+      });
+      ctx.strokeStyle = '#6a4526';
+      ctx.lineWidth = 2;
+      [-1, 1].forEach(function (sg) {
+        U.ellipse(ctx, x + sg * (w / 2 - s * 0.02), y - s * 0.05, s * 0.035, s * 0.09);
+        ctx.stroke();
+      });
+    }
+    ctx.restore();
+  }
+
+  function drawFloes(row, cam, t) {
+    var s = view.tile;
+    var y = sy(row.index, cam) + view.rowH * 0.16;
+    for (var key in row.floes) {
+      if (!Object.prototype.hasOwnProperty.call(row.floes, key)) continue;
+      var f = row.floes[key];
+      var x = sx(+key, cam);
+      if (x < -s || x > view.w + s) continue;
+
+      if (f.state === 'sunk') {
+        // The hole it left: dark water with a shiver of rings.
+        ctx.fillStyle = 'rgba(20,50,80,0.55)';
+        U.ellipse(ctx, x, y + s * 0.04, s * 0.34, s * 0.15);
+        ctx.fill();
+        continue;
+      }
+
+      var bob = Math.sin(t * 1.7 + f.seed * 9) * s * 0.012;
+      var dip = Math.min(f.standT, 1.6) * s * 0.05;
+      var fy = y + bob + dip;
+      // Every floe is its own shape, so a row of them never reads as
+      // one long object.
+      var fw = s * (0.34 + f.seed * 0.10);
+      var fx2 = x + (f.seed - 0.5) * s * 0.12;
+
+      ctx.fillStyle = 'rgba(8,20,40,0.22)';
+      U.ellipse(ctx, fx2 - s * 0.05, fy + s * 0.10, fw * 0.95, s * 0.12);
+      ctx.fill();
+
+      ctx.fillStyle = f.state === 'cracking' ? '#ddeaf2'
+        : U.mixHex('#eef6fa', '#cfe0ea', f.seed * 0.7);
+      U.roundRect(ctx, fx2 - fw, fy - s * 0.16, fw * 2, s * (0.30 + f.seed * 0.07), s * (0.09 + f.seed * 0.06));
+      ctx.fill();
+      ctx.fillStyle = 'rgba(160,200,220,0.5)';
+      U.roundRect(ctx, fx2 - fw, fy + s * 0.08, fw * 2, s * 0.08, s * 0.04);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(255,240,214,0.35)';
+      U.roundRect(ctx, fx2 - fw * 0.8, fy - s * 0.155, fw, s * 0.05, s * 0.025);
+      ctx.fill();
+
+
+      if (f.state === 'cracking' || f.standT > 0.5) {
+        // Cracks spider out from wherever the weight is.
+        var severity = U.clamp((f.standT - 0.5) / 1.1, 0, 1);
+        ctx.strokeStyle = 'rgba(70,110,140,' + (0.4 + severity * 0.5).toFixed(2) + ')';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        for (var cr = 0; cr < 3 + severity * 2; cr++) {
+          var a2 = f.seed * 7 + cr * 2.2;
+          var len2 = s * (0.12 + severity * 0.28) * (0.7 + hash(row.index, cr + (+key)) * 0.6);
+          ctx.moveTo(fx2, fy);
+          ctx.lineTo(fx2 + Math.cos(a2) * len2, fy + Math.sin(a2) * len2 * 0.45);
+        }
+        ctx.stroke();
+      }
+    }
+  }
+
+  /* A squad of marchers crossing the parade route like a slow vehicle. */
+  function drawSquad(row, car, cam, t) {
+    var x = sx(PP.World.carX(row, car), cam);
+    var y = sy(row.index, cam) + view.rowH * 0.26;
+    var s = view.tile;
+    var w = car.w * s;
+    if (x < -w || x > view.w + w) return;
+
+    ctx.save();
+    ctx.fillStyle = 'rgba(40,24,58,0.28)';
+    U.ellipse(ctx, x, y, w * 0.5, s * 0.12);
+    ctx.fill();
+
+    var n = Math.max(3, Math.round(car.w / 0.75));
+    var facing = row.dir > 0 ? 'right' : 'left';
+    for (var k = 0; k < n; k++) {
+      var mx = x + (k - (n - 1) / 2) * (w / n);
+      var beat = t * 2.6 + car.seed * 5 + k * 0.5;
+      var frac = beat - Math.floor(beat);
+      var bounce = Math.sin(Math.min(frac * 1.6, 1) * Math.PI) * s * 0.08;
+      CH.draw(ctx, mx, y - bounce, {
+        size: s * 0.72, char: CH.enemySkin(car.skin + k), facing: facing,
+        cap: (car.skin + k) % 3 === 0 ? 'ushanka' : 'cap'
+      });
+    }
+    // The squad's little banner, carried at the front.
+    var bx = x + row.dir * (w / 2 - s * 0.1);
+    ctx.fillStyle = '#5e5248';
+    ctx.fillRect(bx - s * 0.025, y - s * 1.3, s * 0.05, s * 1.0);
+    ctx.fillStyle = '#c8102e';
+    var wv = Math.sin(t * 4 + car.seed * 9) * s * 0.04;
+    ctx.beginPath();
+    ctx.moveTo(bx + s * 0.02, y - s * 1.28);
+    ctx.lineTo(bx + s * 0.42 + wv, y - s * 1.23);
+    ctx.lineTo(bx + s * 0.42 + wv, y - s * 0.95);
+    ctx.lineTo(bx + s * 0.02, y - s * 1.0);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+
+  /* The record line: how far you got last time, drawn where it happened. */
+  function drawBestLine(rowIndex, cam) {
+    var yTop = sy(rowIndex, cam) - view.rowH / 2;
+    var s = view.tile;
+    var lx0 = Math.max(0, sx(PP.World.CFG.X_MIN - 0.5, cam));
+    var lx1 = Math.min(view.w, sx(PP.World.CFG.X_MAX + 0.5, cam));
+    ctx.save();
+    ctx.strokeStyle = 'rgba(245,197,66,0.7)';
+    ctx.lineWidth = Math.max(2, s * 0.05);
+    ctx.setLineDash([s * 0.3, s * 0.22]);
+    ctx.beginPath();
+    ctx.moveTo(lx0, yTop);
+    ctx.lineTo(lx1, yTop);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    // A little tag on the right end.
+    ctx.fillStyle = 'rgba(245,197,66,0.9)';
+    U.roundRect(ctx, lx1 - s * 1.7, yTop - s * 0.26, s * 1.5, s * 0.5, s * 0.1);
+    ctx.fill();
+    ctx.fillStyle = '#3a2a10';
+    ctx.font = '800 ' + Math.round(s * 0.3) + 'px "Trebuchet MS", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('BEST ' + rowIndex, lx1 - s * 0.95, yTop + s * 0.09);
+    ctx.textAlign = 'left';
+    ctx.restore();
+  }
+
+  /* ── Sector borders ─────────────────────────────────────────────── */
+
+  function drawCheckpoint(row, cam, t) {
+    var s = view.tile;
+    var y = sy(row.index, cam) + view.rowH * 0.28;
+    var wallH = s * 1.05;
+    var lo = PP.World.CFG.X_MIN - 6, hi = PP.World.CFG.X_MAX + 6;
+
+    for (var x = lo; x <= hi; x++) {
+      if (Math.abs(x - row.gateX) <= 1) continue;
+      var px = sx(x, cam);
+      if (px < -s || px > view.w + s) continue;
+      // Concrete panel with a sunlit cap and seams.
+      ctx.fillStyle = '#8a8177';
+      ctx.fillRect(px - s * 0.5, y - wallH, s * 1.01, wallH);
+      ctx.fillStyle = 'rgba(0,0,0,0.12)';
+      ctx.fillRect(px + s * 0.46, y - wallH, s * 0.04, wallH);
+      ctx.fillStyle = 'rgba(255,214,150,0.28)';
+      ctx.fillRect(px - s * 0.5, y - wallH, s * 1.01, s * 0.06);
+      if (hash(row.index, x) < 0.3) {
+        ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(px - s * 0.2, y - wallH * (0.3 + hash(row.index, x + 50) * 0.4));
+        ctx.lineTo(px + s * 0.1, y - wallH * (0.1 + hash(row.index, x + 90) * 0.3));
+        ctx.stroke();
+      }
+      // Barbed wire along the top.
+      ctx.strokeStyle = '#3f3a34';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(px - s * 0.5, y - wallH - s * 0.08);
+      ctx.quadraticCurveTo(px, y - wallH - s * 0.16, px + s * 0.51, y - wallH - s * 0.08);
+      ctx.stroke();
+      for (var bb = 0; bb < 3; bb++) {
+        var bx4 = px - s * 0.3 + bb * s * 0.3;
+        ctx.beginPath();
+        ctx.moveTo(bx4 - 2.5, y - wallH - s * 0.14);
+        ctx.lineTo(bx4 + 2.5, y - wallH - s * 0.08);
+        ctx.moveTo(bx4 + 2.5, y - wallH - s * 0.14);
+        ctx.lineTo(bx4 - 2.5, y - wallH - s * 0.08);
+        ctx.stroke();
+      }
+    }
+
+    // The gate: striped posts and a barrier arm swung up — you may pass.
+    var gx = sx(row.gateX, cam);
+    [-1.5, 1.5].forEach(function (side) {
+      var px2 = gx + side * s;
+      ctx.fillStyle = '#c8c0b4';
+      ctx.fillRect(px2 - s * 0.06, y - s * 0.85, s * 0.12, s * 0.85);
+      for (var st4 = 0; st4 < 3; st4++) {
+        ctx.fillStyle = st4 % 2 ? '#f0e6d6' : '#c8102e';
+        ctx.fillRect(px2 - s * 0.06, y - s * 0.85 + st4 * s * 0.28, s * 0.12, s * 0.28);
+      }
+    });
+    ctx.save();
+    ctx.translate(gx - s * 1.5, y - s * 0.8);
+    ctx.rotate(-1.15);
+    var seg5 = s * 1.4 / 4;
+    for (var a5 = 0; a5 < 4; a5++) {
+      ctx.fillStyle = a5 % 2 ? '#f0e6d6' : '#c8102e';
+      ctx.fillRect(a5 * seg5, -s * 0.04, seg5 + 0.5, s * 0.08);
+    }
+    ctx.restore();
+
+    // Watchtower beside the gate, with a sweeping searchlight.
+    var tx2 = gx + s * 2.6;
+    ctx.fillStyle = '#5f574c';
+    ctx.fillRect(tx2 - s * 0.08, y - s * 1.7, s * 0.16, s * 1.7);
+    ctx.fillRect(tx2 - s * 0.34, y - s * 2.1, s * 0.68, s * 0.5);
+    ctx.fillStyle = '#4a443c';
+    ctx.fillRect(tx2 - s * 0.4, y - s * 2.18, s * 0.8, s * 0.1);
+    ctx.fillStyle = 'rgba(255,232,180,0.8)';
+    ctx.fillRect(tx2 - s * 0.24, y - s * 2.0, s * 0.48, s * 0.24);
+    ctx.fillStyle = '#c8102e';
+    CH.star(ctx, tx2, y - s * 2.28, s * 0.12);
+
+    var ang5 = Math.sin(t * 0.5 + row.index) * 0.55;
+    ctx.save();
+    ctx.translate(tx2, y - s * 1.9);
+    ctx.rotate(ang5);
+    ctx.globalCompositeOperation = 'lighter';
+    var bg5 = ctx.createLinearGradient(0, 0, 0, s * 3.2);
+    bg5.addColorStop(0, 'rgba(255,240,190,0.16)');
+    bg5.addColorStop(1, 'rgba(255,240,190,0)');
+    ctx.fillStyle = bg5;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(-s * 0.7, s * 3.2);
+    ctx.lineTo(s * 0.7, s * 3.2);
+    ctx.closePath();
+    ctx.fill();
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.restore();
+  }
+
+  /* ── The black car ─────────────────────────────────────────────── */
+
+  function drawVanCar(x, y, s, dir, dust, t) {
+    ctx.save();
+    ctx.fillStyle = 'rgba(40,24,58,0.32)';
+    U.ellipse(ctx, x, y, s * 1.1, s * 0.14);
+    ctx.fill();
+    ctx.translate(x, y);
+    ctx.scale(dir, 1);
+
+    var w = s * 2.3;
+    var bodyH = s * 0.42;
+    var base = -s * 0.06;
+
+    // Dust kicked up behind it — it is not using the road.
+    if (dust > 0.01) {
+      ctx.fillStyle = '#9a8a7a';
+      for (var k = 0; k < 4; k++) {
+        var ph = U.mod(t * 1.6 + k / 4, 1);
+        ctx.globalAlpha = (1 - ph) * 0.35 * dust;
+        U.ellipse(ctx, -w * 0.52 - ph * s * 0.9, base - s * 0.1 - ph * s * 0.3,
+          s * (0.08 + ph * 0.22), s * (0.07 + ph * 0.16));
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    // Wheels.
+    ctx.fillStyle = '#101014';
+    [-w * 0.32, w * 0.32].forEach(function (wx) {
+      U.ellipse(ctx, wx, base, s * 0.12, s * 0.12);
+      ctx.fill();
+    });
+
+    // Long black body, official and unhurried about being seen.
+    ctx.fillStyle = '#17171d';
+    U.roundRect(ctx, -w / 2, base - bodyH * 0.8, w, bodyH * 0.8, s * 0.08);
+    ctx.fill();
+    ctx.fillStyle = '#22222b';
+    U.roundRect(ctx, -w * 0.30, base - bodyH * 1.3, w * 0.60, bodyH * 0.58, s * 0.07);
+    ctx.fill();
+    // Curtained windows — nobody looks out, nobody looks in.
+    ctx.fillStyle = 'rgba(70,70,86,0.9)';
+    U.roundRect(ctx, -w * 0.24, base - bodyH * 1.2, w * 0.2, bodyH * 0.4, s * 0.03);
+    ctx.fill();
+    U.roundRect(ctx, w * 0.02, base - bodyH * 1.2, w * 0.2, bodyH * 0.4, s * 0.03);
+    ctx.fill();
+    // Roof light, sweeping.
+    var lampOn = Math.sin(t * 14) > 0;
+    ctx.fillStyle = lampOn ? '#ff4b3a' : '#7c1d16';
+    U.ellipse(ctx, 0, base - bodyH * 1.36, s * 0.07, s * 0.07);
+    ctx.fill();
+    if (lampOn) {
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.fillStyle = 'rgba(255,70,50,0.25)';
+      U.ellipse(ctx, 0, base - bodyH * 1.36, s * 0.3, s * 0.2);
+      ctx.fill();
+      ctx.globalCompositeOperation = 'source-over';
+    }
+    // Fender flag + star.
+    ctx.fillStyle = '#c8102e';
+    ctx.fillRect(w * 0.40, base - bodyH * 1.05, s * 0.03, s * 0.2);
+    ctx.beginPath();
+    ctx.moveTo(w * 0.40 + s * 0.03, base - bodyH * 1.05);
+    ctx.lineTo(w * 0.40 + s * 0.2, base - bodyH * 1.0);
+    ctx.lineTo(w * 0.40 + s * 0.03, base - bodyH * 0.94);
+    ctx.closePath();
+    ctx.fill();
+    CH.star(ctx, -w * 0.36, base - bodyH * 0.42, s * 0.1);
+    // Sun on the roof — even this car obeys the light.
+    ctx.fillStyle = 'rgba(255,214,150,0.2)';
+    ctx.fillRect(-w * 0.28, base - bodyH * 1.3 - 1.5, w * 0.56, 2.5);
+
+    headBeam(w * 0.5, base - s * 0.16, s);
+    ctx.restore();
+  }
+
+  function drawVan(v, g, cam, t) {
+    var s = view.tile;
+    var tx = sx(v.x, cam);
+    var ty = sy(v.row, cam) + view.rowH * 0.26;
+    var dir = -v.fromSide;                    // direction of travel
+    var edgeX = view.w / 2 + v.fromSide * (view.w / 2 + s * 3);
+
+    if (v.state === 'warn') {
+      // The locked tile, ringed — and headlights already at the kerb.
+      var k = U.clamp(v.t / 0.9, 0, 1);
+      var blink3 = Math.sin(t * 16) > 0;
+      ctx.save();
+      ctx.globalAlpha = (0.65 + k * 0.35) * (blink3 ? 1 : 0.45);
+      ctx.strokeStyle = '#ff4b3a';
+      ctx.lineWidth = Math.max(2.5, s * 0.06);
+      U.ellipse(ctx, tx, ty - view.rowH * 0.06, s * (0.32 + k * 0.42), s * (0.13 + k * 0.17));
+      ctx.stroke();
+      ctx.strokeStyle = '#f5c542';
+      ctx.lineWidth = Math.max(1.5, s * 0.03);
+      U.ellipse(ctx, tx, ty - view.rowH * 0.06, s * (0.16 + k * 0.2), s * (0.07 + k * 0.08));
+      ctx.stroke();
+      ctx.restore();
+      // A glow building at the screen edge on this row.
+      ctx.globalCompositeOperation = 'lighter';
+      var eg = ctx.createLinearGradient(edgeX, 0, edgeX + dir * s * 4, 0);
+      eg.addColorStop(0, 'rgba(255,200,120,' + (0.20 * k).toFixed(3) + ')');
+      eg.addColorStop(1, 'rgba(255,200,120,0)');
+      ctx.fillStyle = eg;
+      ctx.fillRect(Math.min(edgeX, edgeX + dir * s * 4), ty - s * 0.8, s * 4, s * 1.2);
+      ctx.globalCompositeOperation = 'source-over';
+    } else if (v.state === 'arrive') {
+      var k2 = U.clamp(v.t / 0.45, 0, 1);
+      var e2 = 1 - Math.pow(1 - k2, 3);
+      var vx2 = U.lerp(edgeX, tx, e2);
+      // Skid marks behind it.
+      ctx.strokeStyle = 'rgba(20,16,24,0.35)';
+      ctx.lineWidth = Math.max(2, s * 0.06);
+      [-1, 1].forEach(function (sgn) {
+        ctx.beginPath();
+        ctx.moveTo(vx2 - dir * s * 1.4, ty + sgn * s * 0.1);
+        ctx.lineTo(edgeX, ty + sgn * s * 0.1);
+        ctx.stroke();
+      });
+      drawVanCar(vx2, ty, s, dir, 1, t);
+    } else if (v.state === 'grab') {
+      drawVanCar(tx, ty, s, dir, 0.15, t);
+      if (v.caught) {
+        // The rear door stands open exactly as long as it needs to.
+        ctx.fillStyle = '#101014';
+        ctx.fillRect(tx - dir * s * 0.15, ty - s * 0.62, dir * s * 0.34, s * 0.5);
+        ctx.fillStyle = 'rgba(70,70,86,0.9)';
+        ctx.fillRect(tx - dir * s * 0.11, ty - s * 0.56, dir * s * 0.2, s * 0.18);
+      }
+    } else if (v.state === 'depart') {
+      var k3 = U.clamp(v.t / 1.0, 0, 1);
+      var e3 = k3 * k3;
+      var vx3 = tx + dir * e3 * (view.w * 0.7 + s * 6);
+      drawVanCar(vx3, ty, s, dir, 1, t);
+    }
+  }
+
+  /* ── The Collective ─────────────────────────────────────────────── */
+
+  function drawTideBand(row, cam, tideRow, t) {
+    var d = tideRow - row.index;      // how deeply this row is swallowed
+    if (d < 0) return;
+    var top = sy(row.index, cam) - view.rowH / 2;
+    var a = U.clamp(0.36 + d * 0.075 + 0.03 * Math.sin(t * 2.2 + row.index * 0.6)
+      + (hash(row.index, 9) - 0.5) * 0.06, 0, 0.62);
+    ctx.fillStyle = 'rgba(146,8,26,' + a.toFixed(3) + ')';
+    ctx.fillRect(0, top, view.w, view.rowH + 1);
+    if (d < 3) {
+      ctx.fillStyle = 'rgba(255,90,70,' + (0.16 * (3 - d) / 3).toFixed(3) + ')';
+      ctx.fillRect(0, top, view.w, view.rowH + 1);
+    }
+    if (d < 2.5) {
+      // What got dropped in the scramble to get away.
+      var s2 = view.tile;
+      ctx.fillStyle = 'rgba(45,0,12,0.55)';
+      for (var db = 0; db < 2; db++) {
+        var hx2 = hash(row.index * 5 + db, 77);
+        var dx2 = hx2 * view.w;
+        var dy2 = top + view.rowH * (0.3 + hash(row.index, db + 31) * 0.4);
+        var kind2 = (hx2 * 7 | 0) % 3;
+        if (kind2 === 0) {          // a tipped food bowl
+          ctx.fillRect(dx2 - s2 * 0.10, dy2 - s2 * 0.08, s2 * 0.2, s2 * 0.07);
+          U.ellipse(ctx, dx2, dy2, s2 * 0.13, s2 * 0.05);
+          ctx.fill();
+        } else if (kind2 === 1) {   // a ball nobody will throw again
+          U.ellipse(ctx, dx2, dy2, s2 * 0.07, s2 * 0.07);
+          ctx.fill();
+        } else {                    // a dropped leash
+          ctx.strokeStyle = 'rgba(45,0,12,0.55)';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(dx2, dy2, s2 * 0.12, 0.4, 2.6);
+          ctx.stroke();
+          U.ellipse(ctx, dx2 + s2 * 0.12, dy2 + s2 * 0.03, s2 * 0.035, s2 * 0.035);
+          ctx.fill();
+        }
+      }
+    }
+  }
+
+  function drawTideFront(cam, tideRow, t) {
+    var s = view.tile;
+    var y = sy(tideRow, cam) + view.rowH * 0.26;
+
+    // Searchlights raking the sky from behind the front line. They only
+    // reach full strength once their implied source nears the screen.
+    var beamVis = U.clamp(1 - (y - view.h) / (view.rowH * 2), 0, 1);
+    ctx.globalCompositeOperation = 'lighter';
+    for (var b = 0; b < 2; b++) {
+      var ang = Math.sin(t * (0.4 + b * 0.13) + b * 2.1) * 0.5;
+      var bx = view.w * (0.25 + b * 0.5);
+      var L = view.h * 0.55;
+      ctx.save();
+      ctx.translate(bx, y - s * 0.4);
+      ctx.rotate(ang);
+      // Two nested wedges fake a soft cross-beam falloff.
+      for (var nb = 0; nb < 2; nb++) {
+        var wA = nb === 0 ? 0.75 : 0.35;
+        var bg = ctx.createLinearGradient(0, 0, 0, -L);
+        bg.addColorStop(0, 'rgba(255,90,80,' + ((nb === 0 ? 0.030 : 0.045) * beamVis).toFixed(3) + ')');
+        bg.addColorStop(1, 'rgba(255,90,80,0)');
+        ctx.fillStyle = bg;
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(-s * wA * 0.8, -L);
+        ctx.lineTo(s * wA, -L);
+        ctx.closePath();
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+    ctx.globalCompositeOperation = 'source-over';
+
+    // Smoke and red glow rolling off the front line.
+    var g = ctx.createLinearGradient(0, y - s * 1.8, 0, y + s * 0.6);
+    g.addColorStop(0, 'rgba(180,20,35,0)');
+    g.addColorStop(1, 'rgba(150,10,26,0.6)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, y - s * 1.8, view.w, s * 2.4);
+
+    // And its firelight spills ahead of the marchers, flickering.
+    var spill = ctx.createLinearGradient(0, y - view.rowH * 2.2, 0, y - s * 0.4);
+    spill.addColorStop(0, 'rgba(255,80,40,0)');
+    spill.addColorStop(1, 'rgba(255,80,40,' + (0.06 + 0.02 * Math.sin(t * 7)).toFixed(3) + ')');
+    ctx.fillStyle = spill;
+    ctx.fillRect(0, y - view.rowH * 2.2, view.w, view.rowH * 2.2 - s * 0.4);
+
+    // A rank of marchers with banners, stepping in time.
+    var spacing = s * 0.92;
+    var offset = U.mod(-cam.x * view.tile, spacing);
+    var idx = 0;
+    // If the bearers are below the bottom edge, their flags and placards
+    // must not poke into the frame on disembodied poles.
+    var propsVisible = y - s * 0.85 <= view.h;
+    for (var px = offset - spacing; px < view.w + spacing; px += spacing, idx++) {
+      // The whole rank stomps on a shared beat, half the line offset by
+      // half a step — a parade, not a crowd.
+      var beat = t * 2.4 + (idx % 2) * 0.5;
+      var frac = beat - Math.floor(beat);
+      var bounce = Math.sin(Math.min(frac * 1.6, 1) * Math.PI) * s * 0.10;
+      var skin = CH.enemySkin(idx);
+      if (idx % 4 === 1 && propsVisible) {
+        ctx.fillStyle = '#5e5248';
+        ctx.fillRect(px + s * 0.22, y - s * 1.5 - bounce, s * 0.05, s * 1.1);
+        ctx.fillStyle = '#c8102e';
+        var wave = Math.sin(t * 4 + idx) * s * 0.05;
+        ctx.beginPath();
+        ctx.moveTo(px + s * 0.26, y - s * 1.48 - bounce);
+        ctx.lineTo(px + s * 0.74 + wave, y - s * 1.42 - bounce);
+        ctx.lineTo(px + s * 0.74 + wave, y - s * 1.06 - bounce);
+        ctx.lineTo(px + s * 0.26, y - s * 1.12 - bounce);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = '#f5c542';
+        CH.star(ctx, px + s * 0.50 + wave * 0.5, y - s * 1.27 - bounce, s * 0.09);
+      }
+      if (idx % 8 === 6 && propsVisible) {
+        // A framed portrait of the Very Important Animal, held at rank
+        // height in a dull brass frame — official, not collectible.
+        var py2 = y - bounce;
+        ctx.fillStyle = '#5e5248';
+        ctx.fillRect(px + s * 0.20, py2 - s * 0.88, s * 0.05, s * 0.55);
+        ctx.fillStyle = '#b8923a';
+        U.roundRect(ctx, px + s * 0.02, py2 - s * 1.34, s * 0.42, s * 0.5, s * 0.04);
+        ctx.fill();
+        ctx.fillStyle = '#c8102e';
+        ctx.fillRect(px + s * 0.06, py2 - s * 1.30, s * 0.34, s * 0.42);
+        ctx.fillStyle = '#3a1a26';
+        U.ellipse(ctx, px + s * 0.23, py2 - s * 1.02, s * 0.10, s * 0.09);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(px + s * 0.15, py2 - s * 1.07);
+        ctx.lineTo(px + s * 0.185, py2 - s * 1.18);
+        ctx.lineTo(px + s * 0.22, py2 - s * 1.07);
+        ctx.closePath();
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(px + s * 0.24, py2 - s * 1.07);
+        ctx.lineTo(px + s * 0.275, py2 - s * 1.18);
+        ctx.lineTo(px + s * 0.31, py2 - s * 1.07);
+        ctx.closePath();
+        ctx.fill();
+      }
+      CH.draw(ctx, px, y - bounce, {
+        size: s * 0.78, char: skin, facing: 'up',
+        cap: idx % 3 === 0 ? 'ushanka' : 'cap', alpha: 0.95
+      });
+    }
+
+    // Embers lifting off the tide.
+    ctx.globalCompositeOperation = 'lighter';
+    for (var e = 0; e < 16; e++) {
+      var eph = U.mod(t * 0.35 + hash(e, 17), 1);
+      var ex = hash(e, 301) * view.w + Math.sin(t * 1.2 + e) * 9;
+      var ey = y + s * 0.3 - eph * s * 2.8;
+      var flick = 0.5 + 0.5 * Math.sin(t * 7 + e * 2.3);
+      ctx.globalAlpha = (1 - eph) * 0.5 * flick;
+      ctx.fillStyle = e % 3 === 0 ? '#ffb26b' : '#ff5f4d';
+      U.ellipse(ctx, ex, ey, 1.6 + hash(e, 5) * 1.6, 1.6 + hash(e, 5) * 1.6);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'source-over';
+  }
+
+  /* ── Player + effects ───────────────────────────────────────────── */
+
+  function drawPlayer(p, cam, char, t, fear, hot) {
+    if (p.dead && p.deathKind === 'water' && p.sinkT > 0.9) return;
+    var x = sx(p.x, cam);
+    var y = sy(p.row, cam) + view.rowH * 0.24;
+    var s = view.tile;
+
+    var rowObj = PP.World.row(Math.round(p.row));
+    var onWaterRow = rowObj && rowObj.type === 'water';
+    if (!p.dead && !onWaterRow) longShadow(x, y, s * 0.85, s * 0.24, 0.16);
+
+    // The tide's firelight reaches the escapee before the tide does.
+    if (fear > 0.03 && !p.dead) {
+      ctx.fillStyle = 'rgba(255,60,40,' + (0.14 * fear).toFixed(3) + ')';
+      U.ellipse(ctx, x, y, s * 0.8, s * 0.3);
+      ctx.fill();
+    }
+
+    var opts = {
+      size: s * 1.02, char: char, facing: p.facing,
+      squash: p.squash, lift: p.lift * s, alpha: 1,
+      fear: p.dead ? 0 : (fear || 0)
+    };
+    if (!p.hopping && !p.dead) {
+      opts.squash += Math.sin(t * 2.8) * 0.02;   // breathing
+      // Press-and-hold: crouched, coiled, ready.
+      if (p.charging) opts.squash = Math.max(opts.squash, 0.30);
+    }
+    if (p.dead) {
+      if (p.deathKind === 'squash') {
+        opts.squash = 0.85;
+        opts.lift = 0;
+      } else if (p.deathKind === 'water') {
+        opts.alpha = 1 - p.sinkT;
+        opts.lift = -p.sinkT * s * 0.35;
+      } else if (p.deathKind === 'van') {
+        // Hustled into the back seat: a quick fade, no theatrics.
+        opts.alpha = Math.max(0, 1 - p.sinkT * 1.4);
+        opts.squash = 0.15;
+      } else if (p.deathKind === 'caught') {
+        // Hat drops on, then you start marching in time with the rest.
+        opts.cap = 'ushanka';
+        opts.capT = U.clamp((p.convertT - 0.25) / 0.45, 0, 1);
+        opts.lift = p.convertT > 0.6 ? Math.abs(Math.sin(p.marchT * 5)) * s * 0.10 : 0;
+      }
+    }
+    CH.draw(ctx, x, y, opts);
+
+    // Momentum: motion streaks trailing a hot streak.
+    if (hot && !p.dead) {
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.strokeStyle = 'rgba(255,220,150,0.35)';
+      ctx.lineWidth = Math.max(1.5, s * 0.04);
+      [-0.3, 0.3].forEach(function (off) {
+        ctx.beginPath();
+        ctx.moveTo(x + off * s, y + s * 0.1);
+        ctx.lineTo(x + off * s * 1.4, y + s * 0.66);
+        ctx.stroke();
+      });
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.restore();
+    }
+
+    // The moment it takes: a red star rises over the new comrade.
+    if (p.dead && p.deathKind === 'caught' && p.convertT > 0.5) {
+      var st = U.clamp((p.convertT - 0.5) / 0.4, 0, 1);
+      ctx.save();
+      ctx.globalAlpha = st;
+      ctx.fillStyle = '#c8102e';
+      CH.star(ctx, x, y - s * (1.15 + st * 0.25), s * 0.19 * st);
+      ctx.restore();
+    }
+  }
+
+  function drawSplashes(list, cam) {
+    for (var i = 0; i < list.length; i++) {
+      var sp = list[i];
+      var k = sp.t / sp.maxT;
+      var x = sx(sp.x, cam);
+      var y = sy(sp.row, cam) + view.rowH * 0.18;
+      var s = view.tile;
+      ctx.save();
+
+      if (sp.kind === 'dust' || sp.kind === 'ripple') {
+        // A quick ring marks every landing.
+        ctx.globalAlpha = (1 - k) * 0.55;
+        ctx.strokeStyle = sp.kind === 'dust' ? 'rgba(226,204,158,0.9)' : 'rgba(216,242,255,0.9)';
+        ctx.lineWidth = Math.max(1.5, s * 0.05 * (1 - k));
+        U.ellipse(ctx, x, y + view.rowH * 0.06, s * (0.16 + k * 0.42), s * (0.06 + k * 0.16));
+        ctx.stroke();
+        ctx.restore();
+        continue;
+      }
+
+      ctx.lineWidth = Math.max(1.5, s * 0.055 * (1 - k));
+      for (var r = 0; r < 3; r++) {
+        var rk = k - r * 0.16;
+        if (rk <= 0 || rk >= 1) continue;
+        ctx.globalAlpha = (1 - rk) * 0.75;
+        ctx.strokeStyle = r === 0 ? 'rgba(255,255,255,0.95)' : 'rgba(186,226,248,0.9)';
+        U.ellipse(ctx, x, y, s * (0.18 + rk * 1.15), s * (0.07 + rk * 0.42));
+        ctx.stroke();
+      }
+      // The column of water thrown up by the impact.
+      if (k < 0.42) {
+        var ck = k / 0.42;
+        ctx.globalAlpha = (1 - ck) * 0.9;
+        ctx.fillStyle = 'rgba(226,244,255,0.95)';
+        U.ellipse(ctx, x, y - s * 0.30 * Math.sin(ck * Math.PI),
+          s * (0.20 - ck * 0.08), s * (0.34 + ck * 0.22));
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+  }
+
+  function drawParticles(list, cam) {
+    for (var i = 0; i < list.length; i++) {
+      var p = list[i];
+      var x = sx(p.x, cam);
+      var y = sy(p.row, cam) + view.rowH * 0.2 - p.z * view.tile;
+      ctx.globalAlpha = U.clamp(p.life / p.maxLife, 0, 1);
+      ctx.fillStyle = p.color;
+      var sz = p.size * view.tile;
+      if (p.shape === 'circle') {
+        U.ellipse(ctx, x, y, sz, sz);
+        ctx.fill();
+      } else {
+        ctx.fillRect(x - sz, y - sz, sz * 2, sz * 2);
+      }
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function drawFloaters(list, cam) {
+    for (var i = 0; i < list.length; i++) {
+      var f = list[i];
+      ctx.globalAlpha = U.clamp(f.life / f.maxLife, 0, 1);
+      ctx.fillStyle = f.color || '#f5c542';
+      ctx.font = '800 ' + Math.round(view.tile * 0.42) + 'px "Trebuchet MS", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+      ctx.lineWidth = 3;
+      var x = sx(f.x, cam);
+      var y = sy(f.row, cam) - (1 - f.life / f.maxLife) * view.tile * 0.9;
+      ctx.strokeText(f.text, x, y);
+      ctx.fillText(f.text, x, y);
+    }
+    ctx.globalAlpha = 1;
+    ctx.textAlign = 'left';
+  }
+
+  /* The further you flee, the colder it gets: snow begins around 35m,
+     right where the rivers start freezing. Stateless — every flake's
+     position is a function of time. */
+  function drawSnow(cam, t) {
+    var intensity = U.clamp((cam.row - 35) / 40, 0, 0.85);
+    if (intensity <= 0.01) return;
+    var n = Math.floor(46 * intensity);
+    ctx.fillStyle = '#f2f6fa';
+    for (var i = 0; i < n; i++) {
+      var speed = 26 + hash(i, 401) * 34;
+      var drift = Math.sin(t * (0.6 + hash(i, 403)) + i * 2.1) * 30;
+      var fx = U.mod(hash(i, 405) * view.w + drift - cam.x * view.tile * 0.15, view.w + 20) - 10;
+      var fy = U.mod(hash(i, 407) * view.h + t * speed + cam.row * 8, view.h + 16) - 8;
+      ctx.globalAlpha = 0.35 + hash(i, 409) * 0.4;
+      var fs = 1.4 + hash(i, 411) * 1.6;
+      ctx.fillRect(fx, fy, fs, fs);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  /* Dusk grade: warm above, cool below, dark in the corners. */
+  function drawGrade() {
+    var lg = ctx.createLinearGradient(0, 0, 0, view.h);
+    lg.addColorStop(0, 'rgba(255,166,86,0.055)');
+    lg.addColorStop(0.5, 'rgba(0,0,0,0)');
+    lg.addColorStop(1, 'rgba(22,12,48,0.17)');
+    ctx.fillStyle = lg;
+    ctx.fillRect(0, 0, view.w, view.h);
+
+    var rv = ctx.createRadialGradient(
+      view.w / 2, view.h * 0.52, Math.min(view.w, view.h) * 0.45,
+      view.w / 2, view.h * 0.52, Math.max(view.w, view.h) * 0.78
+    );
+    rv.addColorStop(0, 'rgba(8,5,16,0)');
+    rv.addColorStop(1, 'rgba(8,5,16,0.22)');
+    ctx.fillStyle = rv;
+    ctx.fillRect(0, 0, view.w, view.h);
+  }
+
+  function drawVignette(g) {
+    var danger = g.showPlayer ? U.clamp(1 - (g.player.row - g.tide.row) / 9, 0, 1) : 0;
+    if (danger > 0.02) {
+      var rg = ctx.createRadialGradient(
+        view.w / 2, view.h * 0.55, view.h * 0.25,
+        view.w / 2, view.h * 0.55, view.h * 0.85
+      );
+      rg.addColorStop(0, 'rgba(200,16,46,0)');
+      rg.addColorStop(1, 'rgba(200,16,46,' + (0.55 * danger).toFixed(3) + ')');
+      ctx.fillStyle = rg;
+      ctx.fillRect(0, 0, view.w, view.h);
+    }
+    if (g.flash > 0) {
+      ctx.fillStyle = 'rgba(255,255,255,' + (g.flash * 0.6).toFixed(3) + ')';
+      ctx.fillRect(0, 0, view.w, view.h);
+    }
+  }
+
+  /* ── Frame ──────────────────────────────────────────────────────── */
+
+  function draw(g) {
+    var cam = g.cam;
+    var t = PP.World.time();
+    if (!patterns.asphalt) buildPatterns();
+
+    ctx.save();
+    if (g.shake > 0.001) {
+      ctx.translate((Math.random() - 0.5) * g.shake * 18, (Math.random() - 0.5) * g.shake * 18);
+    }
+
+    // How far ahead we can see. The skyline is planted exactly on that edge
+    // so the ground and the city meet without a seam.
+    var depth = U.clamp((view.baseY - view.h * 0.17) / view.rowH, 6, 16);
+    var farRow = Math.floor(cam.row + depth);
+    var nearRow = Math.floor(cam.row - (view.h - view.baseY) / view.rowH) - 1;
+    // A constant screen position: the world slides beneath the skyline
+    // instead of the skyline re-seating itself on every row crossed.
+    horizonY = view.baseY - (depth - 0.5) * view.rowH;
+
+    drawSky(cam, t);
+
+    // Everything in the world is clipped at the horizon line, so a newly
+    // generated far row is born BEHIND the horizon and slides smoothly out
+    // from underneath it — instead of popping into view a full band above
+    // the previous coverage edge every time the camera crosses a row.
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, horizonY, view.w, view.h + 60 - horizonY);
+    ctx.clip();
+
+    var playerDrawRow = Math.round(g.player.row);
+    // How scared should the body language be? Purely a function of the gap.
+    var fear = g.showPlayer && !g.player.dead
+      ? U.clamp(1 - (g.player.row - g.tide.row) / 4.5, 0, 1) : 0;
+
+    for (var i = farRow; i >= nearRow; i--) {
+      // Rows behind the start line don't exist; the tide is already there,
+      // but draw plain ground so the screen never shows a hole.
+      var row = i < 0 ? { index: i, type: 'grass', decor: [], blocked: {}, coin: null } : PP.World.row(i);
+      if (!row) continue;
+
+      drawBand(row, cam, t);
+
+      if (row.type === 'grass') {
+        if (row.fence) drawFence(row, cam);
+        for (var d = 0; d < row.decor.length; d++) drawDecor(row, row.decor[d], cam, t);
+        drawCoin(row, cam, t);
+      } else if (row.type === 'road') {
+        for (var c = 0; c < row.cars.length; c++) drawCar(row, row.cars[c], cam, t);
+      } else if (row.type === 'water') {
+        for (var l = 0; l < row.logs.length; l++) drawLog(row, row.logs[l], cam, t);
+      } else if (row.type === 'ice') {
+        drawFloes(row, cam, t);
+      } else if (row.type === 'parade') {
+        for (var q = 0; q < row.cars.length; q++) drawSquad(row, row.cars[q], cam, t);
+      } else if (row.type === 'checkpoint') {
+        drawCheckpoint(row, cam, t);
+      } else if (row.type === 'rail') {
+        if (row.state === 'train') drawTrain(row, cam, t);
+        drawRailSignals(row, cam, t);
+      }
+
+      if (g.bestLineRow >= 3 && i === g.bestLineRow && g.showPlayer) drawBestLine(i, cam);
+
+      // Aerial perspective: far rows sink into the warm smog, near rows
+      // cool toward the night behind you. Painted over the row's own
+      // sprites so terrain and traffic recede together; the player is
+      // drawn after this and stays vivid.
+      if (i > cam.row + 4) {
+        var kFar = U.clamp((i - cam.row - 4) / (depth - 4), 0, 1);
+        ctx.fillStyle = 'rgba(226,158,98,' + (kFar * kFar * 0.30).toFixed(3) + ')';
+        ctx.fillRect(0, sy(i, cam) - view.rowH / 2, view.w, view.rowH + 1);
+      } else if (i < cam.row - 1) {
+        var kNear = U.clamp((cam.row - 1 - i) / 6, 0, 1);
+        ctx.fillStyle = 'rgba(24,16,34,' + (kNear * 0.10).toFixed(3) + ')';
+        ctx.fillRect(0, sy(i, cam) - view.rowH / 2, view.w, view.rowH + 1);
+      }
+
+      if (g.tide.row >= i) drawTideBand(row, cam, g.tide.row, t);
+      if (Math.floor(g.tide.row) === i) drawTideFront(cam, g.tide.row, t);
+
+      if (i === playerDrawRow && g.showPlayer) drawPlayer(g.player, cam, g.playerChar || g.char, t, fear, g.streak >= 10);
+    }
+
+    ctx.restore();   // end horizon clip
+
+    if (g.van && g.van.state !== 'idle' && g.showPlayer) drawVan(g.van, g, cam, t);
+
+    // The last of the sun finds the escapee.
+    if (g.showPlayer && !g.player.dead) {
+      var pxS = sx(g.player.x, cam);
+      var pyS = sy(g.player.row, cam);
+      var pr = view.tile * 2.4;
+      ctx.globalCompositeOperation = 'lighter';
+      var pocket = ctx.createRadialGradient(pxS, pyS, 0, pxS, pyS, pr);
+      pocket.addColorStop(0, 'rgba(255,214,150,0.08)');
+      pocket.addColorStop(1, 'rgba(255,214,150,0)');
+      ctx.fillStyle = pocket;
+      U.ellipse(ctx, pxS, pyS, pr, pr);
+      ctx.fill();
+      ctx.globalCompositeOperation = 'source-over';
+    }
+
+    drawSplashes(g.splashes, cam);
+
+    // Distance haze: the far rows dissolve into the smog.
+    var hzY = horizonY;
+    var hz = ctx.createLinearGradient(0, hzY - view.rowH * 1.1, 0, hzY + view.rowH * 1.9);
+    hz.addColorStop(0, 'rgba(205,124,82,0.55)');
+    hz.addColorStop(1, 'rgba(205,124,82,0)');
+    ctx.fillStyle = hz;
+    ctx.fillRect(0, hzY - view.rowH * 1.1, view.w, view.rowH * 3.0);
+
+    // Out of bounds: everything past the walkable columns falls into shadow,
+    // so a wide screen still reads as a corridor you cannot leave.
+    var bl = sx(PP.World.CFG.X_MIN - 2.0, cam);
+    var br = sx(PP.World.CFG.X_MAX + 2.0, cam);
+    if (bl > 0) {
+      var lg2 = ctx.createLinearGradient(0, 0, bl, 0);
+      lg2.addColorStop(0, 'rgba(10,6,20,0.38)');
+      lg2.addColorStop(1, 'rgba(10,6,20,0)');
+      ctx.fillStyle = lg2;
+      ctx.fillRect(0, 0, bl, view.h);
+    }
+    if (br < view.w) {
+      var rg2 = ctx.createLinearGradient(view.w, 0, br, 0);
+      rg2.addColorStop(0, 'rgba(10,6,20,0.38)');
+      rg2.addColorStop(1, 'rgba(10,6,20,0)');
+      ctx.fillStyle = rg2;
+      ctx.fillRect(br, 0, view.w - br, view.h);
+    }
+
+    drawParticles(g.particles, cam);
+    drawFloaters(g.floaters, cam);
+    drawSnow(cam, t);
+    ctx.restore();
+
+    drawGrade();
+    drawVignette(g);
+  }
+
+  /* Small portrait used by the character-select cards. */
+  function drawPortrait(cnv, char) {
+    var c = cnv.getContext('2d');
+    var dpr = Math.min(global.devicePixelRatio || 1, 2);
+    var size = 76;
+    cnv.width = size * dpr;
+    cnv.height = size * dpr;
+    c.setTransform(dpr, 0, 0, dpr, 0, 0);
+    c.clearRect(0, 0, size, size);
+    CH.draw(c, size / 2, size * 0.92, { size: size * 0.82, char: char, facing: 'down' });
+  }
+
+  PP.Render = {
+    view: view,
+    init: function (cnv) {
+      canvas = cnv;
+      ctx = cnv.getContext('2d');
+      resize();
+      buildPatterns();
+    },
+    resize: resize,
+    draw: draw,
+    drawPortrait: drawPortrait,
+    sx: sx,
+    sy: sy
+  };
+})(window);
+</script>
+<script>
+/* Keyboard, swipe and tap. Everything funnels into two callbacks:
+   onMove(dir) and onAction(name). */
+(function (global) {
+  'use strict';
+
+  var PP = global.PP;
+  var U = PP.U;
+
+  var KEY_DIR = {
+    ArrowUp: 'up', KeyW: 'up',
+    ArrowDown: 'down', KeyS: 'down',
+    ArrowLeft: 'left', KeyA: 'left',
+    ArrowRight: 'right', KeyD: 'right'
+  };
+
+  var SWIPE_MIN = 26;      // px before a drag counts as a swipe
+  var TAP_DEAD = 34;       // px around the player that means "forward"
+
+  function init(canvas, handlers) {
+    var start = null;
+    var moved = false;
+
+    function move(dir) {
+      PP.Audio.unlock();
+      handlers.onMove(dir);
+    }
+
+    U.on(global, 'keydown', function (e) {
+      var dir = KEY_DIR[e.code];
+      if (dir) {
+        e.preventDefault();
+        move(dir);
+        return;
+      }
+      if (e.code === 'Space' || e.code === 'Enter') {
+        e.preventDefault();
+        PP.Audio.unlock();
+        handlers.onAction('primary');
+      } else if (e.code === 'KeyP' || e.code === 'Escape') {
+        handlers.onAction('pause');
+      } else if (e.code === 'KeyM') {
+        handlers.onAction('mute');
+      } else if (e.code === 'KeyR') {
+        handlers.onAction('restart');
+      }
+    });
+
+    function pos(e) {
+      var rect = canvas.getBoundingClientRect();
+      var src = e.touches && e.touches.length ? e.touches[0]
+        : (e.changedTouches && e.changedTouches.length ? e.changedTouches[0] : e);
+      return { x: src.clientX - rect.left, y: src.clientY - rect.top };
+    }
+
+    function down(e) {
+      start = pos(e);
+      moved = false;
+      PP.Audio.unlock();
+      // Press-and-hold: the animal crouches until you release.
+      if (handlers.onCharge) handlers.onCharge();
+    }
+
+    function drag(e) {
+      if (!start || moved) return;
+      var p = pos(e);
+      var dx = p.x - start.x;
+      var dy = p.y - start.y;
+      if (Math.abs(dx) < SWIPE_MIN && Math.abs(dy) < SWIPE_MIN) return;
+      moved = true;
+      if (Math.abs(dx) > Math.abs(dy)) move(dx > 0 ? 'right' : 'left');
+      else move(dy > 0 ? 'down' : 'up');
+    }
+
+    function up(e) {
+      if (!start) return;
+      if (!moved) {
+        // A tap: read the direction from where it landed relative to the player.
+        var p = pos(e);
+        var anchor = handlers.playerScreenPos();
+        var dx = p.x - anchor.x;
+        var dy = p.y - anchor.y;
+        if (Math.abs(dx) < TAP_DEAD && Math.abs(dy) < TAP_DEAD) move('up');
+        else if (Math.abs(dx) > Math.abs(dy)) move(dx > 0 ? 'right' : 'left');
+        else move(dy > 0 ? 'down' : 'up');
+      }
+      start = null;
+      moved = false;
+    }
+
+    U.on(canvas, 'pointerdown', down);
+    U.on(canvas, 'pointermove', drag);
+    U.on(canvas, 'pointerup', up);
+    U.on(canvas, 'pointercancel', function () {
+      start = null;
+      if (handlers.onChargeCancel) handlers.onChargeCancel();
+    });
+    U.on(canvas, 'contextmenu', function (e) { e.preventDefault(); });
+    U.on(canvas, 'touchstart', function (e) { e.preventDefault(); }, { passive: false });
+  }
+
+  PP.Input = { init: init };
+})(window);
+</script>
+<script>
+/* Game state, player physics, the chase, and the run loop. */
+(function (global) {
+  'use strict';
+
+  var PP = global.PP;
+  var U = PP.U;
+  var World = PP.World;
+
+  var HOP_TIME = 0.135;       // seconds per hop
+  var HOP_LIFT = 0.34;        // tiles of arc height
+  var HALF_W = 0.38;          // player half-width for vehicle collisions
+  var COIN_VALUE = 5;
+  var IDLE_GRACE = 3.0;       // seconds of standing still before the tide surges
+  var DEATH_HOLD = 1.6;       // seconds between dying and the game-over card
+  var CAUGHT_HOLD = 3.0;      // longer, so you get to watch yourself convert
+  var CONVERT_TIME = 1.3;     // seconds to go from pet to comrade
+
+  /* What the Collective turns you into. */
+  var REGIME = { fur: '#6b6f78', belly: '#9aa0a8', accent: '#c8102e', eye: '#1a1a1a' };
+
+  var SAVE_KEY = 'pp.save';
+
+  var save = U.store.get(SAVE_KEY, null) || {
+    best: 0, coins: 0, runs: 0, owned: ['mittens', 'biscuit'], char: 'mittens'
+  };
+  if (!save.owned || !save.owned.length) save.owned = ['mittens', 'biscuit'];
+  save.dodges = save.dodges || 0;
+  save.hops = save.hops || 0;
+
+  function persist() { U.store.set(SAVE_KEY, save); }
+
+  /* ── State Directives ─────────────────────────────────────────────
+     Three rotating objectives. Complete one mid-run and the bounty is
+     paid on the spot; a fresh directive replaces it next run. */
+
+  var D_TEMPLATES = [
+    { id: 'dist30', label: 'Reach 30m in one run', type: 'dist', target: 30, reward: 40 },
+    { id: 'dist50', label: 'Reach 50m in one run', type: 'dist', target: 50, reward: 60 },
+    { id: 'dist80', label: 'Reach 80m in one run', type: 'dist', target: 80, reward: 90 },
+    { id: 'coins15', label: 'Pocket 15 kibble in one run', type: 'coins', target: 15, reward: 40 },
+    { id: 'rivers4', label: 'Cross 4 canals in one run', type: 'rivers', target: 4, reward: 40 },
+    { id: 'ice3', label: 'Cross 3 frozen rows in one run', type: 'ice', target: 3, reward: 50 },
+    { id: 'parade2', label: 'Slip past 2 parades in one run', type: 'parade', target: 2, reward: 50 },
+    { id: 'dodge1', label: 'Dodge the black car', type: 'dodge', target: 1, reward: 60 },
+    { id: 'hops500', label: 'Hop 500 times, in total', type: 'hops', target: 500, reward: 50 },
+    { id: 'record', label: 'Break your record', type: 'record', target: 1, reward: 50 }
+  ];
+
+  function templateById(id) {
+    for (var i = 0; i < D_TEMPLATES.length; i++) if (D_TEMPLATES[i].id === id) return D_TEMPLATES[i];
+    return null;
+  }
+
+  function pickDirective(exceptIds) {
+    var pool = D_TEMPLATES.filter(function (tpl) {
+      return exceptIds.indexOf(tpl.id) === -1;
+    });
+    return pool[U.randInt(0, pool.length - 1)];
+  }
+
+  function ensureDirectives() {
+    if (save.directives && save.directives.length === 3) return;
+    save.directives = [];
+    for (var i = 0; i < 3; i++) {
+      var have = save.directives.map(function (d) { return d.id; });
+      save.directives.push({ id: pickDirective(have).id, done: false });
+    }
+    persist();
+  }
+
+  function refreshDirectives() {
+    var changed = false;
+    for (var i = 0; i < save.directives.length; i++) {
+      if (save.directives[i].done) {
+        var have = save.directives.map(function (d) { return d.id; });
+        save.directives[i] = { id: pickDirective(have).id, done: false };
+        changed = true;
+      }
+    }
+    if (changed) persist();
+  }
+
+  function directiveValue(tpl) {
+    switch (tpl.type) {
+      case 'dist': return g.score;
+      case 'coins': return g.runStats.kibble;
+      case 'rivers': return g.runStats.waterX;
+      case 'ice': return g.runStats.iceX;
+      case 'parade': return g.runStats.paradeX;
+      case 'dodge': return g.runStats.dodged ? 1 : 0;
+      case 'hops': return save.hops;
+      case 'record': return g.bestCrossed ? 1 : 0;
+    }
+    return 0;
+  }
+
+  function checkDirectives() {
+    if (g.mode !== 'playing') return;
+    for (var i = 0; i < save.directives.length; i++) {
+      var d = save.directives[i];
+      if (d.done) continue;
+      var tpl = templateById(d.id);
+      if (!tpl) continue;
+      if (directiveValue(tpl) >= tpl.target) {
+        d.done = true;
+        persist();
+        g.runCoins += tpl.reward;
+        floater('DIRECTIVE +' + tpl.reward, g.player.x, g.player.row + 1.0, '#8ee36a');
+        PP.Audio.unlockChime();
+      }
+    }
+  }
+
+  var g = {
+    mode: 'menu',              // menu | playing | paused | dying | dead
+    cam: { x: 0, row: 2 },
+    player: null,
+    tide: { row: -7, speed: 1.2 },
+    particles: [],
+    floaters: [],
+    splashes: [],
+    playerChar: null,          // set while converting; render prefers it
+    shake: 0,
+    flash: 0,
+    showPlayer: false,
+    char: PP.Characters.byId(save.char),
+    score: 0,
+    runCoins: 0,
+    idleT: 0,
+    deathT: 0,
+    nextMilestone: 25,
+    bestLineRow: -1,           // where the record line sits for this run
+    bestCrossed: false,
+    van: { state: 'idle', t: 0, x: 0, row: 0, fromSide: 1, caught: false },
+    runStats: { waterX: 0, iceX: 0, paradeX: 0, kibble: 0, dodged: false },
+    streak: 0,
+    lastFwdT: -9,
+    slowmoT: 0,
+    queued: null,
+    onDeath: null,             // set by main.js
+    onScore: null
+  };
+
+  function newPlayer() {
+    return {
+      x: 0, row: 2,
+      fromX: 0, fromRow: 2, toX: 0, toRow: 2,
+      hopping: false, hopT: 0,
+      facing: 'up', squash: 0, lift: 0,
+      onLog: null, charging: false,
+      dead: false, deathKind: null, sinkT: 0,
+      convertT: 0, marchT: 0,
+      bumpT: 0
+    };
+  }
+
+  /* Blend the player's colours toward the regime's as they are converted. */
+  function convertedChar(base, t) {
+    return {
+      species: base.species, ears: base.ears, tail: base.tail,
+      short: base.short, fluffy: base.fluffy,
+      fur: U.mixHex(base.fur, REGIME.fur, t),
+      belly: U.mixHex(base.belly, REGIME.belly, t),
+      accent: U.mixHex(base.accent, REGIME.accent, t),
+      eye: U.mixHex(base.eye, REGIME.eye, t)
+    };
+  }
+
+  /* ── Effects ────────────────────────────────────────────────────── */
+
+  function puff(x, row, color, count, spread) {
+    for (var i = 0; i < count; i++) {
+      g.particles.push({
+        x: x + U.rand(-0.25, 0.25),
+        row: row + U.rand(-0.2, 0.2),
+        z: U.rand(0.1, 0.4),
+        vx: U.rand(-spread, spread),
+        vrow: U.rand(-spread * 0.6, spread * 0.6),
+        vz: U.rand(0.6, 2.2),
+        size: U.rand(0.02, 0.06),
+        color: color,
+        shape: Math.random() < 0.5 ? 'circle' : 'square',
+        life: U.rand(0.4, 0.9),
+        maxLife: 0.9
+      });
+    }
+  }
+
+  /* Rings on the surface plus droplets thrown clear of the impact. */
+  function splash(x, row) {
+    g.splashes.push({ x: x, row: row, t: 0, maxT: 1.1 });
+    for (var i = 0; i < 22; i++) {
+      var a = Math.random() * Math.PI * 2;
+      var speed = U.rand(0.7, 2.4);
+      g.particles.push({
+        x: x, row: row, z: 0.05,
+        vx: Math.cos(a) * speed,
+        vrow: Math.sin(a) * speed * 0.45,
+        vz: U.rand(1.8, 4.2),
+        size: U.rand(0.018, 0.055),
+        color: i % 3 === 0 ? 'rgba(255,255,255,0.95)' : 'rgba(168,214,240,0.95)',
+        shape: 'circle',
+        life: U.rand(0.5, 1.0),
+        maxLife: 1.0
+      });
+    }
+  }
+
+  function floater(text, x, row, color) {
+    g.floaters.push({ text: text, x: x, row: row, life: 1.0, maxLife: 1.0, color: color });
+  }
+
+  function updateEffects(dt) {
+    var i, p;
+    for (i = g.particles.length - 1; i >= 0; i--) {
+      p = g.particles[i];
+      p.life -= dt;
+      if (p.life <= 0) { g.particles.splice(i, 1); continue; }
+      p.x += p.vx * dt;
+      p.row += p.vrow * dt;
+      p.z += p.vz * dt;
+      p.vz -= 7 * dt;
+      if (p.z < 0) { p.z = 0; p.vz *= -0.35; }
+    }
+    for (i = g.floaters.length - 1; i >= 0; i--) {
+      g.floaters[i].life -= dt * 0.9;
+      if (g.floaters[i].life <= 0) g.floaters.splice(i, 1);
+    }
+    for (i = g.splashes.length - 1; i >= 0; i--) {
+      g.splashes[i].t += dt;
+      if (g.splashes[i].t >= g.splashes[i].maxT) g.splashes.splice(i, 1);
+    }
+    g.shake = Math.max(0, g.shake - dt * 2.2);
+    g.flash = Math.max(0, g.flash - dt * 3.0);
+  }
+
+  /* ── Movement ───────────────────────────────────────────────────── */
+
+  function tryMove(dir) {
+    if (g.mode !== 'playing') return;
+    var p = g.player;
+    if (p.dead) return;
+    p.charging = false;
+
+    if (p.hopping) {
+      // Late input is buffered so chained hops feel responsive.
+      if (p.hopT / HOP_TIME > 0.55) g.queued = dir;
+      return;
+    }
+
+    var baseX = Math.round(p.x);
+    var toX = baseX, toRow = p.row;
+    if (dir === 'up') toRow = p.row + 1;
+    else if (dir === 'down') toRow = p.row - 1;
+    else if (dir === 'left') toX = baseX - 1;
+    else if (dir === 'right') toX = baseX + 1;
+
+    p.facing = dir;
+
+    var blocked = World.isBlocked(toX, toRow) || toRow < 0 || toRow <= Math.ceil(g.tide.row);
+    if (blocked) {
+      p.bumpT = 0.12;
+      p.squash = 0.22;
+      PP.Audio.bump();
+      return;
+    }
+
+    p.fromX = p.x;
+    p.fromRow = p.row;
+    p.toX = toX;
+    p.toRow = toRow;
+    p.hopping = true;
+    p.hopT = 0;
+    p.onLog = null;
+    if (dir === 'up') {
+      g.idleT = 0;
+      var nowT = World.time();
+      g.streak = (nowT - g.lastFwdT < 0.9) ? g.streak + 1 : 1;
+      g.lastFwdT = nowT;
+    }
+    save.hops++;
+    PP.Audio.hop(g.char.species === 'cat' ? 1.12 : 0.85);
+  }
+
+  function land() {
+    var p = g.player;
+    p.x = p.toX;
+    p.row = p.toRow;
+    p.hopping = false;
+    p.lift = 0;
+    p.squash = -0.22;
+
+    var row = World.row(p.row);
+    if (row && row.type === 'grass') puff(p.x, p.row, 'rgba(140,200,120,0.9)', 4, 1.1);
+    if (row && row.type === 'water') {
+      var lg = World.logUnder(p.x, p.row);
+      if (lg) {
+        p.onLog = lg;
+        puff(p.x, p.row, 'rgba(190,225,245,0.9)', 5, 1.2);
+        g.splashes.push({ x: p.x, row: p.row, t: 0, maxT: 0.5, kind: 'ripple' });
+      }
+    } else if (row && row.type === 'ice') {
+      g.splashes.push({ x: p.x, row: p.row, t: 0, maxT: 0.45, kind: 'ripple' });
+      PP.Audio.iceLand();
+    } else if (row) {
+      // A little kick of dust marks every landing on solid ground.
+      g.splashes.push({ x: p.x, row: p.row, t: 0, maxT: 0.38, kind: 'dust' });
+    }
+
+    // Crossing your own record line is a moment.
+    if (!g.bestCrossed && g.bestLineRow >= 3 && p.row > g.bestLineRow) {
+      g.bestCrossed = true;
+      floater('RECORD BROKEN', p.x, p.row + 0.6, '#f5c542');
+      puff(p.x, p.row, '#f5c542', 16, 2.6);
+      PP.Audio.milestone();
+      checkDirectives();
+    }
+
+    var coin = World.coinAt(Math.round(p.x), p.row);
+    if (coin) {
+      coin.taken = true;
+      var mult = g.streak >= 10 ? 2 : 1;   // momentum pays double
+      g.runCoins += COIN_VALUE * mult;
+      g.runStats.kibble += COIN_VALUE * mult;
+      floater('+' + (COIN_VALUE * mult), p.x, p.row, '#f5c542');
+      puff(p.x, p.row, '#f5c542', 8, 1.6);
+      PP.Audio.coin();
+      checkDirectives();
+    }
+
+    if (p.row > g.score) {
+      g.score = p.row;
+      // The row now fully behind you counts as crossed.
+      var behind = World.row(g.score - 1);
+      if (behind) {
+        if (behind.type === 'water') g.runStats.waterX++;
+        else if (behind.type === 'ice') g.runStats.iceX++;
+        else if (behind.type === 'parade') g.runStats.paradeX++;
+        else if (behind.type === 'checkpoint') {
+          // Through the gate: the paperwork delays them.
+          g.runCoins += 25;
+          g.tide.row = Math.max(-7, g.tide.row - 2);
+          floater('SECTOR CLEARED +25', p.x, p.row + 1.0, '#f5c542');
+          g.flash = 0.22;
+          PP.Audio.fanfare();
+        }
+      }
+      checkDirectives();
+      if (g.onScore) g.onScore(g.score);
+      if (g.score >= g.nextMilestone) {
+        g.nextMilestone += 25;
+        floater(g.score + 'm', p.x, p.row + 0.4, '#ffffff');
+        PP.Audio.milestone();
+      }
+    }
+
+    if (g.queued) {
+      var q = g.queued;
+      g.queued = null;
+      tryMove(q);
+    }
+  }
+
+  function updatePlayer(dt) {
+    var p = g.player;
+
+    if (p.dead) {
+      if (p.deathKind === 'water') p.sinkT = Math.min(1, p.sinkT + dt * 1.4);
+      if (p.deathKind === 'van') p.sinkT = Math.min(1, p.sinkT + dt * 1.8);
+      if (p.deathKind === 'caught') {
+        // Re-education: the colours drain, the hat arrives, and you fall in
+        // step with the rank you were running from.
+        var was = p.convertT;
+        p.convertT = Math.min(1, p.convertT + dt / CONVERT_TIME);
+        p.marchT += dt;
+        g.playerChar = convertedChar(g.char, p.convertT);
+        if (p.convertT > 0.45) p.facing = 'up';
+        if (was < 0.5 && p.convertT >= 0.5) {
+          floater('COMRADE', p.x, p.row + 1.25, '#f5c542');
+          puff(p.x, p.row, '#c8102e', 10, 1.8);
+        }
+      }
+      return;
+    }
+
+    p.bumpT = Math.max(0, p.bumpT - dt);
+    p.squash = U.approach(p.squash, 0, 14, dt);
+
+    if (p.hopping) {
+      p.hopT += dt;
+      var t = U.clamp(p.hopT / HOP_TIME, 0, 1);
+      p.x = U.lerp(p.fromX, p.toX, t);
+      p.row = U.lerp(p.fromRow, p.toRow, t);
+      p.lift = Math.sin(t * Math.PI) * HOP_LIFT;
+      p.squash = Math.sin(t * Math.PI) * 0.18;
+      if (t >= 1) land();
+    } else {
+      // Riding: logs carry you, and the current does not care where you wanted to go.
+      var row = World.row(p.row);
+      if (row && row.type === 'water') {
+        var lg = World.logUnder(p.x, p.row);
+        p.onLog = lg;
+        if (lg) p.x += row.dir * row.speed * dt;
+      } else if (row && row.type === 'ice') {
+        // Your weight is a problem the floe intends to solve.
+        var floe = World.floeAt(p.x, p.row);
+        if (floe && floe.state !== 'sunk') {
+          floe.pressed = true;
+          floe.standT += dt;
+          if (floe.standT > 1.6) {
+            floe.state = 'sunk';
+            floe.recoverT = 2.6;
+            PP.Audio.iceBreak();
+          } else if (floe.standT > 0.8 && floe.state === 'solid') {
+            floe.state = 'cracking';
+            PP.Audio.iceCrack();
+          }
+        }
+      }
+    }
+
+    checkDeath();
+  }
+
+  function die(kind) {
+    var p = g.player;
+    if (p.dead) return;
+    p.dead = true;
+    p.deathKind = kind;
+    p.hopping = false;
+    g.mode = 'dying';
+    g.deathT = 0;
+    // A beat of slow motion sells the impact; conversion is already slow.
+    if (kind !== 'caught') g.slowmoT = 0.45;
+
+    if (kind === 'squash') {
+      g.shake = 1;
+      g.flash = 0.5;
+      puff(p.x, p.row, g.char.fur, 16, 3.2);
+      PP.Audio.squash();
+      PP.Music.fadeOut(0.5);
+    } else if (kind === 'water') {
+      splash(p.x, p.row);
+      g.shake = 0.35;
+      PP.Audio.splash();
+      PP.Music.fadeOut(0.5);
+    } else if (kind === 'van') {
+      g.shake = 0.45;
+      puff(p.x, p.row, g.char.fur, 10, 2.0);
+      PP.Audio.doorSlam();
+      PP.Music.fadeOut(0.5);
+    } else {
+      g.shake = 0.7;
+      puff(p.x, p.row, '#c8102e', 18, 2.6);
+      PP.Audio.caught();
+      PP.Music.stop();
+      PP.Music.victoryOfTheCollective();
+    }
+  }
+
+  function checkDeath() {
+    var p = g.player;
+    var row = World.row(p.row);
+    if (!row) return;
+
+    if (g.tide.row >= p.row - 0.05) { die('caught'); return; }
+
+    if (row.type === 'road' && World.carAt(p.x, p.row, HALF_W)) { die('squash'); return; }
+    if (row.type === 'parade' && World.carAt(p.x, p.row, HALF_W)) { die('caught'); return; }
+    if (row.type === 'rail' && World.trainAt(p.x, p.row, HALF_W)) { die('squash'); return; }
+
+    if (row.type === 'ice' && !p.hopping) {
+      var fl = World.floeAt(p.x, p.row);
+      if (!fl || fl.state === 'sunk') { die('water'); return; }
+    }
+
+    if (row.type === 'water' && !p.hopping) {
+      if (!World.logUnder(p.x, p.row)) { die('water'); return; }
+      // Carried past the bank: still on screen when it happens, so you see it.
+      if (p.x < World.CFG.X_MIN - 1 || p.x > World.CFG.X_MAX + 1) { die('water'); return; }
+    }
+  }
+
+  /* ── The black car ──────────────────────────────────────────────────
+     The tide punishes hesitation from behind; the black car punishes it
+     everywhere else. Stand around with a comfortable lead and a secret
+     police sedan tears onto your row, brakes at your tile, and takes you
+     in. It only drives on land — the rivers and the ice punish idling by
+     themselves. */
+
+  function updateVan(dt) {
+    var v = g.van;
+    var p = g.player;
+    var gap = p.row - g.tide.row;
+
+    if (v.state === 'idle') {
+      var rt = World.row(Math.round(p.row));
+      var onLand = rt && rt.type !== 'water' && rt.type !== 'ice';
+      if (g.idleT > 4.2 && gap > 6 && !p.dead && onLand) {
+        v.state = 'warn';
+        v.t = 0;
+        v.x = Math.round(p.x);
+        v.row = Math.round(p.row);
+        v.fromSide = p.x >= 0 ? 1 : -1;   // enters from the nearer edge
+        v.caught = false;
+        PP.Audio.screech();
+      }
+    } else if (v.state === 'warn') {
+      v.t += dt;
+      if (v.t > 0.9) { v.state = 'arrive'; v.t = 0; PP.Audio.engine(); }
+    } else if (v.state === 'arrive') {
+      v.t += dt;
+      if (v.t >= 0.45) {
+        v.caught = !p.dead && Math.abs(p.x - v.x) < 0.6 && Math.abs(p.row - v.row) < 0.6;
+        if (v.caught) die('van');
+        else {
+          g.idleT = 0;
+          g.runStats.dodged = true;
+          save.dodges++;
+          persist();
+          floater('DODGED', p.x, p.row + 0.6, '#8ee36a');
+          checkDirectives();
+        }
+        v.state = 'grab';
+        v.t = 0;
+      }
+    } else if (v.state === 'grab') {
+      v.t += dt;
+      if (v.t > (v.caught ? 0.7 : 0.35)) { v.state = 'depart'; v.t = 0; }
+    } else if (v.state === 'depart') {
+      v.t += dt;
+      if (v.t > 1.0) v.state = 'idle';
+    }
+  }
+
+  /* ── Traffic feedback: whooshes and honks, no gameplay effect ───── */
+
+  function updateTraffic(dt) {
+    var p = g.player;
+    if (p.dead) return;
+    var row = World.row(Math.round(p.row));
+    if (!row || row.type !== 'road') return;
+    for (var i = 0; i < row.cars.length; i++) {
+      var car = row.cars[i];
+      var cx = World.carX(row, car);
+      var dxx = Math.abs(cx - p.x);
+      var shave = car.w / 2 + HALF_W + 0.5;
+      if (car._pd !== undefined && dxx < shave && car._pd >= shave && !p.hopping) {
+        PP.Audio.whoosh();
+        g.shake = Math.max(g.shake, 0.12);
+      }
+      car._pd = dxx;
+
+      // An impatient beep from anyone bearing down on your column.
+      var closing = row.dir > 0 ? p.x - cx : cx - p.x;
+      if (closing > 0.8 && closing < 3.2 &&
+          World.time() - (row.lastBeep || -9) > 1.6 && Math.random() < dt * 2.0) {
+        row.lastBeep = World.time();
+        PP.Audio.beep();
+      }
+    }
+  }
+
+  /* ── The Collective ─────────────────────────────────────────────── */
+
+  function updateTide(dt) {
+    var d = World.difficulty(g.score);
+    var speed = 1.05 + d * 0.95;
+
+    var gap = g.player.row - g.tide.row;
+    // It closes fast when you get too far ahead — no safe lead, and the front
+    // line stays near the bottom of the screen where you can see it coming.
+    if (gap > 8) speed *= 1 + (gap - 8) * 0.35;
+    // And it surges if you stand around thinking about it.
+    if (g.idleT > IDLE_GRACE) speed *= 1 + Math.min(g.idleT - IDLE_GRACE, 4) * 0.55;
+
+    g.tide.speed = speed;
+    g.tide.row += speed * dt;
+
+    // The band plays faster the closer it gets.
+    PP.Music.setUrgent(gap < 5.5);
+  }
+
+  /* ── Camera ─────────────────────────────────────────────────────── */
+
+  function updateCamera(dt) {
+    if (g.mode === 'menu') {
+      g.cam.row += 1.5 * dt;
+      g.cam.x = U.approach(g.cam.x, Math.sin(World.time() * 0.25) * 2.2, 2, dt);
+      g.tide.row = g.cam.row - 7.5;
+      return;
+    }
+    var p = g.player;
+    g.cam.row = U.approach(g.cam.row, p.row + 0.6, 7, dt);
+    g.cam.x = U.approach(g.cam.x, U.clamp(p.x, -3.2, 3.2), 8, dt);
+  }
+
+  /* ── Run control ────────────────────────────────────────────────── */
+
+  var Game = {
+    g: g,
+    save: save,
+
+    setChar: function (id) {
+      save.char = id;
+      g.char = PP.Characters.byId(id);
+      persist();
+    },
+
+    owns: function (id) { return save.owned.indexOf(id) !== -1; },
+
+    buy: function (id) {
+      var c = PP.Characters.byId(id);
+      if (c.secret) { PP.Audio.deny(); return 'secret'; }
+      if (Game.owns(id)) return 'owned';
+      if (save.coins < c.price) { PP.Audio.deny(); return 'poor'; }
+      save.coins -= c.price;
+      save.owned.push(id);
+      persist();
+      PP.Audio.unlockChime();
+      return 'bought';
+    },
+
+    enterMenu: function () {
+      World.reset();
+      g.mode = 'menu';
+      g.cam = { x: 0, row: 4 };
+      g.tide.row = -5;
+      g.player = newPlayer();
+      g.showPlayer = false;
+      g.playerChar = null;
+      g.particles.length = 0;
+      g.floaters.length = 0;
+      g.splashes.length = 0;
+      g.shake = 0;
+      g.flash = 0;
+      g.van.state = 'idle';
+      PP.Music.stop();
+    },
+
+    start: function () {
+      World.reset();
+      g.mode = 'playing';
+      g.player = newPlayer();
+      g.showPlayer = true;
+      g.cam = { x: 0, row: 2.6 };
+      g.tide.row = -7;
+      g.tide.speed = 1.05;
+      g.score = 0;
+      g.runCoins = 0;
+      g.idleT = 0;
+      g.deathT = 0;
+      g.nextMilestone = 25;
+      g.bestLineRow = (save.best || 0) >= 3 ? save.best : -1;
+      g.bestCrossed = false;
+      g.van.state = 'idle';
+      g.van.t = 0;
+      g.runStats = { waterX: 0, iceX: 0, paradeX: 0, kibble: 0, dodged: false };
+      g.streak = 0;
+      g.lastFwdT = -9;
+      g.slowmoT = 0;
+      refreshDirectives();
+      g.queued = null;
+      g.particles.length = 0;
+      g.floaters.length = 0;
+      g.splashes.length = 0;
+      g.playerChar = null;
+      g.shake = 0;
+      g.flash = 0;
+      g.char = PP.Characters.byId(save.char);
+      save.runs = (save.runs || 0) + 1;
+      persist();
+      PP.Music.setUrgent(false);
+      PP.Music.start();
+    },
+
+    pause: function () {
+      if (g.mode === 'playing') { g.mode = 'paused'; PP.Music.stop(); return true; }
+      return false;
+    },
+
+    resume: function () {
+      if (g.mode === 'paused') { g.mode = 'playing'; PP.Music.start(); }
+    },
+
+    isPlaying: function () { return g.mode === 'playing'; },
+    mode: function () { return g.mode; },
+
+    move: tryMove,
+
+    /* Press-and-hold: the animal crouches, the hop fires on release. */
+    charge: function () {
+      if (g.mode === 'playing' && g.player && !g.player.dead && !g.player.hopping) {
+        g.player.charging = true;
+      }
+    },
+    uncharge: function () { if (g.player) g.player.charging = false; },
+
+    /* The People's Lottery: 100 kibble, one guaranteed new comrade. */
+    LOTTERY_COST: 100,
+    lockedCount: function () {
+      return PP.Characters.ROSTER.filter(function (c) {
+        return !c.secret && save.owned.indexOf(c.id) === -1;
+      }).length;
+    },
+    lottery: function () {
+      // The State does not raffle off dissidents.
+      var locked = PP.Characters.ROSTER.filter(function (c) {
+        return !c.secret && save.owned.indexOf(c.id) === -1;
+      });
+      if (!locked.length || (save.coins || 0) < Game.LOTTERY_COST) {
+        PP.Audio.deny();
+        return null;
+      }
+      save.coins -= Game.LOTTERY_COST;
+      var win = locked[U.randInt(0, locked.length - 1)];
+      save.owned.push(win.id);
+      save.char = win.id;
+      g.char = PP.Characters.byId(win.id);
+      persist();
+      return win;
+    },
+
+    /* Distance bonus is paid out at the end of the run. */
+    finishRun: function () {
+      var bonus = Math.floor(g.score / 5);
+      var earned = g.runCoins + bonus;
+      var newBest = g.score > (save.best || 0);
+      if (newBest) save.best = g.score;
+      save.coins = (save.coins || 0) + earned;
+      // Three clean escapes from the black car earn you the dissident.
+      var unlockedSecret = false;
+      if (save.dodges >= 3 && save.owned.indexOf('kotleta') === -1) {
+        save.owned.push('kotleta');
+        unlockedSecret = true;
+      }
+      persist();
+      return {
+        score: g.score, best: save.best, earned: earned, newBest: newBest,
+        kind: g.player.deathKind, unlockedSecret: unlockedSecret
+      };
+    },
+
+    /* For the title screen: the three active directives, displayable. */
+    directiveList: function () {
+      ensureDirectives();
+      return save.directives.map(function (d) {
+        var tpl = templateById(d.id) || { label: d.id, reward: 0, type: '' };
+        var progText = '';
+        if (tpl.type === 'hops') progText = Math.min(save.hops, tpl.target) + '/' + tpl.target;
+        return { label: tpl.label, reward: tpl.reward, done: d.done, progText: progText };
+      });
+    },
+    dodgeCount: function () { return save.dodges; },
+
+    playerScreenPos: function () {
+      return {
+        x: PP.Render.sx(g.player ? g.player.x : 0, g.cam),
+        y: PP.Render.sy(g.player ? g.player.row : g.cam.row, g.cam)
+      };
+    },
+
+    update: function (dt) {
+      if (g.mode === 'paused') return;
+      if (g.slowmoT > 0) {
+        g.slowmoT -= dt;
+        dt *= 0.3;
+      }
+
+      if (g.mode === 'playing' || g.mode === 'dying' || g.mode === 'dead') {
+        World.update(dt, g.player.row);
+        if (g.mode === 'playing') {
+          g.idleT += dt;
+          updatePlayer(dt);
+          updateTide(dt);
+          updateVan(dt);
+          updateTraffic(dt);
+        } else {
+          // The tide keeps rolling over the scene while the card comes up.
+          g.tide.row += g.tide.speed * 0.7 * dt;
+          updatePlayer(dt);
+          if (g.mode === 'dying') {
+            g.deathT += dt;
+            var hold = g.player.deathKind === 'caught' ? CAUGHT_HOLD : DEATH_HOLD;
+            if (g.deathT >= hold) {
+              g.mode = 'dead';
+              if (g.onDeath) g.onDeath(Game.finishRun());
+            }
+          }
+        }
+      } else {
+        World.update(dt, g.cam.row);
+      }
+
+      updateCamera(dt);
+      updateEffects(dt);
+    }
+  };
+
+  PP.Game = Game;
+})(window);
+</script>
+<script>
+/* Boot, DOM wiring and the frame loop. */
+(function (global) {
+  'use strict';
+
+  var PP = global.PP;
+  var U = PP.U;
+  var Game = PP.Game;
+
+  var canvas = U.$('stage');
+  var hud = U.$('hud');
+  var elScore = U.$('score');
+  var elCoins = U.$('coins');
+  var elWarning = U.$('warning');
+
+  var SCREENS = ['screen-title', 'screen-pick', 'screen-help', 'screen-pause', 'screen-over', 'screen-prize'];
+
+  var DEATHS = {
+    squash: {
+      title: 'FLATTENED',
+      flavor: 'Requisitioned vehicles do not yield. It is not personal, it is procedural.'
+    },
+    water: {
+      title: 'NATIONALISED',
+      flavor: 'The canal has accepted your resignation, effective immediately.'
+    },
+    caught: {
+      title: 'REDISTRIBUTED',
+      flavor: 'You have been issued a hat and an opinion. Welcome to the march, comrade.'
+    },
+    van: {
+      title: 'DETAINED',
+      flavor: 'A black car happened to be passing. A black car is always passing.'
+    }
+  };
+
+  function showScreen(id) {
+    SCREENS.forEach(function (s) {
+      var el = U.$(s);
+      if (el) el.classList.toggle('hidden', s !== id);
+    });
+    hud.classList.toggle('hidden', id !== null && id !== 'screen-pause');
+  }
+
+  function hideScreens() { showScreen(null); }
+
+  /* ── Title stats ────────────────────────────────────────────────── */
+
+  function refreshStats() {
+    U.$('t-best').textContent = Game.save.best || 0;
+    U.$('t-coins').textContent = Game.save.coins || 0;
+    U.$('t-runs').textContent = Game.save.runs || 0;
+    U.$('p-coins').textContent = Game.save.coins || 0;
+    refreshLotteryButtons();
+    refreshDirectivesPanel();
+  }
+
+  function refreshDirectivesPanel() {
+    var host = U.$('directives');
+    if (!host) return;
+    var list = Game.directiveList();
+    var html = '<div class="dhead">State Directives</div>';
+    list.forEach(function (d) {
+      html += '<div class="drow' + (d.done ? ' done' : '') + '"><span>' + d.label +
+        (d.progText ? ' \u00b7 ' + d.progText : '') +
+        '</span><span class="rw">+' + d.reward + ' \ud83c\udf56</span></div>';
+    });
+    host.innerHTML = html;
+  }
+
+  function refreshLotteryButtons() {
+    var locked = Game.lockedCount();
+    var poor = (Game.save.coins || 0) < Game.LOTTERY_COST;
+    [U.$('btn-lottery'), U.$('btn-lottery-again')].forEach(function (btn) {
+      if (!btn) return;
+      btn.disabled = !locked || poor;
+      if (!locked) btn.textContent = 'Every comrade is free';
+      else btn.textContent = (btn.id === 'btn-lottery' ? 'People\u2019s Lottery \u00b7 \ud83c\udf56 100' : 'Again \u00b7 \ud83c\udf56 100');
+    });
+  }
+
+  /* ── Character select ───────────────────────────────────────────── */
+
+  function buildRoster() {
+    var host = U.$('roster');
+    host.innerHTML = '';
+    PP.Characters.ROSTER.forEach(function (c) {
+      var owned = Game.owns(c.id);
+      var hiddenSecret = c.secret && !owned;
+      var card = document.createElement('div');
+      card.className = 'card' + (Game.save.char === c.id ? ' selected' : '') + (owned ? '' : ' locked');
+
+      var cnv = document.createElement('canvas');
+      card.appendChild(cnv);
+
+      var name = document.createElement('div');
+      name.className = 'name';
+      name.textContent = hiddenSecret ? '?????' : c.name;
+      card.appendChild(name);
+
+      var tag = document.createElement('div');
+      tag.className = 'tag';
+      tag.textContent = hiddenSecret
+        ? 'Dodge the black car \u00d73 (' + Math.min(Game.dodgeCount(), 3) + '/3)'
+        : c.tag;
+      card.appendChild(tag);
+
+      var foot = document.createElement('div');
+      if (owned) {
+        foot.className = 'owned';
+        foot.textContent = Game.save.char === c.id ? 'SELECTED' : 'ready';
+      } else if (hiddenSecret) {
+        foot.className = 'owned';
+        foot.textContent = 'classified';
+      } else {
+        foot.className = 'price' + ((Game.save.coins || 0) >= c.price ? '' : ' cant');
+        foot.textContent = '🍖 ' + c.price;
+      }
+      card.appendChild(foot);
+
+      card.addEventListener('click', function () {
+        PP.Audio.unlock();
+        if (hiddenSecret) { PP.Audio.deny(); return; }
+        if (!Game.owns(c.id)) {
+          var res = Game.buy(c.id);
+          if (res !== 'bought') { refreshStats(); buildRoster(); return; }
+        } else {
+          PP.Audio.blip();
+        }
+        Game.setChar(c.id);
+        refreshStats();
+        buildRoster();
+      });
+
+      host.appendChild(card);
+      if (hiddenSecret) {
+        // A redacted silhouette: the file exists, the photo does not.
+        var c2 = cnv.getContext('2d');
+        var dpr = Math.min(window.devicePixelRatio || 1, 2);
+        cnv.width = 76 * dpr; cnv.height = 76 * dpr;
+        c2.setTransform(dpr, 0, 0, dpr, 0, 0);
+        c2.fillStyle = 'rgba(255,255,255,0.06)';
+        c2.fillRect(8, 6, 60, 64);
+        c2.fillStyle = 'rgba(245,197,66,0.8)';
+        c2.font = '900 40px "Trebuchet MS", sans-serif';
+        c2.textAlign = 'center';
+        c2.fillText('?', 38, 52);
+      } else {
+        PP.Render.drawPortrait(cnv, c);
+      }
+    });
+  }
+
+  /* ── Flow ───────────────────────────────────────────────────────── */
+
+  function toMenu() {
+    Game.enterMenu();
+    refreshStats();
+    showScreen('screen-title');
+  }
+
+  var hintTimer = null;
+
+  function startRun() {
+    Game.start();
+    elScore.textContent = '0';
+    elCoins.textContent = '0';
+    hideScreens();
+    // Coach the press-and-release hop for the first few escapes.
+    var hint = U.$('hint');
+    if (hint && (Game.save.runs || 0) <= 3) {
+      hint.classList.remove('hidden');
+      if (hintTimer) clearTimeout(hintTimer);
+      hintTimer = setTimeout(function () { hint.classList.add('hidden'); }, 6000);
+    }
+  }
+
+  function hideHint() {
+    var hint = U.$('hint');
+    if (hint && !hint.classList.contains('hidden')) hint.classList.add('hidden');
+  }
+
+  function onDeath(result) {
+    PP.Music.stop();
+    var info = DEATHS[result.kind] || DEATHS.caught;
+    U.$('over-title').textContent = info.title;
+    U.$('over-flavor').textContent = info.flavor;
+    U.$('o-score').textContent = result.score;
+    U.$('o-best').textContent = result.best;
+    U.$('o-coins').textContent = result.earned;
+    U.$('o-newbest').classList.toggle('hidden', !result.newBest);
+    U.$('o-secret').classList.toggle('hidden', !result.unlockedSecret);
+    if (result.unlockedSecret) PP.Audio.unlockChime();
+    refreshStats();
+    showScreen('screen-over');
+  }
+
+  Game.g.onDeath = onDeath;
+
+  function togglePause() {
+    if (Game.pause()) showScreen('screen-pause');
+    else if (Game.mode() === 'paused') { Game.resume(); hideScreens(); }
+  }
+
+  function toggleMute() {
+    var muted = PP.Audio.toggleMute();
+    U.$('btn-mute').textContent = muted ? '🔇' : '🔊';
+    // Unmuting mid-run brings the band back.
+    if (!muted && Game.isPlaying()) PP.Music.start();
+  }
+
+  /* ── Buttons ────────────────────────────────────────────────────── */
+
+  U.on(U.$('btn-play'), 'click', function () { PP.Audio.unlock(); startRun(); });
+  U.on(U.$('btn-again'), 'click', startRun);
+  U.on(U.$('btn-menu'), 'click', toMenu);
+  U.on(U.$('btn-resume'), 'click', function () { Game.resume(); hideScreens(); });
+  U.on(U.$('btn-quit'), 'click', toMenu);
+  U.on(U.$('btn-pause'), 'click', togglePause);
+  U.on(U.$('btn-mute'), 'click', toggleMute);
+  U.on(U.$('btn-help'), 'click', function () { showScreen('screen-help'); });
+  U.on(U.$('btn-help-back'), 'click', function () { showScreen('screen-title'); });
+  U.on(U.$('btn-pick-back'), 'click', function () { showScreen('screen-title'); });
+
+  function openPicker() {
+    refreshStats();
+    buildRoster();
+    showScreen('screen-pick');
+  }
+  U.on(U.$('btn-pick'), 'click', openPicker);
+  U.on(U.$('btn-over-pick'), 'click', openPicker);
+
+  /* ── The People's Lottery ───────────────────────────────────────── */
+
+  var lotteryBusy = false;
+
+  function confettiBurst(stage) {
+    var colors = ['#c8102e', '#f5c542', '#f0e6d6', '#e08a3c'];
+    for (var i = 0; i < 14; i++) {
+      var bit = document.createElement('span');
+      bit.className = 'confetti';
+      bit.style.background = colors[i % colors.length];
+      bit.style.setProperty('--cx', (Math.random() * 240 - 120).toFixed(0) + 'px');
+      bit.style.setProperty('--cy', (Math.random() * -160 - 20).toFixed(0) + 'px');
+      bit.style.setProperty('--cr', (Math.random() * 720 - 360).toFixed(0) + 'deg');
+      stage.appendChild(bit);
+      setTimeout(function (el) { el.remove(); }.bind(null, bit), 1100);
+    }
+  }
+
+  function runLottery() {
+    if (lotteryBusy) return;
+    var win = Game.lottery();
+    refreshStats();
+    if (!win) return;
+
+    lotteryBusy = true;
+    showScreen('screen-prize');
+    var crate = U.$('crate');
+    var reveal = U.$('prize-reveal');
+    var stage = U.$('prize-stage');
+    reveal.classList.add('hidden');
+    reveal.classList.remove('pop');
+    crate.classList.remove('hidden', 'drop', 'shake', 'burst');
+
+    // Drop -> thud -> shake -> burst -> reveal.
+    void crate.offsetWidth;
+    crate.classList.add('drop');
+    setTimeout(function () { PP.Audio.crateDrop(); }, 780);
+    setTimeout(function () {
+      crate.classList.remove('drop');
+      void crate.offsetWidth;
+      crate.classList.add('shake');
+      PP.Audio.bump();
+    }, 950);
+    setTimeout(function () {
+      crate.classList.remove('shake');
+      void crate.offsetWidth;
+      crate.classList.add('burst');
+      confettiBurst(stage);
+    }, 1550);
+    setTimeout(function () {
+      crate.classList.add('hidden');
+      PP.Render.drawPortrait(U.$('prize-portrait'), win);
+      U.$('prize-name').textContent = win.name;
+      U.$('prize-tag').textContent = win.tag;
+      reveal.classList.remove('hidden');
+      void reveal.offsetWidth;
+      reveal.classList.add('pop');
+      PP.Audio.unlockChime();
+      refreshStats();
+      lotteryBusy = false;
+    }, 1850);
+  }
+
+  U.on(U.$('btn-lottery'), 'click', function () { PP.Audio.unlock(); runLottery(); });
+  U.on(U.$('btn-lottery-again'), 'click', runLottery);
+  U.on(U.$('btn-lottery-done'), 'click', function () {
+    if (lotteryBusy) return;
+    refreshStats();
+    showScreen('screen-title');
+  });
+
+  /* ── Input ──────────────────────────────────────────────────────── */
+
+  PP.Input.init(canvas, {
+    onCharge: function () { Game.charge(); },
+    onChargeCancel: function () { Game.uncharge(); },
+    onMove: function (dir) {
+      hideHint();
+      if (Game.isPlaying()) Game.move(dir);
+      else if (Game.mode() === 'menu' && dir === 'up') startRun();
+    },
+    onAction: function (name) {
+      var mode = Game.mode();
+      if (name === 'mute') { toggleMute(); return; }
+      if (name === 'pause') {
+        if (mode === 'playing' || mode === 'paused') togglePause();
+        return;
+      }
+      if (name === 'restart') {
+        if (mode === 'dead' || mode === 'playing' || mode === 'paused') startRun();
+        return;
+      }
+      if (name === 'primary') {
+        if (mode === 'menu') startRun();
+        else if (mode === 'dead') startRun();
+        else if (mode === 'paused') { Game.resume(); hideScreens(); }
+      }
+    },
+    playerScreenPos: Game.playerScreenPos
+  });
+
+  /* ── Loop ───────────────────────────────────────────────────────── */
+
+  PP.Render.init(canvas);
+  U.on(global, 'resize', function () { PP.Render.resize(); });
+  U.on(global, 'orientationchange', function () { setTimeout(PP.Render.resize, 120); });
+  U.on(document, 'visibilitychange', function () {
+    if (document.hidden && Game.pause()) showScreen('screen-pause');
+  });
+
+  var last = 0;
+
+  function frame(now) {
+    global.requestAnimationFrame(frame);
+    if (!last) last = now;
+    // Clamp dt so a background tab or a slow frame can't teleport anyone.
+    var dt = Math.min((now - last) / 1000, 0.05);
+    last = now;
+
+    Game.update(dt);
+
+    if (Game.mode() === 'playing' || Game.mode() === 'dying') {
+      elScore.textContent = Game.g.score;
+      elCoins.textContent = Game.g.runCoins;
+      var gap = Game.g.player.row - Game.g.tide.row;
+      elWarning.classList.toggle('hidden', !(gap < 4.5 && Game.mode() === 'playing'));
+      U.$('combo').classList.toggle('hidden', !(Game.g.streak >= 10 && Game.mode() === 'playing'));
+    }
+
+    PP.Render.draw(Game.g);
+  }
+
+  U.$('btn-mute').textContent = PP.Audio.isMuted() ? '🔇' : '🔊';
+  toMenu();
+  global.requestAnimationFrame(frame);
+})(window);
+</script>

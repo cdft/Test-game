@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Paws &amp; Politburo — a Crossy Road-ish escape</title>
+<link rel="stylesheet" href="css/style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>🐈</text></svg>">
+</head>
+<body>
+<div id="app">
+  <canvas id="stage"></canvas>
+
+  <!-- ── In-game HUD ─────────────────────────────────────────── -->
+  <div id="hud" class="layer hidden">
+    <div class="hud-row">
+      <div class="hud-score"><span id="score">0</span><small>metres to freedom</small></div>
+      <div class="hud-right">
+        <div class="hud-coins">🍖 <span id="coins">0</span><span id="combo" class="combo hidden">×2</span></div>
+        <button id="btn-mute" class="icon-btn" title="Mute (M)">🔊</button>
+        <button id="btn-pause" class="icon-btn" title="Pause (P / Esc)">❚❚</button>
+      </div>
+    </div>
+    <div id="warning" class="warning hidden">THE COLLECTIVE IS CLOSING IN</div>
+    <div id="hint" class="hint hidden">hold &amp; release to hop &nbsp;·&nbsp; swipe to dodge</div>
+  </div>
+
+  <!-- ── Title ───────────────────────────────────────────────── -->
+  <div id="screen-title" class="layer screen">
+    <div class="panel">
+      <h1 class="title">PAWS <span class="amp">&amp;</span> POLITBURO</h1>
+      <p class="tagline">Every cat and dog for themselves. The Collective is coming.</p>
+      <div class="stat-strip">
+        <div><b id="t-best">0</b><small>best run</small></div>
+        <div><b id="t-coins">0</b><small>kibble</small></div>
+        <div><b id="t-runs">0</b><small>escapes attempted</small></div>
+      </div>
+      <div id="directives" class="directives"></div>
+      <button id="btn-play" class="btn big">RUN FOR IT</button>
+      <div class="row-btns">
+        <button id="btn-lottery" class="btn lottery">People's Lottery · 🍖 100</button>
+      </div>
+      <div class="row-btns">
+        <button id="btn-pick" class="btn ghost">Choose comrade</button>
+        <button id="btn-help" class="btn ghost">How to play</button>
+      </div>
+      <p class="fine">Arrows / WASD to hop &nbsp;·&nbsp; swipe or tap on touch</p>
+    </div>
+  </div>
+
+  <!-- ── Character select ────────────────────────────────────── -->
+  <div id="screen-pick" class="layer screen hidden">
+    <div class="panel wide">
+      <h2>PICK YOUR DEFECTOR</h2>
+      <p class="sub">Kibble is earned on the run. Spend it on friends.</p>
+      <div id="roster" class="roster"></div>
+      <div class="pick-foot">
+        <div class="hud-coins big">🍖 <span id="p-coins">0</span></div>
+        <button id="btn-pick-back" class="btn">Back</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Help ────────────────────────────────────────────────── -->
+  <div id="screen-help" class="layer screen hidden">
+    <div class="panel">
+      <h2>HOW TO ESCAPE</h2>
+      <ul class="help">
+        <li><b>Hop forward.</b> Every row you gain is a metre closer to freedom.</li>
+        <li><b>Never stop.</b> Dawdle and the red tide behind you speeds up. It does not get tired.</li>
+        <li><b>Roads</b> are full of requisitioned trucks and tanks. They do not brake for pets.</li>
+        <li><b>Canals</b> drown non-swimmers. Ride the logs — and don't let them carry you off the map.</li>
+        <li><b>Rails</b> flash red before the People's Express arrives. One second of warning is generous.</li>
+        <li><b>Kibble</b> unlocks new comrades from the title screen.</li>
+      </ul>
+      <div class="keys">
+        <span class="key">↑</span><span class="key">←</span><span class="key">↓</span><span class="key">→</span>
+        <span class="or">or</span>
+        <span class="key">W</span><span class="key">A</span><span class="key">S</span><span class="key">D</span>
+        <span class="or">·</span> <span class="key wide">P</span> pause <span class="or">·</span> <span class="key wide">M</span> mute
+      </div>
+      <button id="btn-help-back" class="btn">Back</button>
+    </div>
+  </div>
+
+  <!-- ── Pause ───────────────────────────────────────────────── -->
+  <div id="screen-pause" class="layer screen hidden">
+    <div class="panel">
+      <h2>DETENTE</h2>
+      <p class="sub">The tide waits. Politely.</p>
+      <button id="btn-resume" class="btn big">Resume</button>
+      <button id="btn-quit" class="btn ghost">Give up, go home</button>
+    </div>
+  </div>
+
+  <!-- ── The People's Lottery ────────────────────────────────── -->
+  <div id="screen-prize" class="layer screen hidden">
+    <div class="panel">
+      <h2>THE PEOPLE'S LOTTERY</h2>
+      <p class="sub">Everyone wins. Eventually.</p>
+      <div id="prize-stage">
+        <div id="crate" class="hidden">
+          <div class="chute"></div>
+          <div class="crate-box"><span class="crate-star">★</span></div>
+        </div>
+        <div id="prize-reveal" class="hidden">
+          <canvas id="prize-portrait" width="76" height="76"></canvas>
+          <div id="prize-name"></div>
+          <div id="prize-tag"></div>
+        </div>
+      </div>
+      <div class="row-btns">
+        <button id="btn-lottery-again" class="btn lottery">Again · 🍖 100</button>
+        <button id="btn-lottery-done" class="btn ghost">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Game over ───────────────────────────────────────────── -->
+  <div id="screen-over" class="layer screen hidden">
+    <div class="panel">
+      <h2 id="over-title">REDISTRIBUTED</h2>
+      <p id="over-flavor" class="sub">Your assets now belong to everyone.</p>
+      <div class="stat-strip">
+        <div><b id="o-score">0</b><small>metres</small></div>
+        <div><b id="o-best">0</b><small>best</small></div>
+        <div><b id="o-coins">0</b><small>kibble earned</small></div>
+      </div>
+      <div id="o-newbest" class="newbest hidden">NEW PERSONAL RECORD</div>
+      <div id="o-secret" class="newbest hidden">KOTLETA HAS FOUND YOU · SECRET COMRADE</div>
+      <button id="btn-again" class="btn big">RUN AGAIN</button>
+      <div class="row-btns">
+        <button id="btn-over-pick" class="btn ghost">Change comrade</button>
+        <button id="btn-menu" class="btn ghost">Title screen</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="js/util.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/music.js"></script>
+<script src="js/characters.js"></script>
+<script src="js/world.js"></script>
+<script src="js/render.js"></script>
+<script src="js/input.js"></script>
+<script src="js/game.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>

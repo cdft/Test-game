@@ -1,0 +1,50 @@
+name: Publish the game to GitHub Pages
+
+# The game is plain static files, so Pages serves the repository as-is from the
+# `gh-pages` branch — pushing that branch is what switched Pages on in the first
+# place, since enabling it through the API needs admin rights the Actions token
+# does not have.
+#
+# This job keeps `gh-pages` in step with the development branch, so
+# https://cdft.github.io/Test-game/ updates on its own after every push and
+# nobody has to remember a manual step.
+
+on:
+  push:
+    branches:
+      - main
+      - claude/cats-dogs-game-prototype-gyzlsr
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# Never let two publishes race; let an in-flight one finish.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Sanity-check the site before publishing
+        run: |
+          test -f index.html
+          test -f css/style.css
+          for f in util audio music characters world render input game main; do
+            test -f "js/$f.js"
+          done
+          # Every script index.html asks for must actually exist.
+          grep -o 'src="[^"]*"' index.html | sed 's/src="//;s/"//' | while read -r s; do
+            test -f "$s" || { echo "missing referenced file: $s"; exit 1; }
+          done
+          echo "site looks complete"
+
+      - name: Publish to gh-pages
+        run: |
+          git push --force origin "HEAD:gh-pages"
