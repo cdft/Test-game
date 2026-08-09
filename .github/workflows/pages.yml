@@ -4,11 +4,15 @@ name: Publish the game to GitHub Pages
 #
 # Turning Pages ON for the first time needs repository-admin rights that the
 # Actions token does not have, so this workflow cannot switch it on by itself.
-# Instead it checks first and skips cleanly when Pages is not configured for
-# Actions yet — that keeps the check green — and starts publishing on the very
-# next push once the setting is in place:
+# The `check` job asks the API whether Pages is configured for Actions, and the
+# `deploy` job is skipped entirely until it is — a skipped job passes, so the
+# check stays green, and publishing starts on the next push once you set:
 #
 #   Settings -> Pages -> Build and deployment -> Source: GitHub Actions
+#
+# The deploy job is kept separate because its `github-pages` environment only
+# exists once Pages is enabled; referencing it before that fails the job before
+# any step can run.
 
 on:
   push:
@@ -28,7 +32,28 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      ready: ${{ steps.probe.outputs.ready }}
+    steps:
+      - id: probe
+        name: Is Pages configured to build from Actions?
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          build_type=$(gh api "repos/$GITHUB_REPOSITORY/pages" --jq .build_type 2>/dev/null || echo "")
+          if [ "$build_type" = "workflow" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Pages ready::Publishing the game."
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Pages not enabled::Set Settings -> Pages -> Source to 'GitHub Actions'; the next push will publish the game. Skipping deploy."
+          fi
+
   deploy:
+    needs: check
+    if: needs.check.outputs.ready == 'true'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
@@ -36,27 +61,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - id: check
-        name: Check whether Pages is set up for Actions
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          build_type=$(gh api "repos/$GITHUB_REPOSITORY/pages" --jq .build_type 2>/dev/null || echo "")
-          if [ "$build_type" = "workflow" ]; then
-            echo "ready=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "ready=false" >> "$GITHUB_OUTPUT"
-            echo "::notice title=Pages not enabled::Set Settings -> Pages -> Source to 'GitHub Actions' and this workflow will publish the game on the next push. Skipping deploy for now."
-          fi
+      - uses: actions/configure-pages@v5
 
-      - if: steps.check.outputs.ready == 'true'
-        uses: actions/configure-pages@v5
-
-      - if: steps.check.outputs.ready == 'true'
-        uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v3
         with:
           path: '.'
 
       - id: deployment
-        if: steps.check.outputs.ready == 'true'
         uses: actions/deploy-pages@v4
