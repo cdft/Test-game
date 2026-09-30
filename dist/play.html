@@ -2544,68 +2544,6 @@ body { overscroll-behavior: none; }
     ctx.restore();
   }
 
-  /* ── Backdrop ───────────────────────────────────────────────────── */
-
-  function drawSky(cam, t) {
-    var hz = horizonY;
-    var g = ctx.createLinearGradient(0, 0, 0, hz + 40);
-    g.addColorStop(0, '#191026');
-    g.addColorStop(0.42, '#43203f');
-    g.addColorStop(0.72, '#8a4148');
-    g.addColorStop(0.92, '#d8874f');
-    g.addColorStop(1, '#f4b463');
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, view.w, hz + 42);
-
-    // First stars, only high where the dusk is already deep.
-    ctx.fillStyle = '#ffe9c8';
-    var i;
-    for (i = 0; i < 24; i++) {
-      var stx = hash(i, 91) * view.w;
-      var sty = hash(i, 57) * hz * 0.42;
-      var tw = 0.1 + 0.5 * Math.max(0, Math.sin(t * (1.2 + hash(i, 3)) + i * 2.1));
-      ctx.globalAlpha = Math.max(0, tw * (1 - sty / (hz * 0.5)));
-      ctx.fillRect(stx, sty, 1.6, 1.6);
-    }
-    ctx.globalAlpha = 1;
-
-    // Slow flat clouds, barely lighter than the sky.
-    for (i = 0; i < 4; i++) {
-      var cw = view.w * (0.14 + 0.1 * hash(i, 9));
-      var cx = U.mod(hash(i, 11) * view.w + t * (2.5 + i) - cam.x * view.tile * 0.04, view.w + cw * 2) - cw;
-      var cy = hz * (0.2 + 0.15 * hash(i, 7));
-      ctx.fillStyle = 'rgba(46,29,62,0.42)';
-      ctx.beginPath();
-      ctx.ellipse(cx, cy, cw * 0.55, cw * 0.14, 0, 0, Math.PI * 2);
-      ctx.ellipse(cx - cw * 0.3, cy + cw * 0.04, cw * 0.32, cw * 0.1, 0, 0, Math.PI * 2);
-      ctx.ellipse(cx + cw * 0.33, cy + cw * 0.05, cw * 0.3, cw * 0.09, 0, 0, Math.PI * 2);
-      ctx.fill();
-    }
-
-    // The low sun, with a halo and a flat band of flare along the horizon.
-    var sunX = view.w * 0.72, sunY = hz - view.h * 0.045;
-    var sunR = Math.min(view.w, view.h) * 0.05;
-    var halo = ctx.createRadialGradient(sunX, sunY, sunR * 0.4, sunX, sunY, sunR * 3.4);
-    halo.addColorStop(0, 'rgba(255,196,120,0.36)');
-    halo.addColorStop(1, 'rgba(255,196,120,0)');
-    ctx.fillStyle = halo;
-    U.ellipse(ctx, sunX, sunY, sunR * 3.4, sunR * 3.4);
-    ctx.fill();
-    ctx.fillStyle = '#ffedc2';
-    U.ellipse(ctx, sunX, sunY, sunR, sunR);
-    ctx.fill();
-    ctx.fillStyle = 'rgba(255,180,100,0.12)';
-    U.ellipse(ctx, sunX, sunY, view.w * 0.4, sunR * 0.55);
-    ctx.fill();
-
-    // Warm haze pooling along the horizon.
-    var hzg = ctx.createLinearGradient(0, hz - 26, 0, hz + 56);
-    hzg.addColorStop(0, 'rgba(244,180,99,0)');
-    hzg.addColorStop(1, 'rgba(150,84,66,0.5)');
-    ctx.fillStyle = hzg;
-    ctx.fillRect(0, hz - 26, view.w, 84);
-  }
-
   /* ── Terrain bands ──────────────────────────────────────────────── */
 
   /* Fill a band with a texture that belongs to the ground: it slides with
@@ -4262,17 +4200,15 @@ body { overscroll-behavior: none; }
       ctx.translate((Math.random() - 0.5) * g.shake * 18, (Math.random() - 0.5) * g.shake * 18);
     }
 
-    // How far ahead we can see. The skyline is planted exactly on that edge
-    // so the ground and the city meet without a seam.
-    var depth = U.clamp((view.baseY - view.h * 0.17) / view.rowH, 6, 16);
+    // Like Crossy Road, the world runs right up to the top edge of the
+    // screen: no sky, no horizon, nothing laid over the rows. Draw a couple
+    // of rows past the edge so new ground scrolls in from above, already
+    // there, instead of appearing.
+    var depth = (view.baseY + view.rowH * 2) / view.rowH;
     var farRow = Math.floor(cam.row + depth);
     var nearRow = Math.floor(cam.row - (view.h - view.baseY) / view.rowH) - 1;
-    // A constant screen position: the world slides beneath the skyline
-    // instead of the skyline re-seating itself on every row crossed.
-    horizonY = view.baseY - (depth - 0.5) * view.rowH;
+    horizonY = -view.rowH * 3;   // off the top of the screen
     view.horizonY = horizonY;
-
-    drawSky(cam, t);
 
     var playerDrawRow = Math.round(g.player.row);
     // How scared should the body language be? Purely a function of the gap.
@@ -4308,12 +4244,7 @@ body { overscroll-behavior: none; }
       // cool toward the night behind you. Painted over the row's own
       // sprites so terrain and traffic recede together; the player is
       // drawn after this and stays vivid.
-      if (i > cam.row + 4) {
-        var kFar = U.clamp((i - cam.row - 4) / (depth - 4), 0, 1);
-        var fogTop = Math.max(bandTop, horizonY);
-        ctx.fillStyle = 'rgba(226,158,98,' + (kFar * kFar * 0.30).toFixed(3) + ')';
-        ctx.fillRect(0, fogTop, view.w, bandTop + view.rowH + 1 - fogTop);
-      } else if (i < cam.row - 1) {
+      if (i < cam.row - 1) {
         var kNear = U.clamp((cam.row - 1 - i) / 6, 0, 1);
         ctx.fillStyle = 'rgba(24,16,34,' + (kNear * 0.10).toFixed(3) + ')';
         ctx.fillRect(0, bandTop, view.w, view.rowH + 1);
@@ -4347,14 +4278,6 @@ body { overscroll-behavior: none; }
     }
 
     drawSplashes(g.splashes, cam);
-
-    // Distance haze: the far rows dissolve into the smog.
-    var hzY = horizonY;
-    var hz = ctx.createLinearGradient(0, hzY - view.rowH * 1.1, 0, hzY + view.rowH * 1.9);
-    hz.addColorStop(0, 'rgba(205,124,82,0.55)');
-    hz.addColorStop(1, 'rgba(205,124,82,0)');
-    ctx.fillStyle = hz;
-    ctx.fillRect(0, hzY - view.rowH * 1.1, view.w, view.rowH * 3.0);
 
     // Out of bounds: everything past the walkable columns falls into shadow,
     // so a wide screen still reads as a corridor you cannot leave.

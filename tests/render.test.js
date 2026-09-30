@@ -110,26 +110,6 @@ test('every comrade can actually be played', async () => {
   await a.close();
 });
 
-test('the horizon stays put as you run', async () => {
-  const a = await openGame({ seed: 54 });
-  await a.page.click('#btn-play');
-  await a.step(2);
-  const ys = [];
-  for (let r = 0; r < 40; r += 3) {
-    await a.eval((row) => {
-      const g = PP.Game.g;
-      g.player.row = g.player.toRow = g.player.fromRow = row;
-      g.player.hopping = true; g.player.hopT = 0;
-      g.cam.row = row + 0.6; g.tide.row = row - 20; g.idleT = 0;
-    }, r);
-    await a.step(2);
-    ys.push(await a.eval(() => PP.Render.view.horizonY));
-  }
-  assert.ok(ys.every(y => typeof y === 'number'), 'Render.view.horizonY should be exposed');
-  assert.ok(Math.max(...ys) - Math.min(...ys) < 0.5, `horizon moved: ${ys.join(', ')}`);
-  await a.close();
-});
-
 test('resizing mid-run keeps drawing', async () => {
   const a = await openGame({ seed: 55 });
   await a.page.click('#btn-play');
@@ -220,100 +200,23 @@ test('the regime\'s animals are drawn once and stamped after that', async () => 
   await a.close();
 });
 
-test('ground markings (the record line) never paint over the skyline', async () => {
-  const a = await openGame({ seed: 60 });
-  await a.page.click('#btn-play');
-  await a.step(2);
-  const changed = await a.eval(() => {
-    const g = PP.Game.g, v = PP.Render.view;
-    g.player.hopping = true; g.tide.row = -20;
-    PP.Render.draw(g);
-    // Put the camera so the far row straddles the horizon line.
-    const depth = Math.max(6, Math.min(16, (v.baseY - v.h * 0.17) / v.rowH));
-    const far = 40;
-    g.cam.row = far - depth + 0.4;
-    const c = document.getElementById('stage'), ctx = c.getContext('2d');
-    const sky = () => {
+test('like Crossy Road, the ground runs right up to the top of the screen', async () => {
+  for (const vp of [{ width: 390, height: 844 }, { width: 844, height: 390 }, { width: 2000, height: 1150 }]) {
+    const a = await openGame({ seed: 65, viewport: vp });
+    await a.page.click('#btn-play');
+    await a.step(2);
+    const top = await a.eval(() => {
+      const g = PP.Game.g, c = document.getElementById('stage'), ctx = c.getContext('2d');
+      // Plain grass everywhere: the top line of pixels must be grass, not sky.
+      for (let i = 0; i < 60; i++) PP.World.rows[i] = { index: i, type: 'grass', decor: [], blocked: {}, coin: null };
+      g.player.hopping = true;
       PP.Render.draw(g);
-      const hy = Math.floor(PP.Render.view.horizonY * v.dpr) - 1;
-      return Array.from(ctx.getImageData(0, 0, c.width, hy).data);
-    };
-    g.bestLineRow = -1;
-    const without = sky();
-    g.bestLineRow = far;
-    const withLine = sky();
-    let n = 0;
-    for (let i = 0; i < without.length; i++) if (Math.abs(without[i] - withLine[i]) > 2) n++;
-    return n;
-  });
-  assert.equal(changed, 0, `${changed} sky pixel channels changed by the record line`);
-  await a.close();
-});
-
-test('the far backdrop holds still when you hop forward', async () => {
-  const a = await openGame({ seed: 61 });
-  await a.page.click('#btn-play');
-  await a.step(2);
-  const worst = await a.eval(() => {
-    const g = PP.Game.g, c = document.getElementById('stage'), ctx = c.getContext('2d');
-    const sky = () => {
-      PP.Render.draw(g);
-      const hy = Math.floor(PP.Render.view.horizonY * PP.Render.view.dpr) - 2;
-      return ctx.getImageData(0, 0, c.width, hy).data;
-    };
-    g.player.hopping = true; g.tide.row = -20;
-    // Bare ground, so only the backdrop itself is measured.
-    for (let i = 0; i < 90; i++) PP.World.rows[i] = { index: i, type: 'grass', decor: [], blocked: {}, coin: null };
-    let worst = 0;
-    // (Snow starts at 26 m and is close to you, so it rightly moves; stay short of it.)
-    for (let r = 2; r < 24; r += 3) {
-      g.cam.row = r + 0.6;
-      const before = sky();
-      g.cam.row = r + 1.6;   // one hop forward, same instant
-      const after = sky();
-      let sum = 0;
-      for (let i = 0; i < before.length; i++) sum += Math.abs(before[i] - after[i]);
-      worst = Math.max(worst, sum / before.length);
-    }
-    return worst;
-  });
-  // The journey shifts colours (and sets the sun) over tens of metres, so one
-  // hop changes the backdrop imperceptibly; a jump would change it a lot.
-  assert.ok(worst < 1.5, `the backdrop changed by ${worst.toFixed(2)}/255 on average in one hop`);
-  await a.close();
-});
-
-test('scenery on the far rows stays faint against the skyline', async () => {
-  const a = await openGame({ seed: 64 });
-  await a.page.click('#btn-play');
-  await a.step(2);
-  const worst = await a.eval(() => {
-    const g = PP.Game.g, c = document.getElementById('stage'), ctx = c.getContext('2d');
-    g.player.hopping = true; g.tide.row = -20;
-    const v = PP.Render.view;
-    const sky = () => {
-      PP.Render.draw(g);
-      const hy = Math.floor(v.horizonY * v.dpr) - 2;
-      return ctx.getImageData(0, 0, c.width, hy).data;
-    };
-    let worst = 0;
-    for (let r = 10; r < 40; r += 3) {
-      g.cam.row = r + 0.6;
-      // Bare, then a row of tall trees on every row near the horizon.
-      for (let i = r; i < r + 20; i++) PP.World.rows[i] = { index: i, type: 'grass', decor: [], blocked: {}, coin: null };
-      const bare = sky();
-      for (let i = r; i < r + 20; i++) {
-        const decor = [];
-        for (let x = -7; x <= 7; x += 2) decor.push({ x: x, kind: 'tree', h: 1.7, seed: 0.5 });
-        PP.World.rows[i].decor = decor;
-      }
-      const trees = sky();
-      let sum = 0;
-      for (let i = 0; i < bare.length; i += 4) sum += Math.abs(bare[i] - trees[i]) + Math.abs(bare[i + 1] - trees[i + 1]) + Math.abs(bare[i + 2] - trees[i + 2]);
-      worst = Math.max(worst, sum / (bare.length / 4));
-    }
-    return worst;
-  });
-  assert.ok(worst < 6, `trees change the sky by ${worst.toFixed(1)} per pixel on average`);
-  await a.close();
+      const d = ctx.getImageData(0, 0, c.width, 1).data;
+      let green = 0;
+      for (let i = 0; i < d.length; i += 4) if (d[i + 1] > d[i] && d[i + 1] > d[i + 2]) green++;
+      return green / (d.length / 4);
+    });
+    assert.ok(top > 0.95, `${vp.width}x${vp.height}: only ${(top * 100).toFixed(0)}% of the top edge is ground`);
+    await a.close();
+  }
 });
