@@ -12,7 +12,7 @@
 <meta property="og:description" content="Cats and dogs on the run from the Collective. How far can you hop before the red tide catches you?">
 <meta property="og:url" content="https://cdft.github.io/Test-game/">
 <meta name="twitter:card" content="summary">
-<meta name="pp-build" content="7737e46">
+<meta name="pp-build" content="d143956">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'>
 <style>
 :root {
@@ -2767,9 +2767,9 @@ body { overscroll-behavior: none; }
     var a = k.border;
     var far = U.mixHex('#7480b8', k.low, 0.2);
     var near = U.mixHex('#434a82', k.top, 0.25);
-    [[170, 0.03, far, 70, 0.8], [120, 0.06, near, 52, 0.95]].forEach(function (L) {
+    [[170, 0.03, far, 34, 0.8], [120, 0.06, near, 24, 0.95]].forEach(function (L) {
       eachSlot(L[0], L[1], cam, function (i, bx) {
-        var ph = S * (L[3] + hash(i, 13 + L[0]) * L[3] * 0.9) * (0.6 + 0.4 * a);
+        var ph = S * (L[3] + hash(i, 13 + L[0]) * L[3] * 0.7) * (0.6 + 0.4 * a);
         var hw = L[0] * (0.62 + hash(i, 17) * 0.3);
         var px = bx + L[0] / 2;
         ctx.fillStyle = rgba(L[2], a * L[4]);
@@ -2872,7 +2872,7 @@ body { overscroll-behavior: none; }
       var n = 2 + (hash(i, 43) < 0.5 ? 1 : 0);
       for (var s = 0; s < n; s++) {
         var sx0 = bx + 20 + s * 17 * S;
-        var sh = (30 + hash(i, 47 + s) * 18) * S;
+        var sh = (22 + hash(i, 47 + s) * 12) * S;
         var sw = 13 * S;
         ctx.fillStyle = dark;
         ctx.fillRect(sx0, hz - sh, sw, sh);
@@ -2933,7 +2933,7 @@ body { overscroll-behavior: none; }
   }
 
   function drawStatue(x, hz, S, col, t) {
-    var s = S;
+    var s = S * 0.6;
     ctx.fillStyle = col;
     // Pedestal.
     ctx.fillRect(x - 18 * s, hz - 34 * s, 36 * s, 34 * s);
@@ -2966,7 +2966,7 @@ body { overscroll-behavior: none; }
   }
 
   function drawDome(x, hz, S, col, t) {
-    var s = S;
+    var s = S * 0.6;
     ctx.fillStyle = col;
     ctx.fillRect(x - 30 * s, hz - 40 * s, 60 * s, 40 * s);
     ctx.fillRect(x - 12 * s, hz - 58 * s, 24 * s, 18 * s);
@@ -4682,7 +4682,7 @@ body { overscroll-behavior: none; }
 
     // How far ahead we can see. The skyline is planted exactly on that edge
     // so the ground and the city meet without a seam.
-    var depth = U.clamp((view.baseY - view.h * 0.25) / view.rowH, 6, 16);
+    var depth = U.clamp((view.baseY - view.h * 0.17) / view.rowH, 6, 16);
     var farRow = Math.floor(cam.row + depth);
     var nearRow = Math.floor(cam.row - (view.h - view.baseY) / view.rowH) - 1;
     // A constant screen position: the world slides beneath the skyline
@@ -4786,13 +4786,13 @@ body { overscroll-behavior: none; }
     // slide out from under it.
     var hzY = horizonY;
     var hazeC = sky ? sky.haze : '#c97a55';
-    var hz = ctx.createLinearGradient(0, hzY - view.rowH * 0.5, 0, hzY + view.rowH * 1.5);
+    var hz = ctx.createLinearGradient(0, hzY - view.rowH * 0.5, 0, hzY + view.rowH * 1.1);
     hz.addColorStop(0, rgba(hazeC, 0));
     hz.addColorStop(0.25, rgba(hazeC, 0.9));
     hz.addColorStop(0.45, rgba(hazeC, 0.55));
     hz.addColorStop(1, rgba(hazeC, 0));
     ctx.fillStyle = hz;
-    ctx.fillRect(0, hzY - view.rowH * 0.5, view.w, view.rowH * 2.0);
+    ctx.fillRect(0, hzY - view.rowH * 0.5, view.w, view.rowH * 1.6);
 
     // Out of bounds: everything past the walkable columns falls into shadow,
     // so a wide screen still reads as a corridor you cannot leave.
