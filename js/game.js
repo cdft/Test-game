@@ -79,6 +79,7 @@
     { id: 'parade2', label: 'Slip past 2 parades in one run', short: 'PARADE DODGER', type: 'parade', target: 2, reward: 50 },
     { id: 'dodge1', label: 'Dodge the black car', short: 'CAR DODGED', type: 'dodge', target: 1, reward: 60 },
     { id: 'hops500', label: 'Hop 500 times, in total', short: '500 HOPS', type: 'hops', target: 500, reward: 50 },
+    { id: 'close3', label: 'Survive 3 close calls in one run', short: 'NERVES OF STEEL', type: 'close', target: 3, reward: 50 },
     { id: 'record', label: 'Break your record', short: 'RECORD BROKEN', type: 'record', target: 1, reward: 50 }
   ];
 
@@ -145,6 +146,7 @@
       case 'ice': return g.runStats.iceX;
       case 'parade': return g.runStats.paradeX;
       case 'dodge': return g.runStats.dodged ? 1 : 0;
+      case 'close': return g.runStats.close || 0;
       case 'hops': return save.hops - (d.base || 0);
       case 'record': return g.startBest >= 3 && g.score > g.startBest ? 1 : 0;
     }
@@ -200,6 +202,7 @@
     streak: 0,
     lastFwdT: -9,
     slowmoT: 0,
+    lastCloseCall: -9,
     queued: null,
     onDeath: null,             // set by main.js
     onScore: null
@@ -658,6 +661,20 @@
       if (car._pd !== undefined && dxx < shave && car._pd >= shave && !p.hopping) {
         PP.Audio.whoosh();
         g.shake = Math.max(g.shake, 0.12);
+        car._closest = dxx;
+      }
+      if (dxx < shave && car._closest !== undefined) car._closest = Math.min(car._closest, dxx);
+      // It has gone by. Was it a hair's breadth? Then that was a moment.
+      if (car._pd !== undefined && dxx >= shave && car._pd < shave && car._closest !== undefined) {
+        if (car._closest < car.w / 2 + HALF_W + 0.22 && World.time() - g.lastCloseCall > 1.2) {
+          g.lastCloseCall = World.time();
+          floater('CLOSE CALL!', p.x, p.row + 0.9, '#ffffff');
+          g.slowmoT = Math.max(g.slowmoT, 0.18);
+          g.shake = Math.max(g.shake, 0.3);
+          g.runStats.close = (g.runStats.close || 0) + 1;
+          checkDirectives();
+        }
+        car._closest = undefined;
       }
       car._pd = dxx;
 

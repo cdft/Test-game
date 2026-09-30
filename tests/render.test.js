@@ -249,3 +249,101 @@ test('ground markings (the record line) never paint over the skyline', async () 
   assert.equal(changed, 0, `${changed} sky pixel channels changed by the record line`);
   await a.close();
 });
+
+test('the far backdrop holds still when you hop forward', async () => {
+  const a = await openGame({ seed: 61 });
+  await a.page.click('#btn-play');
+  await a.step(2);
+  const worst = await a.eval(() => {
+    const g = PP.Game.g, c = document.getElementById('stage'), ctx = c.getContext('2d');
+    const sky = () => {
+      PP.Render.draw(g);
+      const hy = Math.floor(PP.Render.view.horizonY * PP.Render.view.dpr) - 2;
+      return ctx.getImageData(0, 0, c.width, hy).data;
+    };
+    g.player.hopping = true; g.tide.row = -20;
+    // Bare ground, so only the backdrop itself is measured.
+    for (let i = 0; i < 90; i++) PP.World.rows[i] = { index: i, type: 'grass', decor: [], blocked: {}, coin: null };
+    let worst = 0;
+    // (Snow starts at 26 m and is close to you, so it rightly moves; stay short of it.)
+    for (let r = 2; r < 24; r += 3) {
+      g.cam.row = r + 0.6;
+      const before = sky();
+      g.cam.row = r + 1.6;   // one hop forward, same instant
+      const after = sky();
+      let sum = 0;
+      for (let i = 0; i < before.length; i++) sum += Math.abs(before[i] - after[i]);
+      worst = Math.max(worst, sum / before.length);
+    }
+    return worst;
+  });
+  // The journey shifts colours (and sets the sun) over tens of metres, so one
+  // hop changes the backdrop imperceptibly; a jump would change it a lot.
+  assert.ok(worst < 1.5, `the backdrop changed by ${worst.toFixed(2)}/255 on average in one hop`);
+  await a.close();
+});
+
+test('the sky changes over the journey: dusk, then night, then dawn', async () => {
+  const a = await openGame({ seed: 62 });
+  await a.page.click('#btn-play');
+  await a.step(2);
+  const lum = await a.eval(() => {
+    const g = PP.Game.g, c = document.getElementById('stage'), ctx = c.getContext('2d');
+    g.player.hopping = true; g.tide.row = -20;
+    return [2, 62, 240].map((r) => {
+      g.cam.row = r + 0.6;
+      PP.Render.draw(g);
+      const d = ctx.getImageData(Math.floor(c.width * 0.9), Math.floor(PP.Render.view.horizonY * PP.Render.view.dpr * 0.45), 1, 1).data;
+      return d[0] + d[1] + d[2];
+    });
+  });
+  const [dusk, night, dawn] = lum;
+  assert.ok(night < dusk && night < dawn, `sky brightness dusk ${dusk}, night ${night}, dawn ${dawn}`);
+  await a.close();
+});
+
+test('crossing into a new landscape announces the chapter', async () => {
+  const a = await openGame({ seed: 63 });
+  await a.page.click('#btn-play');
+  await a.step(2);
+  await a.eval(() => { PP.Game.g.score = 41; });
+  await a.step(2);
+  const t = await a.eval(() => ({ hidden: document.getElementById('chapter').classList.contains('hidden'), text: document.querySelector('#chapter b').textContent }));
+  assert.deepEqual(t, { hidden: false, text: 'THE COLLECTIVE FARMS' });
+  await a.close();
+});
+
+test('scenery on the far rows stays faint against the skyline', async () => {
+  const a = await openGame({ seed: 64 });
+  await a.page.click('#btn-play');
+  await a.step(2);
+  const worst = await a.eval(() => {
+    const g = PP.Game.g, c = document.getElementById('stage'), ctx = c.getContext('2d');
+    g.player.hopping = true; g.tide.row = -20;
+    const v = PP.Render.view;
+    const sky = () => {
+      PP.Render.draw(g);
+      const hy = Math.floor(v.horizonY * v.dpr) - 2;
+      return ctx.getImageData(0, 0, c.width, hy).data;
+    };
+    let worst = 0;
+    for (let r = 10; r < 40; r += 3) {
+      g.cam.row = r + 0.6;
+      // Bare, then a row of tall trees on every row near the horizon.
+      for (let i = r; i < r + 20; i++) PP.World.rows[i] = { index: i, type: 'grass', decor: [], blocked: {}, coin: null };
+      const bare = sky();
+      for (let i = r; i < r + 20; i++) {
+        const decor = [];
+        for (let x = -7; x <= 7; x += 2) decor.push({ x: x, kind: 'tree', h: 1.7, seed: 0.5 });
+        PP.World.rows[i].decor = decor;
+      }
+      const trees = sky();
+      let sum = 0;
+      for (let i = 0; i < bare.length; i += 4) sum += Math.abs(bare[i] - trees[i]) + Math.abs(bare[i + 1] - trees[i + 1]) + Math.abs(bare[i + 2] - trees[i + 2]);
+      worst = Math.max(worst, sum / (bare.length / 4));
+    }
+    return worst;
+  });
+  assert.ok(worst < 6, `trees change the sky by ${worst.toFixed(1)} per pixel on average`);
+  await a.close();
+});

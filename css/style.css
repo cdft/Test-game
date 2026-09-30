@@ -500,6 +500,39 @@ h2 {
   text-align: left;
 }
 
+.chapter {
+  align-self: center;
+  margin-top: 18vh;
+  text-align: center;
+  text-shadow: 0 3px 0 rgba(0, 0, 0, 0.5), 0 0 24px rgba(0, 0, 0, 0.5);
+  animation: chapter 3.2s ease-out forwards;
+  pointer-events: none;
+}
+
+.chapter b {
+  display: block;
+  font-size: clamp(22px, 7vw, 38px);
+  font-weight: 900;
+  letter-spacing: 3px;
+  color: #ffe9c4;
+}
+
+.chapter small {
+  display: block;
+  margin-top: 4px;
+  font-size: 13px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
+@keyframes chapter {
+  0% { opacity: 0; transform: translateY(10px) scale(0.96); }
+  12% { opacity: 1; transform: none; }
+  75% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-6px); }
+}
+
 .hint {
   align-self: center;
   margin-top: 8px;

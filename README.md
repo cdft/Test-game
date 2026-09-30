@@ -101,6 +101,21 @@ pulse lead, triangle bass, filtered-noise drums — scheduled against the audio
 clock rather than a timer, so the beat holds steady through dropped frames.
 `M` mutes everything, music included.
 
+## The journey
+
+The horizon is where you are running to, and it changes as you go. You set off
+from the Collective's own city at dusk: tower blocks, smokestacks, an onion
+dome and a colossal statue of the Very Important Animal. Around 40 metres the
+city gives way to collective farms under a night sky, with a moon, stars, grain
+silos and pylons, and every headlight glowing in the dark. Past 115 metres the
+border mountains rise, snow-capped and fenced, and by 190 metres dawn is
+breaking behind them. Each landscape is announced as you cross into it. The
+backdrop is far away and behaves that way: it never moves when you hop forward,
+and the ground rises out of a bank of haze at its foot.
+
+Cars that miss you by a whisker earn a **CLOSE CALL!** and a beat of slow
+motion.
+
 ## The Daily Escape
 
 One map a day, the same for everyone: the date is hashed into the world's
