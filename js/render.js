@@ -2226,8 +2226,7 @@
       var footing = sy(i, cam) + view.rowH * 0.26;
       // Faint for the first few rows, so tall scenery emerges from the haze
       // instead of standing up against the skyline.
-      var rise = U.clamp((footing - horizonY) / (view.rowH * 3), 0, 1);
-      rise *= rise;
+      var rise = U.clamp((footing - horizonY) / (view.rowH * 1.2), 0, 1);
       if (rise > 0) drawRowThings(row, cam, t, rise);
 
       // Markings on the ground (the record line, the tide) belong to the
@@ -2242,7 +2241,7 @@
       if (i > cam.row + 4) {
         var kFar = U.clamp((i - cam.row - 4) / (depth - 4), 0, 1);
         var fogTop = Math.max(bandTop, horizonY);
-        ctx.fillStyle = rgba(sky ? sky.haze : '#e29e62', kFar * kFar * 0.45);
+        ctx.fillStyle = rgba(sky ? sky.haze : '#e29e62', kFar * kFar * 0.30);
         ctx.fillRect(0, fogTop, view.w, bandTop + view.rowH + 1 - fogTop);
       } else if (i < cam.row - 1) {
         var kNear = U.clamp((cam.row - 1 - i) / 6, 0, 1);
@@ -2283,7 +2282,7 @@
     // Night falls on the ground too (and lifts again toward the border).
     if (sky && sky.tint > 0.01) {
       ctx.globalCompositeOperation = 'multiply';
-      ctx.fillStyle = U.mixHex('#ffffff', '#39408e', sky.tint * 0.62);
+      ctx.fillStyle = U.mixHex('#ffffff', '#39408e', sky.tint * 0.35);
       ctx.fillRect(0, horizonY, view.w, view.h - horizonY + 20);
       // ...and in the dark, every headlight and lamp shows.
       ctx.globalCompositeOperation = 'lighter';
@@ -2296,13 +2295,11 @@
     // slide out from under it.
     var hzY = horizonY;
     var hazeC = sky ? sky.haze : '#c97a55';
-    var hz = ctx.createLinearGradient(0, hzY - view.rowH * 0.5, 0, hzY + view.rowH * 1.1);
-    hz.addColorStop(0, rgba(hazeC, 0));
-    hz.addColorStop(0.25, rgba(hazeC, 0.9));
-    hz.addColorStop(0.45, rgba(hazeC, 0.55));
+    var hz = ctx.createLinearGradient(0, hzY - view.rowH * 1.1, 0, hzY + view.rowH * 1.9);
+    hz.addColorStop(0, rgba(hazeC, 0.55));
     hz.addColorStop(1, rgba(hazeC, 0));
     ctx.fillStyle = hz;
-    ctx.fillRect(0, hzY - view.rowH * 0.5, view.w, view.rowH * 1.6);
+    ctx.fillRect(0, hzY - view.rowH * 1.1, view.w, view.rowH * 3.0);
 
     // Out of bounds: everything past the walkable columns falls into shadow,
     // so a wide screen still reads as a corridor you cannot leave.
