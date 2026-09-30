@@ -239,11 +239,20 @@
     for (var gx = CFG.X_MIN + 2; gx <= CFG.X_MAX - 2; gx++) {
       if (!reach || reach[gx - 1] || reach[gx] || reach[gx + 1]) options.push(gx);
     }
-    return {
-      index: index, type: 'checkpoint',
-      gateX: options.length ? U.pick(options) : U.randInt(CFG.X_MIN + 2, CFG.X_MAX - 2),
-      seed: Math.random()
-    };
+    var gateX;
+    if (options.length) {
+      gateX = U.pick(options);
+    } else {
+      // Only an edge column is reachable (the gate cannot sit there): put
+      // the gate as close as it goes and open the approach beside it.
+      var edge = reach[CFG.X_MAX] ? CFG.X_MAX : CFG.X_MIN;
+      var side = edge > 0 ? 1 : -1;
+      gateX = edge - side * 2;
+      var before = rows[index - 1];
+      if (before) open(before, edge - side);
+      reach[edge - side] = true;
+    }
+    return { index: index, type: 'checkpoint', gateX: gateX, seed: Math.random() };
   }
 
   function makeRail(index) {
