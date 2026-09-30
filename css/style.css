@@ -45,6 +45,25 @@ html, body {
 
 .hidden { display: none !important; }
 
+/* Dusk grade: warm at the top, cool at the bottom, darker at the edges. */
+.overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+#grade {
+  background:
+    radial-gradient(circle 78vmax at 50% 52%, rgba(8, 5, 16, 0) 45vmin, rgba(8, 5, 16, 0.22) 78vmax),
+    linear-gradient(to bottom, rgba(255, 166, 86, 0.055) 0%, rgba(0, 0, 0, 0) 50%, rgba(22, 12, 48, 0.17) 100%);
+}
+
+/* The Collective's red glow; its strength is set per frame by opacity. */
+#danger {
+  opacity: 0;
+  background: radial-gradient(circle 85vh at 50% 55%, rgba(200, 16, 46, 0) 25vh, rgba(200, 16, 46, 0.55) 85vh);
+}
+
 /* ── HUD ──────────────────────────────────────────────────── */
 
 #hud {
@@ -55,12 +74,14 @@ html, body {
   padding: env(safe-area-inset-top, 0) 0 0 0;
 }
 
+/* Notched phones in landscape: keep the score and buttons clear of the
+   sensor housing and the rounded corners. */
 .hud-row {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   width: 100%;
-  padding: 14px 16px;
+  padding: 14px max(16px, env(safe-area-inset-right, 0px)) 14px max(16px, env(safe-area-inset-left, 0px));
 }
 
 .hud-score {
@@ -149,9 +170,16 @@ html, body {
     rgba(8, 6, 10, 0.72);
   backdrop-filter: blur(3px);
   -webkit-backdrop-filter: blur(3px);
-  padding: 18px;
+  padding:
+    max(18px, env(safe-area-inset-top, 0px)) max(18px, env(safe-area-inset-right, 0px))
+    max(18px, env(safe-area-inset-bottom, 0px)) max(18px, env(safe-area-inset-left, 0px));
   overflow-y: auto;
+  /* Centre when there is room; when a panel is taller than the screen it
+     overflows downward only, where scrolling can reach it. */
+  align-items: flex-start;
 }
+
+.screen > .panel { margin: auto; }
 
 .panel {
   background: var(--panel);
@@ -253,6 +281,59 @@ h2 {
   background: linear-gradient(180deg, #d9a832, #b8862a);
   box-shadow: 0 5px 0 #7a5a18;
   color: #2c1f08;
+}
+
+.btn.daily {
+  background: linear-gradient(180deg, #3b6fb0, #2c5690);
+  box-shadow: 0 5px 0 #1b3559;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.1;
+}
+
+.btn.daily small {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  opacity: 0.8;
+  margin-top: 2px;
+}
+
+.btn.daily.invited { animation: pulse 0.8s infinite alternate; }
+
+.btn.share {
+  background: linear-gradient(180deg, #3b6fb0, #2c5690);
+  box-shadow: 0 5px 0 #1b3559;
+}
+
+.daily-tag {
+  display: inline-block;
+  margin-bottom: 8px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: #2c5690;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 2px;
+}
+
+.toast {
+  position: absolute;
+  left: 50%;
+  bottom: max(28px, env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  z-index: 50;
+  max-width: calc(100% - 32px);
+  padding: 10px 18px;
+  border-radius: 999px;
+  background: rgba(10, 8, 14, 0.92);
+  border: 1px solid rgba(245, 197, 66, 0.4);
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+  pointer-events: none;
 }
 
 .btn.lottery:disabled {
@@ -429,6 +510,8 @@ h2 {
   letter-spacing: 1px;
   padding: 7px 16px;
   border-radius: 999px;
+  max-width: calc(100% - 32px);
+  text-align: center;
   animation: pulse 1s infinite alternate;
   transition: opacity 0.5s;
 }
@@ -498,6 +581,32 @@ h2 {
 
 .or { opacity: 0.5; }
 
+.kgrp { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+
+.controls {
+  font-size: 13.5px;
+  line-height: 1.45;
+  margin: 12px 0 14px;
+  opacity: 0.9;
+}
+
+.controls b { color: var(--gold); }
+
+.fine.build { margin-top: 6px; font-size: 10px; opacity: 0.3; }
+.fine.build:empty { display: none; }
+
+.row-btns.spaced { margin-top: 18px; }
+
+.btn.armed { background: var(--red); box-shadow: 0 5px 0 var(--red-dark); }
+
+/* Show the controls for the device in your hand. */
+.ctl-touch { display: none; }
+@media (pointer: coarse) {
+  .ctl-touch { display: block; }
+  span.ctl-touch { display: inline; }
+  .ctl-keys { display: none !important; }
+}
+
 /* ── Roster ───────────────────────────────────────────────── */
 
 .roster {
@@ -560,4 +669,26 @@ h2 {
 @media (max-width: 420px) {
   .panel { padding: 20px 16px 24px; }
   .hud-score span { font-size: 42px; }
+}
+
+/* Short screens (small phones, any phone in landscape): tighten the menus
+   so the title card fits without scrolling. */
+@media (max-height: 560px) {
+  .panel { padding: 14px 18px 16px; }
+  .title { font-size: clamp(24px, 6vh, 36px); }
+  .tagline, .sub { margin: 6px 0 10px; font-size: 13px; }
+  .stat-strip { margin: 2px 0 10px; }
+  .stat-strip > div { padding: 6px 4px; }
+  .stat-strip b { font-size: 19px; }
+  .btn.big { font-size: 17px; padding: 11px; }
+  .row-btns { margin-top: 8px; }
+  .fine { margin-top: 8px; }
+  .help li { padding: 4px 0 4px 20px; font-size: 12.5px; }
+}
+
+@media (max-height: 560px) and (min-width: 600px) {
+  /* Landscape: two columns of rules instead of one long list. */
+  .help { columns: 2; column-gap: 18px; }
+  .help li { break-inside: avoid; }
+  .panel { width: min(640px, 100%); }
 }

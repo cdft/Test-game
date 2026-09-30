@@ -15,6 +15,7 @@
     TRACK_MIN: -14,     // where traffic and logs spawn/despawn
     TRACK_MAX: 14,
     SAFE_ROWS: 4,       // opening rows with nothing in them
+    START_ROW: 2,       // where you stand at the start: this is metre 0
     AHEAD: 26,          // rows kept generated in front of the player
     BEHIND: 14          // rows kept alive behind the player
   };
@@ -30,6 +31,9 @@
 
   var rows = {};        // index -> row object
   var maxGenerated = -1;
+  var seed = 0;         // this world's seed: same seed, same world
+  var worldRandom = Math.random;
+  var reach = null;     // columns reachable on the newest generated row
   var plan = { type: 'safe', left: 0, dirBias: 1 };
   var time = 0;
 
@@ -123,11 +127,13 @@
     for (i = 0; i < n; i++) { var v = U.rand(-1, 1); jitter.push(v); jsum += v; }
     var amp = Math.max(0, Math.min(base - minGap, maxGap - base)) * 0.45;
 
+    // Positions are item centres, so the step to the next item is half of
+    // each width plus the gap between them.
     var p = U.rand(0, CFG.TRACK_LEN);
     var out = [];
     for (i = 0; i < n; i++) {
       out.push(p);
-      p += widths[i] + base + (jitter[i] - jsum / n) * amp;
+      p += (widths[i] + widths[(i + 1) % n]) / 2 + base + (jitter[i] - jsum / n) * amp;
     }
     return out;
   }
@@ -228,9 +234,14 @@
   /* Every 50th metre: a sector border. Concrete wall, barbed wire, one
      open gate. The wall blocks everything but the gate tiles. */
   function makeCheckpoint(index) {
+    // Put the gate somewhere the row behind it can actually get to.
+    var options = [];
+    for (var gx = CFG.X_MIN + 2; gx <= CFG.X_MAX - 2; gx++) {
+      if (!reach || reach[gx - 1] || reach[gx] || reach[gx + 1]) options.push(gx);
+    }
     return {
       index: index, type: 'checkpoint',
-      gateX: U.randInt(CFG.X_MIN + 2, CFG.X_MAX - 2),
+      gateX: options.length ? U.pick(options) : U.randInt(CFG.X_MIN + 2, CFG.X_MAX - 2),
       seed: Math.random()
     };
   }
@@ -251,7 +262,8 @@
   function generate(index) {
     // Sector borders land on the round numbers, interrupting whatever
     // band was in progress — walls don't care about your plans.
-    if (index >= 50 && index % 50 === 0) return makeCheckpoint(index);
+    var metre = index - CFG.START_ROW;
+    if (metre >= 50 && metre % 50 === 0) return makeCheckpoint(index);
     var type = nextType(index);
     switch (type) {
       case 'safe': return makeGrass(index, true);
@@ -264,14 +276,83 @@
     }
   }
 
+  /* ── Guaranteed passage ─────────────────────────────────────────────
+     Grass scenery, missing floes and sector walls are the only things that
+     never move out of your way. As each row is generated we track which
+     columns can be reached from the start, and if a row would seal the
+     way forward we open a tile in it. No world is ever a dead end. */
+
+  function standable(row, x) {
+    if (row.type === 'grass') return !row.blocked[x];
+    if (row.type === 'ice') return !!row.floes[x];
+    if (row.type === 'checkpoint') return Math.abs(x - row.gateX) <= 1;
+    return true;   // traffic and logs always move on eventually
+  }
+
+  function open(row, x) {
+    if (row.type === 'grass') {
+      delete row.blocked[x];
+      row.decor = row.decor.filter(function (dc) { return dc.x !== x; });
+    } else if (row.type === 'ice') {
+      row.floes[x] = { state: 'solid', standT: 0, recoverT: 0, pressed: false, seed: Math.random() };
+    }
+  }
+
+  function settle(row) {
+    var x, next = {}, any = false;
+    if (reach) {
+      for (x = CFG.X_MIN; x <= CFG.X_MAX; x++) {
+        if (reach[x] && standable(row, x)) { next[x] = true; any = true; }
+      }
+      if (!any) {
+        // Sealed: open the reachable column nearest the middle.
+        var best = null;
+        for (x = CFG.X_MIN; x <= CFG.X_MAX; x++) {
+          if (reach[x] && (best === null || Math.abs(x) < Math.abs(best))) best = x;
+        }
+        open(row, best);
+        next[best] = true;
+      }
+    } else {
+      for (x = CFG.X_MIN; x <= CFG.X_MAX; x++) if (standable(row, x)) next[x] = true;
+    }
+    // Sideways along the row, through anything standable.
+    for (var pass = 0; pass < 2; pass++) {
+      for (x = CFG.X_MIN + 1; x <= CFG.X_MAX; x++) if (next[x - 1] && standable(row, x)) next[x] = true;
+      for (x = CFG.X_MAX - 1; x >= CFG.X_MIN; x--) if (next[x + 1] && standable(row, x)) next[x] = true;
+    }
+    reach = next;
+    return row;
+  }
+
+  /* A small seeded generator (mulberry32). The world draws only from this,
+     so the same seed always lays out the same roads, rivers and walls, no
+     matter what else in the game rolls dice in between. */
+  function seeded(a) {
+    return function () {
+      a = (a + 0x6D2B79F5) >>> 0;
+      var t = a;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
   function rowAt(index) {
     if (index < 0) return null;
     var r = rows[index];
     if (r) return r;
-    // Generate in order so the band planner stays coherent.
-    for (var i = maxGenerated + 1; i <= index; i++) {
-      rows[i] = generate(i);
-      maxGenerated = i;
+    // Generate in order so the band planner stays coherent, and from the
+    // world's own dice.
+    var outside = Math.random;
+    Math.random = worldRandom;
+    try {
+      for (var i = maxGenerated + 1; i <= index; i++) {
+        rows[i] = settle(generate(i));
+        maxGenerated = i;
+      }
+    } finally {
+      Math.random = outside;
     }
     return rows[index];
   }
@@ -292,9 +373,14 @@
     CFG: CFG,
     rows: rows,
 
-    reset: function () {
+    /* A fresh world. Pass a seed to get a particular one (the Daily Escape
+       uses the date); leave it out for a random one. */
+    reset: function (worldSeed) {
+      seed = worldSeed === undefined ? Math.floor(Math.random() * 4294967296) >>> 0 : worldSeed >>> 0;
+      worldRandom = seeded(seed);
       for (var k in rows) if (Object.prototype.hasOwnProperty.call(rows, k)) delete rows[k];
       maxGenerated = -1;
+      reach = null;
       plan = { type: 'safe', left: 0, dirBias: 1 };
       time = 0;
       // Prime the opening stretch.
@@ -302,6 +388,7 @@
     },
 
     time: function () { return time; },
+    seed: function () { return seed; },
     row: rowAt,
     difficulty: difficulty,
     carX: carX,

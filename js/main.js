@@ -30,10 +30,25 @@
     van: {
       title: 'DETAINED',
       flavor: 'A black car happened to be passing. A black car is always passing.'
+    },
+    ice: {
+      title: 'ON THIN ICE',
+      flavor: 'The river froze for the Party, not for you.'
+    },
+    drift: {
+      title: 'LOST AT SEA',
+      flavor: 'You rode the log past the edge of the map. The map is also state property.'
+    },
+    parade: {
+      title: 'CONSCRIPTED',
+      flavor: 'You joined the parade. The parade did not ask. Left, right, left, right.'
     }
   };
 
+  var current = 'screen-title';
+
   function showScreen(id) {
+    current = id;
     SCREENS.forEach(function (s) {
       var el = U.$(s);
       if (el) el.classList.toggle('hidden', s !== id);
@@ -52,6 +67,8 @@
     U.$('p-coins').textContent = Game.save.coins || 0;
     refreshLotteryButtons();
     refreshDirectivesPanel();
+    var best = Game.dailyBest();
+    U.$('daily-sub').textContent = best > 0 ? 'today\u2019s best: ' + best + ' m' : 'same map for everyone today';
   }
 
   function refreshDirectivesPanel() {
@@ -153,24 +170,33 @@
   /* ── Flow ───────────────────────────────────────────────────────── */
 
   function toMenu() {
+    Game.abandon();
     Game.enterMenu();
     refreshStats();
     showScreen('screen-title');
   }
 
-  var hintTimer = null;
+  var touchFirst = !!(global.matchMedia && global.matchMedia('(pointer: coarse)').matches);
 
-  function startRun() {
-    Game.start();
+  var lastDaily = false;
+
+  /* opts.daily: run today's shared map. Without opts, repeat the last kind
+     of run (RUN AGAIN and R stay on the Daily Escape if you were on it). */
+  function startRun(opts) {
+    if (opts && typeof opts.daily === 'boolean') lastDaily = opts.daily;
+    Game.abandon();   // restarting mid-run still banks what you earned
+    Game.start({ daily: lastDaily });
     elScore.textContent = '0';
     elCoins.textContent = '0';
     hideScreens();
-    // Coach the press-and-release hop for the first few escapes.
+    // Coach the controls for the first few escapes; the chase waits for
+    // your first hop, so the hint can stay up until then.
     var hint = U.$('hint');
     if (hint && (Game.save.runs || 0) <= 3) {
+      hint.textContent = touchFirst
+        ? 'tap to hop \u00b7 swipe to dodge'
+        : 'arrow keys to hop \u00b7 they move when you do';
       hint.classList.remove('hidden');
-      if (hintTimer) clearTimeout(hintTimer);
-      hintTimer = setTimeout(function () { hint.classList.add('hidden'); }, 6000);
     }
   }
 
@@ -187,12 +213,62 @@
     U.$('o-score').textContent = result.score;
     U.$('o-best').textContent = result.best;
     U.$('o-coins').textContent = result.earned;
+    U.$('o-coins-label').textContent = result.bonus > 0
+      ? 'kibble (+' + result.bonus + ' distance)' : 'kibble earned';
     U.$('o-newbest').classList.toggle('hidden', !result.newBest);
     U.$('o-secret').classList.toggle('hidden', !result.unlockedSecret);
+    U.$('o-daily').classList.toggle('hidden', !result.daily);
+    if (result.daily) {
+      U.$('o-daily').textContent = 'DAILY ESCAPE \u00b7 ' + (result.newDaily ? 'TODAY\u2019S BEST' : 'BEST TODAY ' + result.dailyBest + ' m');
+    }
     if (result.unlockedSecret) PP.Audio.unlockChime();
+    lastResult = result;
     refreshStats();
     showScreen('screen-over');
   }
+
+  /* ── Sharing ────────────────────────────────────────────────────── */
+
+  var lastResult = null;
+  var toastTimer = null;
+
+  function toast(text) {
+    var el = U.$('toast');
+    el.textContent = text;
+    el.classList.remove('hidden');
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { el.classList.add('hidden'); }, 2600);
+  }
+
+  function shareLink(daily) {
+    var base = /^https?:/.test(global.location.protocol)
+      ? global.location.origin + global.location.pathname
+      : 'https://cdft.github.io/Test-game/';
+    return base + (daily ? '?daily' : '');
+  }
+
+  function shareRun() {
+    var r = lastResult;
+    if (!r) return;
+    var text = r.daily
+      ? 'I got ' + r.score + ' m from the Collective on today\u2019s Daily Escape in Paws & Politburo. Same map for everyone today \u2014 beat me.'
+      : 'I got ' + r.score + ' m from the Collective in Paws & Politburo. Beat that.';
+    var url = shareLink(!!r.daily);
+    if (global.navigator.share) {
+      global.navigator.share({ title: 'Paws & Politburo', text: text, url: url }).catch(function () { /* dismissed */ });
+      return;
+    }
+    var all = text + ' ' + url;
+    if (global.navigator.clipboard && global.navigator.clipboard.writeText) {
+      global.navigator.clipboard.writeText(all).then(function () {
+        toast('Copied \u2014 paste it to a friend');
+      }, function () { toast(all); });
+    } else {
+      toast(all);
+    }
+  }
+
+  U.on(U.$('btn-share'), 'click', shareRun);
 
   Game.g.onDeath = onDeath;
 
@@ -210,18 +286,40 @@
 
   /* ── Buttons ────────────────────────────────────────────────────── */
 
-  U.on(U.$('btn-play'), 'click', function () { PP.Audio.unlock(); startRun(); });
-  U.on(U.$('btn-again'), 'click', startRun);
+  U.on(U.$('btn-play'), 'click', function () { PP.Audio.unlock(); startRun({ daily: false }); });
+  U.on(U.$('btn-again'), 'click', function () { startRun(); });
+  U.on(U.$('btn-daily'), 'click', function () { PP.Audio.unlock(); startRun({ daily: true }); });
   U.on(U.$('btn-menu'), 'click', toMenu);
   U.on(U.$('btn-resume'), 'click', function () { Game.resume(); hideScreens(); });
-  U.on(U.$('btn-quit'), 'click', toMenu);
+  // Giving up takes two taps, so a thumb that misses Resume doesn't end the run.
+  var quitArmed = null;
+  U.on(U.$('btn-quit'), 'click', function () {
+    var btn = U.$('btn-quit');
+    if (!quitArmed) {
+      btn.textContent = 'Tap again to give up';
+      btn.classList.add('armed');
+      quitArmed = setTimeout(function () {
+        quitArmed = null;
+        btn.textContent = 'Give up, go home';
+        btn.classList.remove('armed');
+      }, 2500);
+      return;
+    }
+    clearTimeout(quitArmed);
+    quitArmed = null;
+    btn.textContent = 'Give up, go home';
+    btn.classList.remove('armed');
+    toMenu();
+  });
   U.on(U.$('btn-pause'), 'click', togglePause);
   U.on(U.$('btn-mute'), 'click', toggleMute);
   U.on(U.$('btn-help'), 'click', function () { showScreen('screen-help'); });
   U.on(U.$('btn-help-back'), 'click', function () { showScreen('screen-title'); });
-  U.on(U.$('btn-pick-back'), 'click', function () { showScreen('screen-title'); });
+  var pickerFrom = 'screen-title';
+  U.on(U.$('btn-pick-back'), 'click', function () { showScreen(pickerFrom); });
 
   function openPicker() {
+    pickerFrom = current === 'screen-over' ? 'screen-over' : 'screen-title';
     refreshStats();
     buildRoster();
     showScreen('screen-pick');
@@ -306,9 +404,8 @@
     onCharge: function () { Game.charge(); },
     onChargeCancel: function () { Game.uncharge(); },
     onMove: function (dir) {
-      hideHint();
-      if (Game.isPlaying()) Game.move(dir);
-      else if (Game.mode() === 'menu' && dir === 'up') startRun();
+      if (Game.isPlaying()) { hideHint(); Game.move(dir); }
+      else if (Game.mode() === 'menu' && current === 'screen-title' && dir === 'up') startRun({ daily: false });
     },
     onAction: function (name) {
       var mode = Game.mode();
@@ -322,19 +419,23 @@
         return;
       }
       if (name === 'primary') {
-        if (mode === 'menu') startRun();
-        else if (mode === 'dead') startRun();
+        if (mode === 'menu' && current === 'screen-title') startRun({ daily: false });
+        else if (mode === 'dead' && current === 'screen-over') startRun();
         else if (mode === 'paused') { Game.resume(); hideScreens(); }
       }
-    },
-    playerScreenPos: Game.playerScreenPos
+    }
   });
 
   /* ── Loop ───────────────────────────────────────────────────────── */
 
   PP.Render.init(canvas);
-  U.on(global, 'resize', function () { PP.Render.resize(); });
-  U.on(global, 'orientationchange', function () { setTimeout(PP.Render.resize, 120); });
+  // While paused the scene is frozen, so it is drawn once, not 60 times a
+  // second; a resize clears the canvas, so it earns one fresh frame.
+  var needsDraw = true, drawnMode = null;
+  U.on(global, 'resize', function () { PP.Render.resize(); needsDraw = true; });
+  U.on(global, 'orientationchange', function () {
+    setTimeout(function () { PP.Render.resize(); needsDraw = true; }, 120);
+  });
   U.on(document, 'visibilitychange', function () {
     if (document.hidden && Game.pause()) showScreen('screen-pause');
   });
@@ -358,8 +459,28 @@
       U.$('combo').classList.toggle('hidden', !(Game.g.streak >= 10 && Game.mode() === 'playing'));
     }
 
-    PP.Render.draw(Game.g);
+    var mode = Game.mode();
+    if (mode !== 'paused' || needsDraw || drawnMode !== 'paused') {
+      PP.Render.draw(Game.g);
+      needsDraw = false;
+      drawnMode = mode;
+    }
   }
+
+  // Browsers only allow sound after a gesture: any tap or key anywhere
+  // (menus included) wakes the audio, so nothing waits for the first hop.
+  U.on(document, 'pointerdown', function () { PP.Audio.unlock(); }, true);
+  U.on(document, 'keydown', function () { PP.Audio.unlock(); }, true);
+
+  // A tab that is closed mid-run still keeps its record.
+  U.on(global, 'pagehide', function () { Game.saveProgress(); });
+
+  // Which build is this? Testers can quote it with a bug report.
+  var build = document.querySelector('meta[name="pp-build"]');
+  if (build && U.$('build-id')) U.$('build-id').textContent = 'build ' + build.getAttribute('content');
+
+  // A friend's Daily Escape link: point them at today's map.
+  if (/[?&]daily\b/.test(global.location.search)) U.$('btn-daily').classList.add('invited');
 
   U.$('btn-mute').textContent = PP.Audio.isMuted() ? '🔇' : '🔊';
   toMenu();

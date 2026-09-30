@@ -7,6 +7,7 @@
 
   var ctx = null;
   var master = null;
+  var noiseBuf = null;
   var muted = U.store.get('pp.muted', false);
 
   function ensure() {
@@ -18,16 +19,29 @@
       master = ctx.createGain();
       master.gain.value = 0.32;
       master.connect(ctx.destination);
+      // One second of white noise, shared by every splash, snare and hat.
+      noiseBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
+      var data = noiseBuf.getChannelData(0);
+      for (var i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
     } catch (e) { ctx = null; }
     return ctx;
+  }
+
+  /* The context, if it is actually making sound. Sounds requested while it
+     is suspended (no tap yet, or the phone interrupted it) are dropped, not
+     queued: a queue on a frozen clock plays all at once when it wakes. */
+  function live() {
+    if (!ctx) return null;
+    if (ctx.state === 'running') return ctx;
+    if (ctx.state !== 'closed') ctx.resume();
+    return null;
   }
 
   /* One shot: oscillator with a frequency ramp and a percussive envelope. */
   function tone(opts) {
     if (muted) return;
-    var c = ensure();
+    var c = live();
     if (!c) return;
-    if (c.state === 'suspended') c.resume();
 
     var t0 = c.currentTime + (opts.delay || 0);
     var dur = opts.dur || 0.12;
@@ -54,18 +68,12 @@
   /* Filtered noise burst — splashes, crashes, engine rumble. */
   function noise(opts) {
     if (muted) return;
-    var c = ensure();
+    var c = live();
     if (!c) return;
-    if (c.state === 'suspended') c.resume();
 
-    var dur = opts.dur || 0.25;
-    var frames = Math.floor(c.sampleRate * dur);
-    var buf = c.createBuffer(1, frames, c.sampleRate);
-    var data = buf.getChannelData(0);
-    for (var i = 0; i < frames; i++) data[i] = Math.random() * 2 - 1;
-
+    var dur = Math.min(opts.dur || 0.25, 0.95);
     var src = c.createBufferSource();
-    src.buffer = buf;
+    src.buffer = noiseBuf;
 
     var filter = c.createBiquadFilter();
     filter.type = opts.filter || 'lowpass';
@@ -81,7 +89,8 @@
     src.connect(filter);
     filter.connect(gain);
     gain.connect(master);
-    src.start();
+    // A random slice of the shared buffer, so no two bursts sound identical.
+    src.start(c.currentTime, Math.random() * (1 - dur), dur);
   }
 
   var Audio = {
@@ -90,6 +99,7 @@
     /* Shared with the music sequencer so both run on one context. */
     context: ensure,
     destination: function () { return master; },
+    noise: function () { return noiseBuf; },
 
     toggleMute: function () {
       muted = !muted;
@@ -102,7 +112,7 @@
     /* Browsers only allow audio after a gesture; call this from any input. */
     unlock: function () {
       var c = ensure();
-      if (c && c.state === 'suspended') c.resume();
+      if (c && c.state !== 'running' && c.state !== 'closed') c.resume();
     },
 
     hop: function (mul) {

@@ -116,22 +116,21 @@
       osc.stop(at + dur + 0.02);
       return;
     }
-    // Snare: a short burst of high-passed noise.
-    var frames = Math.floor(ctx.sampleRate * dur);
-    var buf = ctx.createBuffer(1, frames, ctx.sampleRate);
-    var data = buf.getChannelData(0);
-    for (var i = 0; i < frames; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / frames);
+    // Snare and hat: a short slice of the shared noise, high-passed.
+    var buf = PP.Audio.noise();
+    if (!buf) return;
     var src = ctx.createBufferSource();
     src.buffer = buf;
     var hp = ctx.createBiquadFilter();
     hp.type = 'highpass';
     hp.frequency.value = kind === 'snare' ? 1400 : 5000;
     var sg = ctx.createGain();
-    sg.gain.value = kind === 'snare' ? 0.30 : 0.07;
+    sg.gain.setValueAtTime(kind === 'snare' ? 0.30 : 0.07, at);
+    sg.gain.linearRampToValueAtTime(0.0001, at + dur);
     src.connect(hp);
     hp.connect(sg);
     sg.connect(bus);
-    src.start(at);
+    src.start(at, Math.random() * (1 - dur), dur);
   }
 
   /* ── Sequencer ──────────────────────────────────────────────────── */
@@ -164,6 +163,26 @@
     if (bar % 4 === 3 && beat >= 12) drum(at, 'snare');
   }
 
+  /* Each run of the band gets its own bus. Stopping fades and drops the old
+     one, so notes already queued die with it instead of ringing on under
+     whatever plays next. */
+  function freshBus() {
+    retire(0.03);
+    bus = ctx.createGain();
+    bus.gain.value = 0.5;               // sits under the effects
+    bus.connect(PP.Audio.destination() || ctx.destination);
+  }
+
+  function retire(seconds) {
+    if (!bus || !ctx) return;
+    var old = bus, now = ctx.currentTime;
+    bus = null;
+    old.gain.cancelScheduledValues(now);
+    old.gain.setValueAtTime(Math.max(old.gain.value, 0.0001), now);
+    old.gain.exponentialRampToValueAtTime(0.0001, now + seconds);
+    global.setTimeout(function () { old.disconnect(); }, seconds * 1000 + 80);
+  }
+
   function scheduler() {
     if (!playing || !ctx) return;
     while (nextTime < ctx.currentTime + LOOKAHEAD) {
@@ -185,15 +204,8 @@
       if (playing || muted) return;
       ctx = PP.Audio.context();
       if (!ctx) return;
-      if (ctx.state === 'suspended') ctx.resume();
-      if (!bus) {
-        bus = ctx.createGain();
-        bus.gain.value = 0.5;               // sits under the effects
-        bus.connect(PP.Audio.destination() || ctx.destination);
-      }
-      // Cancel any fade still in flight, or a quick restart begins silent.
-      bus.gain.cancelScheduledValues(ctx.currentTime);
-      bus.gain.setValueAtTime(0.5, ctx.currentTime);
+      if (ctx.state !== 'running' && ctx.state !== 'closed') ctx.resume();
+      freshBus();
       playing = true;
       step = 0;
       nextTime = ctx.currentTime + 0.08;
@@ -204,36 +216,26 @@
     stop: function () {
       playing = false;
       if (timer) { global.clearInterval(timer); timer = null; }
+      retire(0.03);
     },
 
     /* Pick the tempo up when the Collective closes in. */
     setUrgent: function (on) { urgent = !!on; },
 
-    /* Cut the music but let whatever is already queued ring out. */
+    /* Let the band trail off rather than cut dead. */
     fadeOut: function (seconds) {
-      if (!bus || !ctx) { Music.stop(); return; }
-      var now = ctx.currentTime;
-      bus.gain.cancelScheduledValues(now);
-      bus.gain.setValueAtTime(bus.gain.value, now);
-      bus.gain.exponentialRampToValueAtTime(0.0001, now + (seconds || 0.6));
-      Music.stop();
-      global.setTimeout(function () {
-        if (bus) bus.gain.setValueAtTime(0.5, ctx.currentTime);
-      }, (seconds || 0.6) * 1000 + 60);
+      playing = false;
+      if (timer) { global.clearInterval(timer); timer = null; }
+      retire(seconds || 0.6);
     },
 
     /* The march wins: a short, smug cadence when you are caught. */
     victoryOfTheCollective: function () {
       if (muted) return;
       var c = PP.Audio.context();
-      if (!c) return;
+      if (!c || c.state !== 'running') return;
       ctx = c;
-      if (!bus) {
-        bus = ctx.createGain();
-        bus.gain.value = 0.5;
-        bus.connect(PP.Audio.destination() || ctx.destination);
-      }
-      bus.gain.setValueAtTime(0.5, ctx.currentTime);
+      freshBus();   // the march is cut off; only the cadence remains
       var t0 = ctx.currentTime + 0.05;
       [[57, 0], [62, 0.16], [65, 0.32], [69, 0.48], [74, 0.64]].forEach(function (e) {
         pulse(midiToFreq(e[0]), t0 + e[1], 0.22, 0.13);
