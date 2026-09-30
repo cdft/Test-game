@@ -1,0 +1,12 @@
+{
+  "name": "paws-and-politburo",
+  "private": true,
+  "description": "A hop-forward escape game: cats and dogs running from the Collective.",
+  "scripts": {
+    "test": "node --test --test-concurrency=2 \"tests/*.test.js\"",
+    "build": "node build.js"
+  },
+  "devDependencies": {
+    "playwright": "1.56.1"
+  }
+}

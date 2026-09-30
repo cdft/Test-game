@@ -1,0 +1,119 @@
+name: Test and publish the game
+
+# The game is plain static files. Pages serves them from the `gh-pages`
+# branch, and this workflow keeps that branch in step with development, so
+# https://cdft.github.io/Test-game/ updates on its own after every push.
+#
+# Nothing is published unless the test suite passes first: a broken push
+# stays off the public link.
+
+on:
+  push:
+    branches:
+      - main
+      - claude/cats-dogs-game-prototype-gyzlsr
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Every script parses
+        shell: bash
+        run: for f in js/*.js build.js tests/*.js; do node --check "$f"; done
+
+      - name: The single-file bundles match the source
+        run: node build.js --check
+
+      - name: Install headless Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Play the game (browser test suite)
+        run: npm test
+
+  # Only one branch publishes, so two branches can never overwrite each
+  # other's deploy. Development happens on this branch; to publish from
+  # another one, change the ref here.
+  publish:
+    needs: test
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/claude/cats-dogs-game-prototype-gyzlsr'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    # Never let two publishes race; let an in-flight one finish.
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # A re-run of an old job, or a slow run overtaken by a newer push, must
+      # not roll the public site back to older code.
+      - name: Only publish the newest commit
+        id: fresh
+        shell: bash
+        run: |
+          tip=$(git ls-remote origin "refs/heads/${GITHUB_REF_NAME}" | cut -f1)
+          if [ "$tip" != "$GITHUB_SHA" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::${GITHUB_SHA::7} is no longer the tip of ${GITHUB_REF_NAME}; leaving the site alone"
+          fi
+
+      - name: Assemble the site
+        if: steps.fresh.outputs.skip != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          v="${GITHUB_SHA::7}"
+          rm -rf _site && mkdir -p _site/dist
+          cp -r index.html css js _site/
+          cp dist/play.html _site/dist/
+          # Plain static files: skip the Jekyll pass Pages would otherwise run.
+          touch _site/.nojekyll
+          # Stamp the build on the title screen, and cache-bust every asset so
+          # a phone that played yesterday gets today's code.
+          sed -i -E \
+            -e "s#(src|href)=\"((js|css)/[^\"?]+)\"#\1=\"\2?v=${v}\"#g" \
+            -e "s#<meta name=\"pp-build\" content=\"[^\"]*\"#<meta name=\"pp-build\" content=\"${v}\"#" \
+            _site/index.html _site/dist/play.html
+          grep -q "content=\"${v}\"" _site/index.html
+          echo "assembled build ${v}:"; find _site -type f | sort
+
+      - name: Publish to gh-pages
+        if: steps.fresh.outputs.skip != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin gh-pages
+          git worktree add --detach ../pages origin/gh-pages
+          cd ../pages
+          # Leave any .github directory alone: the site never needs it, and
+          # the Actions token is not meant to edit workflow files.
+          git rm -rq --ignore-unmatch -- . ':(exclude).github'
+          cp -r "$GITHUB_WORKSPACE/_site/." .
+          git add -A
+          if git diff --cached --quiet; then
+            echo "site unchanged"
+            exit 0
+          fi
+          git commit -qm "Publish ${GITHUB_SHA::7} from ${GITHUB_REF_NAME}"
+          # A plain push, never --force: if gh-pages moved underneath us the
+          # push fails loudly instead of discarding someone else's publish.
+          git push origin HEAD:gh-pages
