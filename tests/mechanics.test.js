@@ -411,3 +411,23 @@ test('the record line is labelled in metres', async () => {
   assert.deepEqual(labels, ['BEST 10']);
   await a.close();
 });
+
+test('landing on the very end of a log slides you onto the wood, not the water', async () => {
+  const a = await openGame({ seed: 33 });
+  await runAt(a, () => ({ row: 2, x: 0 }));
+  await a.eval(() => {
+    const W = PP.World;
+    W.rows[2] = { index: 2, type: 'grass', decor: [], blocked: {}, coin: null };
+    // A still 2-wide raft whose right end stops 0.4 short of column 0.
+    W.rows[3] = { index: 3, type: 'water', dir: 1, speed: 0, logs: [{ p: -1.4 - W.CFG.TRACK_MIN, w: 2, kind: 'raft', seed: 0 }] };
+  });
+  await a.eval(() => PP.Game.move('up'));
+  await a.step(40);
+  const s = await a.eval(() => {
+    const p = PP.Game.g.player, row = PP.World.row(3), lg = row.logs[0];
+    return { dead: p.dead, x: p.x, end: PP.World.logX(row, lg) + lg.w / 2 };
+  });
+  assert.equal(s.dead, false, 'the forgiving landing still counts');
+  assert.ok(s.x <= s.end - 0.25, `standing at ${s.x.toFixed(2)}, past the raft's end at ${s.end.toFixed(2)}`);
+  await a.close();
+});

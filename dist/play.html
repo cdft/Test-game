@@ -4939,7 +4939,14 @@ body { overscroll-behavior: none; }
       if (row && row.type === 'water') {
         var lg = World.logUnder(p.x, p.row);
         p.onLog = lg;
-        if (lg) p.x += row.dir * row.speed * dt;
+        if (lg) {
+          p.x += row.dir * row.speed * dt;
+          // A landing that only caught the very end of a log still counts,
+          // but nobody stands on water: slide the paws onto the wood.
+          var lx = World.logX(row, lg), inner = Math.max(0, lg.w / 2 - 0.3);
+          var onWood = U.clamp(p.x, lx - inner, lx + inner);
+          if (onWood !== p.x) p.x = U.approach(p.x, onWood, 18, dt);
+        }
       } else if (row && row.type === 'ice') {
         // Your weight is a problem the floe intends to solve.
         var floe = World.floeAt(p.x, p.row);
