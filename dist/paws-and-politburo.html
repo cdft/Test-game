@@ -2619,7 +2619,9 @@ body { overscroll-behavior: none; }
 
   function drawSky(cam, t) {
     var hz = horizonY;
-    var S = U.clamp(hz / 158, 0.55, 1.6);          // backdrop scale for this screen
+    // Backdrop scale: shrinks on short screens, never grows on tall ones,
+    // so the far country always stays small and far.
+    var S = U.clamp(hz / 158, 0.55, 1);
     var dist = cam.row - PP.World.CFG.START_ROW;
     var k = sky = skyAt(dist);
     var i;
@@ -2674,7 +2676,7 @@ body { overscroll-behavior: none; }
       var cw = view.w * (0.14 + 0.1 * hash(i, 9));
       var cx = U.mod(hash(i, 11) * view.w + t * (2.5 + i) - cam.x * view.tile * 0.04, view.w + cw * 2) - cw;
       var cy = hz * (0.2 + 0.15 * hash(i, 7));
-      ctx.fillStyle = rgba(U.mixHex(k.mid, '#ffffff', 0.08 + k.border * 0.5), 0.42);
+      ctx.fillStyle = rgba(U.mixHex('#2e1d3e', '#ffffff', k.border * 0.55), 0.42);
       ctx.beginPath();
       ctx.ellipse(cx, cy, cw * 0.55, cw * 0.14, 0, 0, Math.PI * 2);
       ctx.ellipse(cx - cw * 0.3, cy + cw * 0.04, cw * 0.32, cw * 0.1, 0, 0, Math.PI * 2);
@@ -2904,7 +2906,7 @@ body { overscroll-behavior: none; }
       if (kind === 3) { drawStatue(bx + 48, hz, S, block, t); return; }
       if (kind === 6) { drawDome(bx + 48, hz, S, block, t); return; }
       var bh = (30 + U.mod(i * 37, 5) * 11) * S;
-      ctx.fillStyle = block;
+      ctx.fillStyle = rgba(block, 0.85);
       ctx.fillRect(bx, hz - bh, 96, bh);
       ctx.fillStyle = 'rgba(255,186,110,' + (0.14 + 0.3 * k.night) + ')';
       for (var wy = 0; wy < bh - 14; wy += 14) {
