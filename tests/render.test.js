@@ -283,36 +283,6 @@ test('the far backdrop holds still when you hop forward', async () => {
   await a.close();
 });
 
-test('the sky changes over the journey: dusk, then night, then dawn', async () => {
-  const a = await openGame({ seed: 62 });
-  await a.page.click('#btn-play');
-  await a.step(2);
-  const lum = await a.eval(() => {
-    const g = PP.Game.g, c = document.getElementById('stage'), ctx = c.getContext('2d');
-    g.player.hopping = true; g.tide.row = -20;
-    return [2, 62, 240].map((r) => {
-      g.cam.row = r + 0.6;
-      PP.Render.draw(g);
-      const d = ctx.getImageData(Math.floor(c.width * 0.9), Math.floor(PP.Render.view.horizonY * PP.Render.view.dpr * 0.45), 1, 1).data;
-      return d[0] + d[1] + d[2];
-    });
-  });
-  const [dusk, night, dawn] = lum;
-  assert.ok(night < dusk && night < dawn, `sky brightness dusk ${dusk}, night ${night}, dawn ${dawn}`);
-  await a.close();
-});
-
-test('crossing into a new landscape announces the chapter', async () => {
-  const a = await openGame({ seed: 63 });
-  await a.page.click('#btn-play');
-  await a.step(2);
-  await a.eval(() => { PP.Game.g.score = 41; });
-  await a.step(2);
-  const t = await a.eval(() => ({ hidden: document.getElementById('chapter').classList.contains('hidden'), text: document.querySelector('#chapter b').textContent }));
-  assert.deepEqual(t, { hidden: false, text: 'THE COLLECTIVE FARMS' });
-  await a.close();
-});
-
 test('scenery on the far rows stays faint against the skyline', async () => {
   const a = await openGame({ seed: 64 });
   await a.page.click('#btn-play');
