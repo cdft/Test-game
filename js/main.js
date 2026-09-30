@@ -315,10 +315,13 @@
     disarmQuit();
     toMenu();
   });
-  // The HUD icons give focus back after a click, so Space and Enter mid-run
-  // never press them again.
-  U.on(U.$('btn-pause'), 'click', function () { this.blur(); togglePause(); });
-  U.on(U.$('btn-mute'), 'click', function () { this.blur(); toggleMute(); });
+  U.on(U.$('btn-pause'), 'click', togglePause);
+  U.on(U.$('btn-mute'), 'click', toggleMute);
+  // A mouse click must not leave the HUD icons focused (Space would press
+  // them again mid-run); someone who tabs to them keeps their focus.
+  ['btn-pause', 'btn-mute'].forEach(function (id) {
+    U.on(U.$(id), 'mousedown', function (e) { e.preventDefault(); });
+  });
   U.on(U.$('btn-help'), 'click', function () { showScreen('screen-help'); });
   U.on(U.$('btn-help-back'), 'click', function () { showScreen('screen-title'); });
   var pickerFrom = 'screen-title';
