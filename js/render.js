@@ -1180,7 +1180,7 @@
     ctx.fillStyle = '#3a2a10';
     ctx.font = '800 ' + Math.round(s * 0.3) + 'px "Trebuchet MS", sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('BEST ' + rowIndex, lx1 - s * 0.95, yTop + s * 0.09);
+    ctx.fillText('BEST ' + (rowIndex - PP.World.CFG.START_ROW), lx1 - s * 0.95, yTop + s * 0.09);
     ctx.textAlign = 'left';
     ctx.restore();
   }

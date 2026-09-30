@@ -186,6 +186,7 @@
     started: false,            // the chase waits for your first hop
     daily: null,               // the day's date on a Daily Escape run
     banked: false,             // this run's distance bonus and best are saved
+    bonusBanked: 0,            // distance bonus already paid out mid-run
     startBest: 0,
     unlockedSecret: false,
     runCoins: 0,
@@ -321,8 +322,10 @@
       return;
     }
 
-    // A log can carry you to the very edge; hop from the nearest real column.
-    var baseX = U.clamp(Math.round(p.x), World.CFG.X_MIN, World.CFG.X_MAX);
+    // A log can carry you to the very edge; up and down hops leave from the
+    // nearest real column. Sideways hops aim one column over, as always.
+    var baseX = Math.round(p.x);
+    if (dir === 'up' || dir === 'down') baseX = U.clamp(baseX, World.CFG.X_MIN, World.CFG.X_MAX);
     var toX = baseX, toRow = p.row;
     if (dir === 'up') toRow = p.row + 1;
     else if (dir === 'down') toRow = p.row - 1;
@@ -758,6 +761,7 @@
       g.maxRow = g.player.row;
       g.started = false;
       g.banked = false;
+      g.bonusBanked = 0;
       g.startBest = save.best || 0;
       g.unlockedSecret = false;
       g.runCoins = 0;
@@ -854,7 +858,8 @@
             save.daily = { day: g.daily, best: Math.max(g.score, dailyBest()) };
           }
         }
-        save.coins = (save.coins || 0) + bonus;
+        save.coins = (save.coins || 0) + bonus - g.bonusBanked;
+        g.bonusBanked = bonus;
         // Older saves may have earned the dissident before it unlocked live.
         if (save.dodges >= 3 && save.owned.indexOf('kotleta') === -1) {
           save.owned.push('kotleta');
@@ -869,15 +874,20 @@
       };
     },
 
-    /* Leaving a run early (quit, restart, closing the tab) still banks it. */
-    /* Your record is written as you set it, so a closed tab keeps it. */
+    /* When the tab is hidden or closed mid-run, write down the record and
+       the distance bonus so far; the phone may never let the page back. */
     saveProgress: function () {
-      if (g.player && g.score > (save.best || 0) && g.mode !== 'menu') {
-        save.best = g.score;
-        persist();
+      if (!g.player || g.banked || (g.mode !== 'playing' && g.mode !== 'paused' && g.mode !== 'dying')) return;
+      if (g.score > (save.best || 0)) save.best = g.score;
+      var bonus = Math.floor(g.score / 5);
+      if (bonus > g.bonusBanked) {
+        save.coins = (save.coins || 0) + bonus - g.bonusBanked;
+        g.bonusBanked = bonus;
       }
+      persist();
     },
 
+    /* Leaving a run early (quit, restart) still banks it. */
     abandon: function () {
       if (g.player && !g.banked && (g.mode === 'playing' || g.mode === 'paused' || g.mode === 'dying')) {
         Game.finishRun();

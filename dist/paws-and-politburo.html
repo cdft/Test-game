@@ -2156,11 +2156,20 @@ body { overscroll-behavior: none; }
     for (var gx = CFG.X_MIN + 2; gx <= CFG.X_MAX - 2; gx++) {
       if (!reach || reach[gx - 1] || reach[gx] || reach[gx + 1]) options.push(gx);
     }
-    return {
-      index: index, type: 'checkpoint',
-      gateX: options.length ? U.pick(options) : U.randInt(CFG.X_MIN + 2, CFG.X_MAX - 2),
-      seed: Math.random()
-    };
+    var gateX;
+    if (options.length) {
+      gateX = U.pick(options);
+    } else {
+      // Only an edge column is reachable (the gate cannot sit there): put
+      // the gate as close as it goes and open the approach beside it.
+      var edge = reach[CFG.X_MAX] ? CFG.X_MAX : CFG.X_MIN;
+      var side = edge > 0 ? 1 : -1;
+      gateX = edge - side * 2;
+      var before = rows[index - 1];
+      if (before) open(before, edge - side);
+      reach[edge - side] = true;
+    }
+    return { index: index, type: 'checkpoint', gateX: gateX, seed: Math.random() };
   }
 
   function makeRail(index) {
@@ -3611,7 +3620,7 @@ body { overscroll-behavior: none; }
     ctx.fillStyle = '#3a2a10';
     ctx.font = '800 ' + Math.round(s * 0.3) + 'px "Trebuchet MS", sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('BEST ' + rowIndex, lx1 - s * 0.95, yTop + s * 0.09);
+    ctx.fillText('BEST ' + (rowIndex - PP.World.CFG.START_ROW), lx1 - s * 0.95, yTop + s * 0.09);
     ctx.textAlign = 'left';
     ctx.restore();
   }
@@ -4459,11 +4468,16 @@ body { overscroll-behavior: none; }
         move(dir);
         return;
       }
+      var confirmKey = e.code === 'Space' || e.code === 'Enter';
+      // A focused menu button gets its own click (not the HUD icons, which
+      // stay on screen mid-run). A held key must not click it again.
+      if (confirmKey && e.target && e.target.tagName === 'BUTTON' && !e.target.closest('#hud')) {
+        if (e.repeat) e.preventDefault();
+        return;
+      }
       // Everything else fires once per press, not on every auto-repeat.
-      if (e.repeat) return;
-      if (e.code === 'Space' || e.code === 'Enter') {
-        // A focused button gets its own click; don't hijack it.
-        if (e.target && e.target.tagName === 'BUTTON') return;
+      if (e.repeat) { if (confirmKey) e.preventDefault(); return; }
+      if (confirmKey) {
         e.preventDefault();
         PP.Audio.unlock();
         handlers.onAction('primary');
@@ -4714,6 +4728,7 @@ body { overscroll-behavior: none; }
     started: false,            // the chase waits for your first hop
     daily: null,               // the day's date on a Daily Escape run
     banked: false,             // this run's distance bonus and best are saved
+    bonusBanked: 0,            // distance bonus already paid out mid-run
     startBest: 0,
     unlockedSecret: false,
     runCoins: 0,
@@ -4849,8 +4864,10 @@ body { overscroll-behavior: none; }
       return;
     }
 
-    // A log can carry you to the very edge; hop from the nearest real column.
-    var baseX = U.clamp(Math.round(p.x), World.CFG.X_MIN, World.CFG.X_MAX);
+    // A log can carry you to the very edge; up and down hops leave from the
+    // nearest real column. Sideways hops aim one column over, as always.
+    var baseX = Math.round(p.x);
+    if (dir === 'up' || dir === 'down') baseX = U.clamp(baseX, World.CFG.X_MIN, World.CFG.X_MAX);
     var toX = baseX, toRow = p.row;
     if (dir === 'up') toRow = p.row + 1;
     else if (dir === 'down') toRow = p.row - 1;
@@ -5286,6 +5303,7 @@ body { overscroll-behavior: none; }
       g.maxRow = g.player.row;
       g.started = false;
       g.banked = false;
+      g.bonusBanked = 0;
       g.startBest = save.best || 0;
       g.unlockedSecret = false;
       g.runCoins = 0;
@@ -5382,7 +5400,8 @@ body { overscroll-behavior: none; }
             save.daily = { day: g.daily, best: Math.max(g.score, dailyBest()) };
           }
         }
-        save.coins = (save.coins || 0) + bonus;
+        save.coins = (save.coins || 0) + bonus - g.bonusBanked;
+        g.bonusBanked = bonus;
         // Older saves may have earned the dissident before it unlocked live.
         if (save.dodges >= 3 && save.owned.indexOf('kotleta') === -1) {
           save.owned.push('kotleta');
@@ -5397,15 +5416,20 @@ body { overscroll-behavior: none; }
       };
     },
 
-    /* Leaving a run early (quit, restart, closing the tab) still banks it. */
-    /* Your record is written as you set it, so a closed tab keeps it. */
+    /* When the tab is hidden or closed mid-run, write down the record and
+       the distance bonus so far; the phone may never let the page back. */
     saveProgress: function () {
-      if (g.player && g.score > (save.best || 0) && g.mode !== 'menu') {
-        save.best = g.score;
-        persist();
+      if (!g.player || g.banked || (g.mode !== 'playing' && g.mode !== 'paused' && g.mode !== 'dying')) return;
+      if (g.score > (save.best || 0)) save.best = g.score;
+      var bonus = Math.floor(g.score / 5);
+      if (bonus > g.bonusBanked) {
+        save.coins = (save.coins || 0) + bonus - g.bonusBanked;
+        g.bonusBanked = bonus;
       }
+      persist();
     },
 
+    /* Leaving a run early (quit, restart) still banks it. */
     abandon: function () {
       if (g.player && !g.banked && (g.mode === 'playing' || g.mode === 'paused' || g.mode === 'dying')) {
         Game.finishRun();
@@ -5529,6 +5553,8 @@ body { overscroll-behavior: none; }
   var current = 'screen-title';
 
   function showScreen(id) {
+    // Any change of screen cancels a half-confirmed "give up".
+    if (id !== current && typeof disarmQuit === 'function') disarmQuit();
     current = id;
     SCREENS.forEach(function (s) {
       var el = U.$(s);
@@ -5774,26 +5800,30 @@ body { overscroll-behavior: none; }
   U.on(U.$('btn-resume'), 'click', function () { Game.resume(); hideScreens(); });
   // Giving up takes two taps, so a thumb that misses Resume doesn't end the run.
   var quitArmed = null;
-  U.on(U.$('btn-quit'), 'click', function () {
-    var btn = U.$('btn-quit');
-    if (!quitArmed) {
-      btn.textContent = 'Tap again to give up';
-      btn.classList.add('armed');
-      quitArmed = setTimeout(function () {
-        quitArmed = null;
-        btn.textContent = 'Give up, go home';
-        btn.classList.remove('armed');
-      }, 2500);
-      return;
-    }
-    clearTimeout(quitArmed);
+
+  function disarmQuit() {
+    if (quitArmed) clearTimeout(quitArmed);
     quitArmed = null;
+    var btn = U.$('btn-quit');
     btn.textContent = 'Give up, go home';
     btn.classList.remove('armed');
+  }
+
+  U.on(U.$('btn-quit'), 'click', function () {
+    if (!quitArmed) {
+      var btn = U.$('btn-quit');
+      btn.textContent = 'Tap again to give up';
+      btn.classList.add('armed');
+      quitArmed = setTimeout(disarmQuit, 2500);
+      return;
+    }
+    disarmQuit();
     toMenu();
   });
-  U.on(U.$('btn-pause'), 'click', togglePause);
-  U.on(U.$('btn-mute'), 'click', toggleMute);
+  // The HUD icons give focus back after a click, so Space and Enter mid-run
+  // never press them again.
+  U.on(U.$('btn-pause'), 'click', function () { this.blur(); togglePause(); });
+  U.on(U.$('btn-mute'), 'click', function () { this.blur(); toggleMute(); });
   U.on(U.$('btn-help'), 'click', function () { showScreen('screen-help'); });
   U.on(U.$('btn-help-back'), 'click', function () { showScreen('screen-title'); });
   var pickerFrom = 'screen-title';
@@ -5918,7 +5948,10 @@ body { overscroll-behavior: none; }
     setTimeout(function () { PP.Render.resize(); needsDraw = true; }, 120);
   });
   U.on(document, 'visibilitychange', function () {
-    if (document.hidden && Game.pause()) showScreen('screen-pause');
+    if (!document.hidden) return;
+    // A backgrounded tab may be discarded without warning: save first.
+    Game.saveProgress();
+    if (Game.pause()) showScreen('screen-pause');
   });
 
   var last = 0;

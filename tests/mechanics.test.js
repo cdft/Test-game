@@ -380,3 +380,34 @@ test('ten quick hops onto new ground really do build momentum', async () => {
   assert.equal(s.combo, true, 'the x2 badge shows');
   await a.close();
 });
+
+test('hopping inward off a log at the map edge lands one column over, still on the log', async () => {
+  const a = await openGame({ seed: 31 });
+  await runAt(a, () => ({ row: 3, x: 0 }));
+  await a.eval(() => {
+    const g = PP.Game.g, W = PP.World;
+    // A 2-wide log centred at 7.4, standing still; the player rides its outer end.
+    W.rows[3] = { index: 3, type: 'water', dir: 1, speed: 0, logs: [{ p: 7.4 - W.CFG.TRACK_MIN, w: 2, kind: 'log', seed: 0 }] };
+    g.player.x = g.player.fromX = g.player.toX = 7.6;
+  });
+  await a.eval(() => PP.Game.move('left'));
+  await a.step(12);
+  const s = await state(a);
+  assert.deepEqual({ x: s.x, dead: s.dead }, { x: 7, dead: false });
+  await a.close();
+});
+
+test('the record line is labelled in metres', async () => {
+  const a = await openGame({ seed: 32, save: { best: 10, coins: 0, runs: 1, owned: ['mittens', 'biscuit'], char: 'mittens', v: 2 } });
+  await runAt(a, () => ({ row: 8, x: 0 }));
+  const labels = await a.eval(() => {
+    const seen = [];
+    const real = CanvasRenderingContext2D.prototype.fillText;
+    CanvasRenderingContext2D.prototype.fillText = function (t) { if (/^BEST/.test(t)) seen.push(t); return real.apply(this, arguments); };
+    PP.Render.draw(PP.Game.g);
+    CanvasRenderingContext2D.prototype.fillText = real;
+    return seen;
+  });
+  assert.deepEqual(labels, ['BEST 10']);
+  await a.close();
+});

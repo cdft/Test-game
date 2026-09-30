@@ -48,6 +48,8 @@
   var current = 'screen-title';
 
   function showScreen(id) {
+    // Any change of screen cancels a half-confirmed "give up".
+    if (id !== current && typeof disarmQuit === 'function') disarmQuit();
     current = id;
     SCREENS.forEach(function (s) {
       var el = U.$(s);
@@ -293,26 +295,30 @@
   U.on(U.$('btn-resume'), 'click', function () { Game.resume(); hideScreens(); });
   // Giving up takes two taps, so a thumb that misses Resume doesn't end the run.
   var quitArmed = null;
-  U.on(U.$('btn-quit'), 'click', function () {
-    var btn = U.$('btn-quit');
-    if (!quitArmed) {
-      btn.textContent = 'Tap again to give up';
-      btn.classList.add('armed');
-      quitArmed = setTimeout(function () {
-        quitArmed = null;
-        btn.textContent = 'Give up, go home';
-        btn.classList.remove('armed');
-      }, 2500);
-      return;
-    }
-    clearTimeout(quitArmed);
+
+  function disarmQuit() {
+    if (quitArmed) clearTimeout(quitArmed);
     quitArmed = null;
+    var btn = U.$('btn-quit');
     btn.textContent = 'Give up, go home';
     btn.classList.remove('armed');
+  }
+
+  U.on(U.$('btn-quit'), 'click', function () {
+    if (!quitArmed) {
+      var btn = U.$('btn-quit');
+      btn.textContent = 'Tap again to give up';
+      btn.classList.add('armed');
+      quitArmed = setTimeout(disarmQuit, 2500);
+      return;
+    }
+    disarmQuit();
     toMenu();
   });
-  U.on(U.$('btn-pause'), 'click', togglePause);
-  U.on(U.$('btn-mute'), 'click', toggleMute);
+  // The HUD icons give focus back after a click, so Space and Enter mid-run
+  // never press them again.
+  U.on(U.$('btn-pause'), 'click', function () { this.blur(); togglePause(); });
+  U.on(U.$('btn-mute'), 'click', function () { this.blur(); toggleMute(); });
   U.on(U.$('btn-help'), 'click', function () { showScreen('screen-help'); });
   U.on(U.$('btn-help-back'), 'click', function () { showScreen('screen-title'); });
   var pickerFrom = 'screen-title';
@@ -437,7 +443,10 @@
     setTimeout(function () { PP.Render.resize(); needsDraw = true; }, 120);
   });
   U.on(document, 'visibilitychange', function () {
-    if (document.hidden && Game.pause()) showScreen('screen-pause');
+    if (!document.hidden) return;
+    // A backgrounded tab may be discarded without warning: save first.
+    Game.saveProgress();
+    if (Game.pause()) showScreen('screen-pause');
   });
 
   var last = 0;

@@ -360,3 +360,22 @@ test('a Daily Escape link points the visitor at today\'s map', async () => {
   assert.equal(await a.eval(() => document.getElementById('btn-daily').classList.contains('invited')), true);
   await a.close();
 });
+
+test('hiding the tab saves the record and the distance bonus so far, once', async () => {
+  const a = await openGame({ seed: 86 });
+  await a.page.click('#btn-play');
+  await a.step(2);
+  await a.eval(() => { PP.Game.g.score = 12; PP.Game.g.maxRow = 14; PP.Game.g.started = true; });
+  await a.eval(() => {
+    Object.defineProperty(document, 'hidden', { configurable: true, get: () => true });
+    document.dispatchEvent(new Event('visibilitychange'));
+  });
+  const saved = await a.eval(() => JSON.parse(localStorage.getItem('pp.save')));
+  assert.deepEqual({ best: saved.best, coins: saved.coins }, { best: 12, coins: 2 });
+  assert.equal(await a.eval(() => PP.Game.mode()), 'paused');
+  // Finishing the run later pays only what is still owed.
+  await a.eval(() => { delete document.hidden; PP.Game.resume(); PP.Game.g.score = 15; });
+  await dieAs(a, 'squash');
+  assert.equal(await a.eval(() => PP.Game.save.coins), 3);
+  await a.close();
+});

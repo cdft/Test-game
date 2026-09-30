@@ -170,3 +170,50 @@ test('touch players are shown touch controls, keyboard players keys', async () =
   assert.deepEqual(d, { touch: 'none', keys: 'flex' });
   await desk.close();
 });
+
+test('after clicking a HUD icon, Space and Enter do not press it again mid-run', async () => {
+  const a = await openGame({ seed: 80, viewport: { width: 1280, height: 720 } });
+  await a.page.click('#btn-play');
+  await a.step(2);
+  await a.page.click('#btn-mute');
+  assert.equal(await a.eval(() => PP.Audio.isMuted()), true);
+  await a.page.keyboard.press('Space');
+  await a.page.keyboard.press('Enter');
+  assert.equal(await a.eval(() => PP.Audio.isMuted()), true, 'Space/Enter toggled mute');
+  await a.page.click('#btn-pause');
+  await a.page.keyboard.press('p');
+  await a.step(2);
+  await a.page.keyboard.press('Space');
+  await a.step(2);
+  assert.equal(await a.eval(() => PP.Game.mode()), 'playing', 'Space paused the run');
+  await a.close();
+});
+
+test('a half-confirmed "give up" is forgotten when you resume', async () => {
+  const a = await openGame(Object.assign({ seed: 81 }, PHONE));
+  await a.page.click('#btn-play');
+  await a.step(2);
+  await a.page.click('#btn-pause');
+  await a.page.click('#btn-quit');
+  await a.page.click('#btn-resume');
+  await a.step(10);
+  await a.page.click('#btn-pause');
+  await a.page.click('#btn-quit');
+  assert.equal(await a.eval(() => PP.Game.mode()), 'paused', 'one tap after a resume must only arm it');
+  await a.close();
+});
+
+test('holding Enter on "give up" does not click it twice', async () => {
+  const a = await openGame({ seed: 82, viewport: { width: 1280, height: 720 } });
+  await a.page.click('#btn-play');
+  await a.step(2);
+  await a.page.keyboard.press('Escape');
+  await a.page.focus('#btn-quit');
+  // A second keydown without a keyup is an auto-repeat, as when a key is held.
+  await a.page.keyboard.down('Enter');
+  await a.page.keyboard.down('Enter');
+  await a.page.keyboard.down('Enter');
+  await a.page.keyboard.up('Enter');
+  assert.equal(await a.eval(() => PP.Game.mode()), 'paused');
+  await a.close();
+});

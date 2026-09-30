@@ -38,11 +38,16 @@
         move(dir);
         return;
       }
+      var confirmKey = e.code === 'Space' || e.code === 'Enter';
+      // A focused menu button gets its own click (not the HUD icons, which
+      // stay on screen mid-run). A held key must not click it again.
+      if (confirmKey && e.target && e.target.tagName === 'BUTTON' && !e.target.closest('#hud')) {
+        if (e.repeat) e.preventDefault();
+        return;
+      }
       // Everything else fires once per press, not on every auto-repeat.
-      if (e.repeat) return;
-      if (e.code === 'Space' || e.code === 'Enter') {
-        // A focused button gets its own click; don't hijack it.
-        if (e.target && e.target.tagName === 'BUTTON') return;
+      if (e.repeat) { if (confirmKey) e.preventDefault(); return; }
+      if (confirmKey) {
         e.preventDefault();
         PP.Audio.unlock();
         handlers.onAction('primary');
