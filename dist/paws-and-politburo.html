@@ -2582,46 +2582,7 @@ body { overscroll-behavior: none; }
     U.ellipse(ctx, sunX, sunY, view.w * 0.4, sunR * 0.55);
     ctx.fill();
 
-    // Skyline in two parallax layers; the far one owns the smokestacks.
-    // Each building belongs to a fixed slot of the city, not a slot of the
-    // screen, so panning slides the skyline instead of re-dealing it.
-    var scroll2 = cam.x * view.tile * 0.12;
-    var first2 = Math.floor(scroll2 / 90) - 1;
-    for (i = first2; i <= first2 + Math.ceil(view.w / 90) + 2; i++) {
-      var bx2 = i * 90 - scroll2;
-      var bh2 = 22 + U.mod(i * 29, 4) * 11;
-      ctx.fillStyle = 'rgba(88,52,84,0.42)';
-      ctx.fillRect(bx2, hz - bh2, 70, bh2);
-      if (U.mod(i, 5) === 2) {
-        ctx.fillRect(bx2 + 52, hz - bh2 - 26, 9, 26);
-        ctx.fillStyle = '#9c8ba0';
-        for (var sm = 0; sm < 3; sm++) {
-          var ph = U.mod(t * 0.22 + sm / 3 + i * 0.13, 1);
-          ctx.globalAlpha = (1 - ph) * 0.28;
-          U.ellipse(ctx, bx2 + 56 + ph * 26 + Math.sin(t + sm) * 3,
-            hz - bh2 - 28 - ph * 30, 6 + ph * 10, 5 + ph * 7);
-          ctx.fill();
-        }
-        ctx.globalAlpha = 1;
-      }
-    }
-    var scroll = cam.x * view.tile * 0.25;
-    var first = Math.floor(scroll / 120) - 1;
-    for (i = first; i <= first + Math.ceil(view.w / 120) + 2; i++) {
-      var bx = i * 120 - scroll;
-      var bh = 38 + U.mod(i * 37, 5) * 15;
-      // Solid, so the sun sets behind the city rather than through it.
-      ctx.fillStyle = '#2e1d35';
-      ctx.fillRect(bx, hz - bh, 96, bh);
-      ctx.fillStyle = 'rgba(255,186,110,0.14)';
-      for (var wy = 0; wy < bh - 14; wy += 14) {
-        for (var wx2 = 0; wx2 < 80; wx2 += 18) {
-          if (U.mod(i * 7 + wy + wx2, 5) < 2) ctx.fillRect(bx + 8 + wx2, hz - bh + 8 + wy, 8, 7);
-        }
-      }
-    }
-
-    // Warm haze pooling where the city meets the ground.
+    // Warm haze pooling along the horizon.
     var hzg = ctx.createLinearGradient(0, hz - 26, 0, hz + 56);
     hzg.addColorStop(0, 'rgba(244,180,99,0)');
     hzg.addColorStop(1, 'rgba(150,84,66,0.5)');
