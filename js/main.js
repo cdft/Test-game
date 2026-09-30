@@ -188,6 +188,8 @@
     if (opts && typeof opts.daily === 'boolean') lastDaily = opts.daily;
     Game.abandon();   // restarting mid-run still banks what you earned
     Game.start({ daily: lastDaily });
+    chapterShown = 0;
+    U.$('chapter').classList.add('hidden');
     elScore.textContent = '0';
     elCoins.textContent = '0';
     hideScreens();
@@ -200,6 +202,29 @@
         : 'arrow keys to hop \u00b7 they move when you do';
       hint.classList.remove('hidden');
     }
+  }
+
+  /* Chapters of the journey, announced as you cross into each landscape. */
+  var CHAPTERS = [
+    { at: 40, title: 'THE COLLECTIVE FARMS', sub: 'the city is behind you \u00b7 night falls' },
+    { at: 115, title: 'THE BORDER', sub: 'the mountains of freedom' },
+    { at: 190, title: 'DAWN', sub: 'freedom is close' }
+  ];
+  var chapterShown = 0;
+  U.on(U.$('chapter'), 'animationend', function () { U.$('chapter').classList.add('hidden'); });
+
+  function checkChapter(score) {
+    if (chapterShown >= CHAPTERS.length || score < CHAPTERS[chapterShown].at) return;
+    var c = CHAPTERS[chapterShown++];
+    var el = U.$('chapter');
+    el.querySelector('b').textContent = c.title;
+    el.querySelector('small').textContent = c.sub;
+    el.classList.remove('hidden');
+    // Restart the animation even if the element was just used.
+    el.style.animation = 'none';
+    void el.offsetWidth;
+    el.style.animation = '';
+    PP.Audio.fanfare();
   }
 
   function hideHint() {
@@ -465,6 +490,7 @@
 
     if (Game.mode() === 'playing' || Game.mode() === 'dying') {
       elScore.textContent = Game.g.score;
+      checkChapter(Game.g.score);
       elCoins.textContent = Game.g.runCoins;
       var gap = Game.g.player.row - Game.g.tide.row;
       elWarning.classList.toggle('hidden', !(gap < 4.5 && Game.mode() === 'playing'));
