@@ -219,3 +219,33 @@ test('the regime\'s animals are drawn once and stamped after that', async () => 
   assert.equal(made, 0, 'no new sprite canvases once warm');
   await a.close();
 });
+
+test('ground markings (the record line) never paint over the skyline', async () => {
+  const a = await openGame({ seed: 60 });
+  await a.page.click('#btn-play');
+  await a.step(2);
+  const changed = await a.eval(() => {
+    const g = PP.Game.g, v = PP.Render.view;
+    g.player.hopping = true; g.tide.row = -20;
+    PP.Render.draw(g);
+    // Put the camera so the far row straddles the horizon line.
+    const depth = Math.max(6, Math.min(16, (v.baseY - v.h * 0.17) / v.rowH));
+    const far = 40;
+    g.cam.row = far - depth + 0.4;
+    const c = document.getElementById('stage'), ctx = c.getContext('2d');
+    const sky = () => {
+      PP.Render.draw(g);
+      const hy = Math.floor(PP.Render.view.horizonY * v.dpr) - 1;
+      return Array.from(ctx.getImageData(0, 0, c.width, hy).data);
+    };
+    g.bestLineRow = -1;
+    const without = sky();
+    g.bestLineRow = far;
+    const withLine = sky();
+    let n = 0;
+    for (let i = 0; i < without.length; i++) if (Math.abs(without[i] - withLine[i]) > 2) n++;
+    return n;
+  });
+  assert.equal(changed, 0, `${changed} sky pixel channels changed by the record line`);
+  await a.close();
+});
