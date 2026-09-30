@@ -3097,7 +3097,7 @@ body { overscroll-behavior: none; }
     if (sp > 0.82) {
       var a = (sp - 0.82) / 0.18;
       ctx.save();
-      ctx.globalAlpha = a * 0.9;
+      ctx.globalAlpha *= a * 0.9;
       ctx.strokeStyle = '#fff3cf';
       ctx.lineWidth = 1.5;
       var spx = x + s * 0.16, spy = y - s * 0.12, r = s * 0.09 * a;
@@ -3137,15 +3137,17 @@ body { overscroll-behavior: none; }
   }
 
   function exhaust(px, py, s, t, seed, scale) {
+    // Relative to the caller's alpha, so a far row fading in fades whole.
+    var a0 = ctx.globalAlpha;
     ctx.fillStyle = '#8d867c';
     for (var k = 0; k < 3; k++) {
       var ph = U.mod(t * 0.8 + seed * 5 + k / 3, 1);
-      ctx.globalAlpha = (1 - ph) * 0.15;
+      ctx.globalAlpha = a0 * (1 - ph) * 0.15;
       U.ellipse(ctx, px - ph * s * 0.55 * scale, py - ph * s * 0.5 * scale,
         s * (0.05 + ph * 0.14) * scale, s * (0.05 + ph * 0.12) * scale);
       ctx.fill();
     }
-    ctx.globalAlpha = 1;
+    ctx.globalAlpha = a0;
   }
 
   function drawCar(row, car, cam, t) {
@@ -3348,14 +3350,15 @@ body { overscroll-behavior: none; }
 
     // Stack smoke pouring off the engine.
     ctx.fillStyle = '#a99aa5';
+    var a0 = ctx.globalAlpha;
     for (var k = 0; k < 5; k++) {
       var ph = U.mod(t * 0.7 + k / 5, 1);
-      ctx.globalAlpha = (1 - ph) * 0.45;
+      ctx.globalAlpha = a0 * (1 - ph) * 0.45;
       U.ellipse(ctx, w / 2 - s * 0.5 - ph * s * 2.4, -h - s * 0.25 - ph * s * 0.9,
         s * (0.1 + ph * 0.3), s * (0.09 + ph * 0.22));
       ctx.fill();
     }
-    ctx.globalAlpha = 1;
+    ctx.globalAlpha = a0;
 
     headBeam(w / 2 - s * 0.08, -h * 0.55, s * 1.6);
     ctx.restore();
@@ -3421,15 +3424,16 @@ body { overscroll-behavior: none; }
     ctx.strokeStyle = 'rgba(255,255,255,0.20)';
     ctx.lineWidth = 1.5;
     var tail = x - row.dir * (w / 2 + s * 0.08);
+    var a0 = ctx.globalAlpha;
     for (var wk = 0; wk < 2; wk++) {
       var wph = U.mod(t * 1.6 + wk * 0.5 + lg.seed, 1);
-      ctx.globalAlpha = (1 - wph) * 0.5;
+      ctx.globalAlpha = a0 * (1 - wph) * 0.5;
       ctx.beginPath();
       ctx.arc(tail - row.dir * wph * s * 0.5, y + s * 0.02, s * (0.08 + wph * 0.1),
         Math.PI * 0.2, Math.PI * 0.8);
       ctx.stroke();
     }
-    ctx.globalAlpha = 1;
+    ctx.globalAlpha = a0;
 
     if (lg.kind === 'raft') {
       ctx.fillStyle = '#9a6b3d';
@@ -3726,14 +3730,15 @@ body { overscroll-behavior: none; }
     // Dust kicked up behind it — it is not using the road.
     if (dust > 0.01) {
       ctx.fillStyle = '#9a8a7a';
+      var a0 = ctx.globalAlpha;
       for (var k = 0; k < 4; k++) {
         var ph = U.mod(t * 1.6 + k / 4, 1);
-        ctx.globalAlpha = (1 - ph) * 0.35 * dust;
+        ctx.globalAlpha = a0 * (1 - ph) * 0.35 * dust;
         U.ellipse(ctx, -w * 0.52 - ph * s * 0.9, base - s * 0.1 - ph * s * 0.3,
           s * (0.08 + ph * 0.22), s * (0.07 + ph * 0.16));
         ctx.fill();
       }
-      ctx.globalAlpha = 1;
+      ctx.globalAlpha = a0;
     }
 
     // Wheels.
