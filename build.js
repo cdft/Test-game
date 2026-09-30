@@ -1,35 +1,58 @@
-/* Bundle the game into a single self-contained HTML file for sharing.
+/* Bundle the game into single self-contained HTML files for sharing.
  *
  * The game itself needs no build step — index.html runs as-is. This only
- * exists to produce one portable file you can host, attach or paste
- * anywhere, with the CSS and all eight scripts inlined and no external
- * requests of any kind.
+ * exists to produce portable files you can host, attach or paste anywhere,
+ * with the CSS and every script inlined and no external requests of any kind.
  *
- *   node build.js [outfile]      # default: dist/paws-and-politburo.html
+ *   node build.js            # writes both bundles below
+ *   node build.js --check    # exits 1 if either committed bundle is stale
  *
- * The output deliberately omits <!doctype>, <html>, <head> and <body>, so
- * it can be dropped straight into a host that supplies its own skeleton.
- * Pass --standalone for a complete document you can open directly.
+ *   dist/play.html                 a complete page: open it, host it, send it
+ *   dist/paws-and-politburo.html   a fragment with no <!doctype>, <html>,
+ *                                  <head> or <body>, for hosts that supply
+ *                                  their own document skeleton
  */
 const fs = require('fs');
 const path = require('path');
 
 const ROOT = __dirname;
-const standalone = process.argv.includes('--standalone');
-const dest = process.argv.slice(2).filter(a => !a.startsWith('--'))[0]
-  || path.join(ROOT, 'dist', 'paws-and-politburo.html');
+const OUT = {
+  standalone: path.join(ROOT, 'dist', 'play.html'),
+  fragment: path.join(ROOT, 'dist', 'paws-and-politburo.html')
+};
 
 const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
 
-/* The app markup: the container through to just before the script tags. */
+/* Every script tag, in load order. Anything the bundler cannot reproduce
+   faithfully is an error rather than a silently missing script. */
+const tagRe = /<script\b([^>]*)>\s*<\/script>/gi;
+const scripts = [];
+let m;
+while ((m = tagRe.exec(html))) {
+  const attrs = m[1];
+  const src = /\bsrc=(["'])([^"']+)\1/i.exec(attrs);
+  if (!src) throw new Error('inline <script> in index.html; move it to js/');
+  const extra = attrs.replace(src[0], '').trim();
+  if (extra) throw new Error('cannot bundle <script ' + attrs.trim() + '>: unsupported attributes');
+  scripts.push(src[2]);
+}
+const opened = (html.match(/<script\b/gi) || []).length;
+if (!scripts.length || opened !== scripts.length) {
+  throw new Error('found ' + opened + ' <script> tags but understood ' + scripts.length);
+}
+
+/* The app markup: the container through to the first script tag. */
 const start = html.indexOf('<div id="app">');
-const end = html.indexOf('<script src="js/util.js">');
-if (start < 0 || end < 0) throw new Error('index.html layout changed; update build.js');
+const end = html.search(/<script\b/i);
+if (start < 0 || end < start) throw new Error('index.html layout changed; update build.js');
 const markup = html.slice(start, end).trimEnd();
 
-/* Scripts, in the order index.html loads them. */
-const scripts = [...html.matchAll(/<script src="([^"]+)"><\/script>/g)].map(m => m[1]);
-if (!scripts.length) throw new Error('no scripts found in index.html');
+/* Head tags worth keeping: description, theme colour, share previews, icon. */
+const head = html.slice(0, html.indexOf('</head>'));
+const title = (/<title>([\s\S]*?)<\/title>/i.exec(head) || [])[1] || 'Paws &amp; Politburo';
+const metas = (head.match(/<meta\b[^>]*>/gi) || [])
+  .filter(t => !/charset|name="viewport"/i.test(t));
+const icon = (head.match(/<link\b[^>]*rel="icon"[^>]*>/i) || [])[0] || '';
 
 const css = fs.readFileSync(path.join(ROOT, 'css/style.css'), 'utf8');
 
@@ -49,34 +72,43 @@ const overrides = `
 body { overscroll-behavior: none; }
 `;
 
-const parts = [
-  '<title>Paws &amp; Politburo</title>',
-  '<style>',
-  css.trimEnd(),
-  overrides.trimEnd(),
-  '</style>',
-  '',
-  markup,
-  ''
-];
+const style = '<style>\n' + css.trimEnd() + '\n' + overrides.trimEnd() + '\n</style>';
 
-scripts.forEach(function (src) {
-  const code = fs.readFileSync(path.join(ROOT, src), 'utf8').trimEnd();
+const code = scripts.map(function (src) {
+  const js = fs.readFileSync(path.join(ROOT, src), 'utf8').trimEnd();
   // A literal </script> inside a source string would close the tag early.
-  if (code.indexOf('</scr' + 'ipt>') !== -1) throw new Error('unescaped closing tag in ' + src);
-  parts.push('<script>\n' + code + '\n</script>');
-});
+  if (/<\/script/i.test(js)) throw new Error('unescaped closing tag in ' + src);
+  return '<script>\n' + js + '\n</script>';
+}).join('\n');
 
-let out = parts.join('\n') + '\n';
+const body = markup + '\n\n' + code + '\n';
 
-if (standalone) {
-  out = '<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n'
+const outputs = {
+  fragment: '<title>' + title + '</title>\n' + style + '\n\n' + body,
+  standalone: '<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n'
     + '<meta name="viewport" content="width=device-width, initial-scale=1, '
     + 'maximum-scale=1, user-scalable=no, viewport-fit=cover">\n'
-    + '</head>\n<body>\n' + out + '</body>\n</html>\n';
-}
+    + '<title>' + title + '</title>\n'
+    + metas.map(t => t + '\n').join('')
+    + (icon ? icon + '\n' : '')
+    + style + '\n</head>\n<body>\n' + body + '</body>\n</html>\n'
+};
 
-fs.mkdirSync(path.dirname(dest), { recursive: true });
-fs.writeFileSync(dest, out);
-console.log('wrote ' + dest + '  ' + (out.length / 1024).toFixed(1) + ' KB  ('
-  + scripts.length + ' scripts inlined' + (standalone ? ', standalone' : '') + ')');
+if (process.argv.includes('--check')) {
+  const stale = Object.keys(OUT).filter(function (k) {
+    try { return fs.readFileSync(OUT[k], 'utf8') !== outputs[k]; } catch (e) { return true; }
+  });
+  if (stale.length) {
+    console.error('stale bundle(s): ' + stale.map(k => path.relative(ROOT, OUT[k])).join(', ')
+      + '\nrun `node build.js` and commit the result');
+    process.exit(1);
+  }
+  console.log('bundles are up to date (' + scripts.length + ' scripts)');
+} else {
+  Object.keys(OUT).forEach(function (k) {
+    fs.mkdirSync(path.dirname(OUT[k]), { recursive: true });
+    fs.writeFileSync(OUT[k], outputs[k]);
+    console.log('wrote ' + path.relative(ROOT, OUT[k]) + '  '
+      + (outputs[k].length / 1024).toFixed(1) + ' KB  (' + scripts.length + ' scripts inlined)');
+  });
+}

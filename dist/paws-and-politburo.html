@@ -1,4 +1,4 @@
-<title>Paws &amp; Politburo</title>
+<title>Paws &amp; Politburo — cats and dogs on the run</title>
 <style>
 :root {
   --red: #c8102e;
@@ -47,6 +47,25 @@ html, body {
 
 .hidden { display: none !important; }
 
+/* Dusk grade: warm at the top, cool at the bottom, darker at the edges. */
+.overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+#grade {
+  background:
+    radial-gradient(circle 78vmax at 50% 52%, rgba(8, 5, 16, 0) 45vmin, rgba(8, 5, 16, 0.22) 78vmax),
+    linear-gradient(to bottom, rgba(255, 166, 86, 0.055) 0%, rgba(0, 0, 0, 0) 50%, rgba(22, 12, 48, 0.17) 100%);
+}
+
+/* The Collective's red glow; its strength is set per frame by opacity. */
+#danger {
+  opacity: 0;
+  background: radial-gradient(circle 85vh at 50% 55%, rgba(200, 16, 46, 0) 25vh, rgba(200, 16, 46, 0.55) 85vh);
+}
+
 /* ── HUD ──────────────────────────────────────────────────── */
 
 #hud {
@@ -57,12 +76,14 @@ html, body {
   padding: env(safe-area-inset-top, 0) 0 0 0;
 }
 
+/* Notched phones in landscape: keep the score and buttons clear of the
+   sensor housing and the rounded corners. */
 .hud-row {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   width: 100%;
-  padding: 14px 16px;
+  padding: 14px max(16px, env(safe-area-inset-right, 0px)) 14px max(16px, env(safe-area-inset-left, 0px));
 }
 
 .hud-score {
@@ -151,9 +172,16 @@ html, body {
     rgba(8, 6, 10, 0.72);
   backdrop-filter: blur(3px);
   -webkit-backdrop-filter: blur(3px);
-  padding: 18px;
+  padding:
+    max(18px, env(safe-area-inset-top, 0px)) max(18px, env(safe-area-inset-right, 0px))
+    max(18px, env(safe-area-inset-bottom, 0px)) max(18px, env(safe-area-inset-left, 0px));
   overflow-y: auto;
+  /* Centre when there is room; when a panel is taller than the screen it
+     overflows downward only, where scrolling can reach it. */
+  align-items: flex-start;
 }
+
+.screen > .panel { margin: auto; }
 
 .panel {
   background: var(--panel);
@@ -255,6 +283,59 @@ h2 {
   background: linear-gradient(180deg, #d9a832, #b8862a);
   box-shadow: 0 5px 0 #7a5a18;
   color: #2c1f08;
+}
+
+.btn.daily {
+  background: linear-gradient(180deg, #3b6fb0, #2c5690);
+  box-shadow: 0 5px 0 #1b3559;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.1;
+}
+
+.btn.daily small {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  opacity: 0.8;
+  margin-top: 2px;
+}
+
+.btn.daily.invited { animation: pulse 0.8s infinite alternate; }
+
+.btn.share {
+  background: linear-gradient(180deg, #3b6fb0, #2c5690);
+  box-shadow: 0 5px 0 #1b3559;
+}
+
+.daily-tag {
+  display: inline-block;
+  margin-bottom: 8px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: #2c5690;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 2px;
+}
+
+.toast {
+  position: absolute;
+  left: 50%;
+  bottom: max(28px, env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  z-index: 50;
+  max-width: calc(100% - 32px);
+  padding: 10px 18px;
+  border-radius: 999px;
+  background: rgba(10, 8, 14, 0.92);
+  border: 1px solid rgba(245, 197, 66, 0.4);
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+  pointer-events: none;
 }
 
 .btn.lottery:disabled {
@@ -431,6 +512,8 @@ h2 {
   letter-spacing: 1px;
   padding: 7px 16px;
   border-radius: 999px;
+  max-width: calc(100% - 32px);
+  text-align: center;
   animation: pulse 1s infinite alternate;
   transition: opacity 0.5s;
 }
@@ -500,6 +583,32 @@ h2 {
 
 .or { opacity: 0.5; }
 
+.kgrp { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+
+.controls {
+  font-size: 13.5px;
+  line-height: 1.45;
+  margin: 12px 0 14px;
+  opacity: 0.9;
+}
+
+.controls b { color: var(--gold); }
+
+.fine.build { margin-top: 6px; font-size: 10px; opacity: 0.3; }
+.fine.build:empty { display: none; }
+
+.row-btns.spaced { margin-top: 18px; }
+
+.btn.armed { background: var(--red); box-shadow: 0 5px 0 var(--red-dark); }
+
+/* Show the controls for the device in your hand. */
+.ctl-touch { display: none; }
+@media (pointer: coarse) {
+  .ctl-touch { display: block; }
+  span.ctl-touch { display: inline; }
+  .ctl-keys { display: none !important; }
+}
+
 /* ── Roster ───────────────────────────────────────────────── */
 
 .roster {
@@ -564,6 +673,28 @@ h2 {
   .hud-score span { font-size: 42px; }
 }
 
+/* Short screens (small phones, any phone in landscape): tighten the menus
+   so the title card fits without scrolling. */
+@media (max-height: 560px) {
+  .panel { padding: 14px 18px 16px; }
+  .title { font-size: clamp(24px, 6vh, 36px); }
+  .tagline, .sub { margin: 6px 0 10px; font-size: 13px; }
+  .stat-strip { margin: 2px 0 10px; }
+  .stat-strip > div { padding: 6px 4px; }
+  .stat-strip b { font-size: 19px; }
+  .btn.big { font-size: 17px; padding: 11px; }
+  .row-btns { margin-top: 8px; }
+  .fine { margin-top: 8px; }
+  .help li { padding: 4px 0 4px 20px; font-size: 12.5px; }
+}
+
+@media (max-height: 560px) and (min-width: 600px) {
+  /* Landscape: two columns of rules instead of one long list. */
+  .help { columns: 2; column-gap: 18px; }
+  .help li { break-inside: avoid; }
+  .panel { width: min(640px, 100%); }
+}
+
 /* ── Bundled-page overrides ────────────────────────────────────── */
 #app {
   position: fixed;
@@ -579,6 +710,10 @@ body { overscroll-behavior: none; }
 
 <div id="app">
   <canvas id="stage"></canvas>
+  <!-- Static colour grade and the danger glow: CSS, so the GPU composites
+       them instead of the canvas repainting two full-screen gradients. -->
+  <div id="grade" class="overlay"></div>
+  <div id="danger" class="overlay"></div>
 
   <!-- ── In-game HUD ─────────────────────────────────────────── -->
   <div id="hud" class="layer hidden">
@@ -591,8 +726,10 @@ body { overscroll-behavior: none; }
       </div>
     </div>
     <div id="warning" class="warning hidden">THE COLLECTIVE IS CLOSING IN</div>
-    <div id="hint" class="hint hidden">hold &amp; release to hop &nbsp;·&nbsp; swipe to dodge</div>
+    <div id="hint" class="hint hidden">tap to hop forward &nbsp;·&nbsp; swipe to dodge</div>
   </div>
+
+  <div id="toast" class="toast hidden"></div>
 
   <!-- ── Title ───────────────────────────────────────────────── -->
   <div id="screen-title" class="layer screen">
@@ -607,13 +744,15 @@ body { overscroll-behavior: none; }
       <div id="directives" class="directives"></div>
       <button id="btn-play" class="btn big">RUN FOR IT</button>
       <div class="row-btns">
+        <button id="btn-daily" class="btn daily">Daily Escape<small id="daily-sub">same map for everyone today</small></button>
         <button id="btn-lottery" class="btn lottery">People's Lottery · 🍖 100</button>
       </div>
       <div class="row-btns">
         <button id="btn-pick" class="btn ghost">Choose comrade</button>
         <button id="btn-help" class="btn ghost">How to play</button>
       </div>
-      <p class="fine">Arrows / WASD to hop &nbsp;·&nbsp; swipe or tap on touch</p>
+      <p class="fine"><span class="ctl-touch">Tap to hop &nbsp;·&nbsp; swipe to dodge</span><span class="ctl-keys">Arrows / WASD to hop &nbsp;·&nbsp; tap or swipe on touch</span></p>
+      <p id="build-id" class="fine build"></p>
     </div>
   </div>
 
@@ -634,20 +773,29 @@ body { overscroll-behavior: none; }
   <div id="screen-help" class="layer screen hidden">
     <div class="panel">
       <h2>HOW TO ESCAPE</h2>
+      <p class="controls ctl-touch"><b>Tap</b> anywhere to hop forward. <b>Swipe</b> left, right or down to dodge. Hold before you tap to crouch.</p>
+      <div class="keys ctl-keys">
+        <span class="kgrp"><span class="key">↑</span><span class="key">←</span><span class="key">↓</span><span class="key">→</span></span>
+        <span class="or">or</span>
+        <span class="kgrp"><span class="key">W</span><span class="key">A</span><span class="key">S</span><span class="key">D</span></span>
+        <span class="kgrp"><span class="key wide">P</span> pause</span>
+        <span class="kgrp"><span class="key wide">M</span> mute</span>
+        <span class="kgrp"><span class="key wide">R</span> restart</span>
+      </div>
       <ul class="help">
-        <li><b>Hop forward.</b> Every row you gain is a metre closer to freedom.</li>
+        <li><b>Hop forward.</b> Every row is a metre closer to freedom. The chase starts with your first hop.</li>
         <li><b>Never stop.</b> Dawdle and the red tide behind you speeds up. It does not get tired.</li>
         <li><b>Roads</b> are full of requisitioned trucks and tanks. They do not brake for pets.</li>
-        <li><b>Canals</b> drown non-swimmers. Ride the logs — and don't let them carry you off the map.</li>
+        <li><b>Canals</b> drown non-swimmers. Ride the logs, and don't let them carry you off the map.</li>
         <li><b>Rails</b> flash red before the People's Express arrives. One second of warning is generous.</li>
-        <li><b>Kibble</b> unlocks new comrades from the title screen.</li>
+        <li><b>Ice floes</b> crack under your weight, then sink. Keep hopping.</li>
+        <li><b>May Day parades</b> don't run you over. They recruit you. Wait for a gap.</li>
+        <li><b>The black car</b> comes for anyone who loiters with a big lead. When the tyres screech, move.</li>
+        <li><b>Sector borders</b> every 50&nbsp;m have one gate. Get through it for +25 kibble while the tide does paperwork.</li>
+        <li><b>Momentum:</b> ten quick hops onto new ground and kibble pays double.</li>
+        <li><b>Kibble</b> unlocks comrades. <b>State Directives</b> on the title screen pay a bounty the moment you meet them.</li>
+        <li><b>Daily Escape:</b> one map a day, the same for everyone. Share your distance and see which friend gets furthest.</li>
       </ul>
-      <div class="keys">
-        <span class="key">↑</span><span class="key">←</span><span class="key">↓</span><span class="key">→</span>
-        <span class="or">or</span>
-        <span class="key">W</span><span class="key">A</span><span class="key">S</span><span class="key">D</span>
-        <span class="or">·</span> <span class="key wide">P</span> pause <span class="or">·</span> <span class="key wide">M</span> mute
-      </div>
       <button id="btn-help-back" class="btn">Back</button>
     </div>
   </div>
@@ -658,7 +806,9 @@ body { overscroll-behavior: none; }
       <h2>DETENTE</h2>
       <p class="sub">The tide waits. Politely.</p>
       <button id="btn-resume" class="btn big">Resume</button>
-      <button id="btn-quit" class="btn ghost">Give up, go home</button>
+      <div class="row-btns spaced">
+        <button id="btn-quit" class="btn ghost">Give up, go home</button>
+      </div>
     </div>
   </div>
 
@@ -688,17 +838,19 @@ body { overscroll-behavior: none; }
   <!-- ── Game over ───────────────────────────────────────────── -->
   <div id="screen-over" class="layer screen hidden">
     <div class="panel">
+      <div id="o-daily" class="daily-tag hidden">DAILY ESCAPE</div>
       <h2 id="over-title">REDISTRIBUTED</h2>
       <p id="over-flavor" class="sub">Your assets now belong to everyone.</p>
       <div class="stat-strip">
         <div><b id="o-score">0</b><small>metres</small></div>
         <div><b id="o-best">0</b><small>best</small></div>
-        <div><b id="o-coins">0</b><small>kibble earned</small></div>
+        <div><b id="o-coins">0</b><small id="o-coins-label">kibble earned</small></div>
       </div>
       <div id="o-newbest" class="newbest hidden">NEW PERSONAL RECORD</div>
       <div id="o-secret" class="newbest hidden">KOTLETA HAS FOUND YOU · SECRET COMRADE</div>
       <button id="btn-again" class="btn big">RUN AGAIN</button>
       <div class="row-btns">
+        <button id="btn-share" class="btn share">Share</button>
         <button id="btn-over-pick" class="btn ghost">Change comrade</button>
         <button id="btn-menu" class="btn ghost">Title screen</button>
       </div>
@@ -819,6 +971,7 @@ body { overscroll-behavior: none; }
 
   var ctx = null;
   var master = null;
+  var noiseBuf = null;
   var muted = U.store.get('pp.muted', false);
 
   function ensure() {
@@ -830,16 +983,29 @@ body { overscroll-behavior: none; }
       master = ctx.createGain();
       master.gain.value = 0.32;
       master.connect(ctx.destination);
+      // One second of white noise, shared by every splash, snare and hat.
+      noiseBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
+      var data = noiseBuf.getChannelData(0);
+      for (var i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
     } catch (e) { ctx = null; }
     return ctx;
+  }
+
+  /* The context, if it is actually making sound. Sounds requested while it
+     is suspended (no tap yet, or the phone interrupted it) are dropped, not
+     queued: a queue on a frozen clock plays all at once when it wakes. */
+  function live() {
+    if (!ctx) return null;
+    if (ctx.state === 'running') return ctx;
+    if (ctx.state !== 'closed') ctx.resume();
+    return null;
   }
 
   /* One shot: oscillator with a frequency ramp and a percussive envelope. */
   function tone(opts) {
     if (muted) return;
-    var c = ensure();
+    var c = live();
     if (!c) return;
-    if (c.state === 'suspended') c.resume();
 
     var t0 = c.currentTime + (opts.delay || 0);
     var dur = opts.dur || 0.12;
@@ -866,18 +1032,12 @@ body { overscroll-behavior: none; }
   /* Filtered noise burst — splashes, crashes, engine rumble. */
   function noise(opts) {
     if (muted) return;
-    var c = ensure();
+    var c = live();
     if (!c) return;
-    if (c.state === 'suspended') c.resume();
 
-    var dur = opts.dur || 0.25;
-    var frames = Math.floor(c.sampleRate * dur);
-    var buf = c.createBuffer(1, frames, c.sampleRate);
-    var data = buf.getChannelData(0);
-    for (var i = 0; i < frames; i++) data[i] = Math.random() * 2 - 1;
-
+    var dur = Math.min(opts.dur || 0.25, 0.95);
     var src = c.createBufferSource();
-    src.buffer = buf;
+    src.buffer = noiseBuf;
 
     var filter = c.createBiquadFilter();
     filter.type = opts.filter || 'lowpass';
@@ -893,7 +1053,8 @@ body { overscroll-behavior: none; }
     src.connect(filter);
     filter.connect(gain);
     gain.connect(master);
-    src.start();
+    // A random slice of the shared buffer, so no two bursts sound identical.
+    src.start(c.currentTime, Math.random() * (1 - dur), dur);
   }
 
   var Audio = {
@@ -902,6 +1063,7 @@ body { overscroll-behavior: none; }
     /* Shared with the music sequencer so both run on one context. */
     context: ensure,
     destination: function () { return master; },
+    noise: function () { return noiseBuf; },
 
     toggleMute: function () {
       muted = !muted;
@@ -914,7 +1076,7 @@ body { overscroll-behavior: none; }
     /* Browsers only allow audio after a gesture; call this from any input. */
     unlock: function () {
       var c = ensure();
-      if (c && c.state === 'suspended') c.resume();
+      if (c && c.state !== 'running' && c.state !== 'closed') c.resume();
     },
 
     hop: function (mul) {
@@ -1141,22 +1303,21 @@ body { overscroll-behavior: none; }
       osc.stop(at + dur + 0.02);
       return;
     }
-    // Snare: a short burst of high-passed noise.
-    var frames = Math.floor(ctx.sampleRate * dur);
-    var buf = ctx.createBuffer(1, frames, ctx.sampleRate);
-    var data = buf.getChannelData(0);
-    for (var i = 0; i < frames; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / frames);
+    // Snare and hat: a short slice of the shared noise, high-passed.
+    var buf = PP.Audio.noise();
+    if (!buf) return;
     var src = ctx.createBufferSource();
     src.buffer = buf;
     var hp = ctx.createBiquadFilter();
     hp.type = 'highpass';
     hp.frequency.value = kind === 'snare' ? 1400 : 5000;
     var sg = ctx.createGain();
-    sg.gain.value = kind === 'snare' ? 0.30 : 0.07;
+    sg.gain.setValueAtTime(kind === 'snare' ? 0.30 : 0.07, at);
+    sg.gain.linearRampToValueAtTime(0.0001, at + dur);
     src.connect(hp);
     hp.connect(sg);
     sg.connect(bus);
-    src.start(at);
+    src.start(at, Math.random() * (1 - dur), dur);
   }
 
   /* ── Sequencer ──────────────────────────────────────────────────── */
@@ -1189,6 +1350,26 @@ body { overscroll-behavior: none; }
     if (bar % 4 === 3 && beat >= 12) drum(at, 'snare');
   }
 
+  /* Each run of the band gets its own bus. Stopping fades and drops the old
+     one, so notes already queued die with it instead of ringing on under
+     whatever plays next. */
+  function freshBus() {
+    retire(0.03);
+    bus = ctx.createGain();
+    bus.gain.value = 0.5;               // sits under the effects
+    bus.connect(PP.Audio.destination() || ctx.destination);
+  }
+
+  function retire(seconds) {
+    if (!bus || !ctx) return;
+    var old = bus, now = ctx.currentTime;
+    bus = null;
+    old.gain.cancelScheduledValues(now);
+    old.gain.setValueAtTime(Math.max(old.gain.value, 0.0001), now);
+    old.gain.exponentialRampToValueAtTime(0.0001, now + seconds);
+    global.setTimeout(function () { old.disconnect(); }, seconds * 1000 + 80);
+  }
+
   function scheduler() {
     if (!playing || !ctx) return;
     while (nextTime < ctx.currentTime + LOOKAHEAD) {
@@ -1210,15 +1391,8 @@ body { overscroll-behavior: none; }
       if (playing || muted) return;
       ctx = PP.Audio.context();
       if (!ctx) return;
-      if (ctx.state === 'suspended') ctx.resume();
-      if (!bus) {
-        bus = ctx.createGain();
-        bus.gain.value = 0.5;               // sits under the effects
-        bus.connect(PP.Audio.destination() || ctx.destination);
-      }
-      // Cancel any fade still in flight, or a quick restart begins silent.
-      bus.gain.cancelScheduledValues(ctx.currentTime);
-      bus.gain.setValueAtTime(0.5, ctx.currentTime);
+      if (ctx.state !== 'running' && ctx.state !== 'closed') ctx.resume();
+      freshBus();
       playing = true;
       step = 0;
       nextTime = ctx.currentTime + 0.08;
@@ -1229,36 +1403,26 @@ body { overscroll-behavior: none; }
     stop: function () {
       playing = false;
       if (timer) { global.clearInterval(timer); timer = null; }
+      retire(0.03);
     },
 
     /* Pick the tempo up when the Collective closes in. */
     setUrgent: function (on) { urgent = !!on; },
 
-    /* Cut the music but let whatever is already queued ring out. */
+    /* Let the band trail off rather than cut dead. */
     fadeOut: function (seconds) {
-      if (!bus || !ctx) { Music.stop(); return; }
-      var now = ctx.currentTime;
-      bus.gain.cancelScheduledValues(now);
-      bus.gain.setValueAtTime(bus.gain.value, now);
-      bus.gain.exponentialRampToValueAtTime(0.0001, now + (seconds || 0.6));
-      Music.stop();
-      global.setTimeout(function () {
-        if (bus) bus.gain.setValueAtTime(0.5, ctx.currentTime);
-      }, (seconds || 0.6) * 1000 + 60);
+      playing = false;
+      if (timer) { global.clearInterval(timer); timer = null; }
+      retire(seconds || 0.6);
     },
 
     /* The march wins: a short, smug cadence when you are caught. */
     victoryOfTheCollective: function () {
       if (muted) return;
       var c = PP.Audio.context();
-      if (!c) return;
+      if (!c || c.state !== 'running') return;
       ctx = c;
-      if (!bus) {
-        bus = ctx.createGain();
-        bus.gain.value = 0.5;
-        bus.connect(PP.Audio.destination() || ctx.destination);
-      }
-      bus.gain.setValueAtTime(0.5, ctx.currentTime);
+      freshBus();   // the march is cut off; only the cadence remains
       var t0 = ctx.currentTime + 0.05;
       [[57, 0], [62, 0.16], [65, 0.32], [69, 0.48], [74, 0.64]].forEach(function (e) {
         pulse(midiToFreq(e[0]), t0 + e[1], 0.22, 0.13);
@@ -1296,8 +1460,8 @@ body { overscroll-behavior: none; }
     {
       id: 'biscuit', name: 'Biscuit', species: 'dog', price: 0,
       tag: 'Short legs, long memory',
-      fur: '#e8b060', belly: '#fdf1dc', accent: '#c8102e', eye: '#241a12',
-      ears: 'perk', tail: 'stub', short: true
+      fur: '#c98a4e', belly: '#fffaf2', accent: '#2f7fc1', eye: '#241a12',
+      ears: 'floppy', tail: 'stub', short: true
     },
     {
       id: 'boris', name: 'Boris', species: 'dog', price: 60,
@@ -1358,6 +1522,54 @@ body { overscroll-behavior: none; }
      Draws a chunky, blocky animal with its feet at (x, y).
      opts: { size, char, facing: 'up'|'down'|'left'|'right',
              squash: -1..1, lift: px, alpha, cap: 'ushanka'|'cap'|null } */
+  /* Derived shades, worked out once per look instead of every frame. A
+     converting player gets a fresh blended object, so it recomputes. */
+  function tones(c) {
+    if (c._tones && c._tones.fur === c.fur && c._tones.belly === c.belly && c._tones.acc === c.accent) {
+      return c._tones;
+    }
+    c._tones = {
+      fur: c.fur, belly: c.belly, acc: c.accent,
+      dark: U.shade(c.fur, -0.28),
+      patch: U.shade(c.fur, -0.45),
+      earIn: U.shade(c.belly, -0.06),
+      flop: U.shade(c.fur, -0.18),
+      points: U.shade(c.fur, -0.42),
+      tuft: U.shade(c.fur, -0.12),
+      accent: c.accent ? U.shade(c.accent, 0.35) : null
+    };
+    return c._tones;
+  }
+
+  /* The regime's animals never squash, hop or flinch, so each look (skin,
+     hat, facing, size) is drawn once to an offscreen canvas and stamped from
+     then on. A crowded late-game frame holds nearly a hundred of them. */
+  var sprites = {};
+
+  function drawEnemy(ctx, x, y, opts) {
+    var skin = ENEMY_SKINS.indexOf(opts.char);
+    if (skin < 0 || typeof document === 'undefined') { drawCritter(ctx, x, y, opts); return; }
+    var dpr = Math.min(global.devicePixelRatio || 1, 2);
+    var s = opts.size;
+    var key = skin + '|' + (opts.cap || '') + '|' + (opts.facing || 'down') + '|' + Math.round(s * dpr * 4);
+    var spr = sprites[key];
+    if (!spr) {
+      var W = Math.ceil(s * 2.0), H = Math.ceil(s * 1.8);
+      var ox = W / 2, oy = Math.round(H * 0.8);
+      var cnv = document.createElement('canvas');
+      cnv.width = Math.ceil(W * dpr);
+      cnv.height = Math.ceil(H * dpr);
+      var g2 = cnv.getContext('2d');
+      g2.setTransform(dpr, 0, 0, dpr, 0, 0);
+      drawCritter(g2, ox, oy, { size: s, char: opts.char, facing: opts.facing, cap: opts.cap, still: true });
+      spr = sprites[key] = { c: cnv, w: W, h: H, ox: ox, oy: oy };
+    }
+    var prev = ctx.globalAlpha;
+    ctx.globalAlpha = prev * (opts.alpha === undefined ? 1 : opts.alpha);
+    ctx.drawImage(spr.c, x - spr.ox, y - spr.oy, spr.w, spr.h);
+    ctx.globalAlpha = prev;
+  }
+
   function drawCritter(ctx, x, y, opts) {
     var c = opts.char || ROSTER[0];
     var s = opts.size;
@@ -1376,11 +1588,14 @@ body { overscroll-behavior: none; }
     var flip = (facing === 'left') ? -1 : 1;
 
     ctx.save();
-    ctx.globalAlpha = opts.alpha === undefined ? 1 : opts.alpha;
+    // Multiply, so a caller's fade (e.g. a far row rising over the horizon)
+    // still applies to the animal.
+    var alpha = ctx.globalAlpha * (opts.alpha === undefined ? 1 : opts.alpha);
+    ctx.globalAlpha = alpha;
 
     /* Contact shadow stays on the ground even while the critter is airborne. */
     ctx.save();
-    ctx.globalAlpha = (opts.alpha === undefined ? 1 : opts.alpha) * (0.28 - Math.min(lift, s) / s * 0.12);
+    ctx.globalAlpha = alpha * (0.28 - Math.min(lift, s) / s * 0.12);
     ctx.fillStyle = '#251536';
     U.ellipse(ctx, x, y, bodyW * 0.62, bodyW * 0.24);
     ctx.fill();
@@ -1389,8 +1604,8 @@ body { overscroll-behavior: none; }
     ctx.translate(x, y - lift);
     ctx.scale(flip * (1 + squash * 0.35), 1 - squash * 0.35);
 
-    var dark = U.shade(c.fur, -0.28);
-    var light = U.shade(c.fur, 0.18);
+    var tone = tones(c);
+    var dark = tone.dark;
 
     /* Tail (behind the body). Sways idly; tucks low when afraid. */
     ctx.strokeStyle = dark;
@@ -1398,7 +1613,7 @@ body { overscroll-behavior: none; }
     var tailBaseY = -legH - bodyH * 0.55;
     var fear = opts.fear || 0;
     var tnow = PP.World ? PP.World.time() : 0;
-    var sway = Math.sin(tnow * 2.1) * s * 0.05 * (1 - fear);
+    var sway = opts.still ? 0 : Math.sin(tnow * 2.1) * s * 0.05 * (1 - fear);
     if (c.tail === 'long' || c.tail === 'curl') {
       ctx.lineWidth = s * 0.09;
       ctx.beginPath();
@@ -1442,7 +1657,7 @@ body { overscroll-behavior: none; }
       ctx.fill();
     }
     if (c.patch) {
-      ctx.fillStyle = U.shade(c.fur, -0.45);
+      ctx.fillStyle = tone.patch;
       U.ellipse(ctx, bodyW * 0.22, bodyTop + bodyH * 0.45, bodyW * 0.16, bodyH * 0.3);
       ctx.fill();
     }
@@ -1467,7 +1682,7 @@ body { overscroll-behavior: none; }
         ctx.closePath();
         ctx.fill();
         if (!away) {
-          ctx.fillStyle = U.shade(c.belly, -0.06);
+          ctx.fillStyle = tone.earIn;
           ctx.beginPath();
           ctx.moveTo(ex - earW * 0.24, headTop + earH * 0.34);
           ctx.lineTo(ex, headTop - earH * 0.18);
@@ -1478,7 +1693,7 @@ body { overscroll-behavior: none; }
         }
       });
     } else { /* floppy */
-      ctx.fillStyle = U.shade(c.fur, -0.18);
+      ctx.fillStyle = tone.flop;
       [-1, 1].forEach(function (sgn) {
         U.roundRect(ctx, sgn * headW * 0.42 - headW * 0.14, headTop + headH * 0.06,
           headW * 0.28, headH * 0.78, headW * 0.13);
@@ -1492,7 +1707,7 @@ body { overscroll-behavior: none; }
     ctx.fill();
 
     if (c.points) { /* siamese mask */
-      ctx.fillStyle = U.shade(c.fur, -0.42);
+      ctx.fillStyle = tone.points;
       U.roundRect(ctx, hx + headW * 0.16, headTop + headH * 0.30, headW * 0.68, headH * 0.66, headW * 0.2);
       ctx.fill();
     }
@@ -1504,7 +1719,7 @@ body { overscroll-behavior: none; }
 
     if (away) {
       /* Back of the head — a couple of tufts, no face. */
-      ctx.fillStyle = U.shade(c.fur, -0.12);
+      ctx.fillStyle = tone.tuft;
       U.roundRect(ctx, hx + headW * 0.18, headTop + headH * 0.22, headW * 0.64, headH * 0.42, headW * 0.18);
       ctx.fill();
     } else {
@@ -1606,7 +1821,7 @@ body { overscroll-behavior: none; }
       ctx.fillStyle = c.accent;
       U.roundRect(ctx, hx + headW * 0.06, headBottom - headH * 0.02, headW * 0.88, s * 0.055, s * 0.03);
       ctx.fill();
-      ctx.fillStyle = U.shade(c.accent, 0.35);
+      ctx.fillStyle = tone.accent;
       U.ellipse(ctx, 0, headBottom + s * 0.045, s * 0.035, s * 0.035);
       ctx.fill();
     }
@@ -1693,6 +1908,8 @@ body { overscroll-behavior: none; }
     byId: function (id) { return BY_ID[id] || ROSTER[0]; },
     enemySkin: function (i) { return ENEMY_SKINS[U.mod(i, ENEMY_SKINS.length)]; },
     draw: drawCritter,
+    drawEnemy: drawEnemy,
+    clearSprites: function () { sprites = {}; },
     star: star
   };
 })(window);
@@ -1715,6 +1932,7 @@ body { overscroll-behavior: none; }
     TRACK_MIN: -14,     // where traffic and logs spawn/despawn
     TRACK_MAX: 14,
     SAFE_ROWS: 4,       // opening rows with nothing in them
+    START_ROW: 2,       // where you stand at the start: this is metre 0
     AHEAD: 26,          // rows kept generated in front of the player
     BEHIND: 14          // rows kept alive behind the player
   };
@@ -1730,6 +1948,9 @@ body { overscroll-behavior: none; }
 
   var rows = {};        // index -> row object
   var maxGenerated = -1;
+  var seed = 0;         // this world's seed: same seed, same world
+  var worldRandom = Math.random;
+  var reach = null;     // columns reachable on the newest generated row
   var plan = { type: 'safe', left: 0, dirBias: 1 };
   var time = 0;
 
@@ -1823,11 +2044,13 @@ body { overscroll-behavior: none; }
     for (i = 0; i < n; i++) { var v = U.rand(-1, 1); jitter.push(v); jsum += v; }
     var amp = Math.max(0, Math.min(base - minGap, maxGap - base)) * 0.45;
 
+    // Positions are item centres, so the step to the next item is half of
+    // each width plus the gap between them.
     var p = U.rand(0, CFG.TRACK_LEN);
     var out = [];
     for (i = 0; i < n; i++) {
       out.push(p);
-      p += widths[i] + base + (jitter[i] - jsum / n) * amp;
+      p += (widths[i] + widths[(i + 1) % n]) / 2 + base + (jitter[i] - jsum / n) * amp;
     }
     return out;
   }
@@ -1928,9 +2151,14 @@ body { overscroll-behavior: none; }
   /* Every 50th metre: a sector border. Concrete wall, barbed wire, one
      open gate. The wall blocks everything but the gate tiles. */
   function makeCheckpoint(index) {
+    // Put the gate somewhere the row behind it can actually get to.
+    var options = [];
+    for (var gx = CFG.X_MIN + 2; gx <= CFG.X_MAX - 2; gx++) {
+      if (!reach || reach[gx - 1] || reach[gx] || reach[gx + 1]) options.push(gx);
+    }
     return {
       index: index, type: 'checkpoint',
-      gateX: U.randInt(CFG.X_MIN + 2, CFG.X_MAX - 2),
+      gateX: options.length ? U.pick(options) : U.randInt(CFG.X_MIN + 2, CFG.X_MAX - 2),
       seed: Math.random()
     };
   }
@@ -1951,7 +2179,8 @@ body { overscroll-behavior: none; }
   function generate(index) {
     // Sector borders land on the round numbers, interrupting whatever
     // band was in progress — walls don't care about your plans.
-    if (index >= 50 && index % 50 === 0) return makeCheckpoint(index);
+    var metre = index - CFG.START_ROW;
+    if (metre >= 50 && metre % 50 === 0) return makeCheckpoint(index);
     var type = nextType(index);
     switch (type) {
       case 'safe': return makeGrass(index, true);
@@ -1964,14 +2193,83 @@ body { overscroll-behavior: none; }
     }
   }
 
+  /* ── Guaranteed passage ─────────────────────────────────────────────
+     Grass scenery, missing floes and sector walls are the only things that
+     never move out of your way. As each row is generated we track which
+     columns can be reached from the start, and if a row would seal the
+     way forward we open a tile in it. No world is ever a dead end. */
+
+  function standable(row, x) {
+    if (row.type === 'grass') return !row.blocked[x];
+    if (row.type === 'ice') return !!row.floes[x];
+    if (row.type === 'checkpoint') return Math.abs(x - row.gateX) <= 1;
+    return true;   // traffic and logs always move on eventually
+  }
+
+  function open(row, x) {
+    if (row.type === 'grass') {
+      delete row.blocked[x];
+      row.decor = row.decor.filter(function (dc) { return dc.x !== x; });
+    } else if (row.type === 'ice') {
+      row.floes[x] = { state: 'solid', standT: 0, recoverT: 0, pressed: false, seed: Math.random() };
+    }
+  }
+
+  function settle(row) {
+    var x, next = {}, any = false;
+    if (reach) {
+      for (x = CFG.X_MIN; x <= CFG.X_MAX; x++) {
+        if (reach[x] && standable(row, x)) { next[x] = true; any = true; }
+      }
+      if (!any) {
+        // Sealed: open the reachable column nearest the middle.
+        var best = null;
+        for (x = CFG.X_MIN; x <= CFG.X_MAX; x++) {
+          if (reach[x] && (best === null || Math.abs(x) < Math.abs(best))) best = x;
+        }
+        open(row, best);
+        next[best] = true;
+      }
+    } else {
+      for (x = CFG.X_MIN; x <= CFG.X_MAX; x++) if (standable(row, x)) next[x] = true;
+    }
+    // Sideways along the row, through anything standable.
+    for (var pass = 0; pass < 2; pass++) {
+      for (x = CFG.X_MIN + 1; x <= CFG.X_MAX; x++) if (next[x - 1] && standable(row, x)) next[x] = true;
+      for (x = CFG.X_MAX - 1; x >= CFG.X_MIN; x--) if (next[x + 1] && standable(row, x)) next[x] = true;
+    }
+    reach = next;
+    return row;
+  }
+
+  /* A small seeded generator (mulberry32). The world draws only from this,
+     so the same seed always lays out the same roads, rivers and walls, no
+     matter what else in the game rolls dice in between. */
+  function seeded(a) {
+    return function () {
+      a = (a + 0x6D2B79F5) >>> 0;
+      var t = a;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
   function rowAt(index) {
     if (index < 0) return null;
     var r = rows[index];
     if (r) return r;
-    // Generate in order so the band planner stays coherent.
-    for (var i = maxGenerated + 1; i <= index; i++) {
-      rows[i] = generate(i);
-      maxGenerated = i;
+    // Generate in order so the band planner stays coherent, and from the
+    // world's own dice.
+    var outside = Math.random;
+    Math.random = worldRandom;
+    try {
+      for (var i = maxGenerated + 1; i <= index; i++) {
+        rows[i] = settle(generate(i));
+        maxGenerated = i;
+      }
+    } finally {
+      Math.random = outside;
     }
     return rows[index];
   }
@@ -1992,9 +2290,14 @@ body { overscroll-behavior: none; }
     CFG: CFG,
     rows: rows,
 
-    reset: function () {
+    /* A fresh world. Pass a seed to get a particular one (the Daily Escape
+       uses the date); leave it out for a random one. */
+    reset: function (worldSeed) {
+      seed = worldSeed === undefined ? Math.floor(Math.random() * 4294967296) >>> 0 : worldSeed >>> 0;
+      worldRandom = seeded(seed);
       for (var k in rows) if (Object.prototype.hasOwnProperty.call(rows, k)) delete rows[k];
       maxGenerated = -1;
+      reach = null;
       plan = { type: 'safe', left: 0, dirBias: 1 };
       time = 0;
       // Prime the opening stretch.
@@ -2002,6 +2305,7 @@ body { overscroll-behavior: none; }
     },
 
     time: function () { return time; },
+    seed: function () { return seed; },
     row: rowAt,
     difficulty: difficulty,
     carX: carX,
@@ -2192,6 +2496,7 @@ body { overscroll-behavior: none; }
     view.w = w;
     view.h = h;
     view.dpr = dpr;
+    CH.clearSprites();   // cached at the old size and pixel ratio
     // Fit roughly 11 columns across, but never let tiles get silly.
     view.tile = U.clamp(Math.min(w / 11, h / 12), 26, 96);
     view.rowH = view.tile * 0.84;
@@ -2269,13 +2574,16 @@ body { overscroll-behavior: none; }
     ctx.fill();
 
     // Skyline in two parallax layers; the far one owns the smokestacks.
-    var off2 = U.mod(cam.x * view.tile * 0.12, 90);
-    for (i = -1; i < view.w / 90 + 2; i++) {
-      var bx2 = i * 90 - off2;
-      var bh2 = 22 + ((i * 29) % 4) * 11;
+    // Each building belongs to a fixed slot of the city, not a slot of the
+    // screen, so panning slides the skyline instead of re-dealing it.
+    var scroll2 = cam.x * view.tile * 0.12;
+    var first2 = Math.floor(scroll2 / 90) - 1;
+    for (i = first2; i <= first2 + Math.ceil(view.w / 90) + 2; i++) {
+      var bx2 = i * 90 - scroll2;
+      var bh2 = 22 + U.mod(i * 29, 4) * 11;
       ctx.fillStyle = 'rgba(88,52,84,0.42)';
       ctx.fillRect(bx2, hz - bh2, 70, bh2);
-      if (((i % 5) + 5) % 5 === 2) {
+      if (U.mod(i, 5) === 2) {
         ctx.fillRect(bx2 + 52, hz - bh2 - 26, 9, 26);
         ctx.fillStyle = '#9c8ba0';
         for (var sm = 0; sm < 3; sm++) {
@@ -2288,16 +2596,18 @@ body { overscroll-behavior: none; }
         ctx.globalAlpha = 1;
       }
     }
-    var off = U.mod(cam.x * view.tile * 0.25, 120);
-    for (i = -1; i < view.w / 120 + 2; i++) {
-      var bx = i * 120 - off;
-      var bh = 38 + ((i * 37) % 5) * 15;
-      ctx.fillStyle = 'rgba(34,22,44,0.88)';
+    var scroll = cam.x * view.tile * 0.25;
+    var first = Math.floor(scroll / 120) - 1;
+    for (i = first; i <= first + Math.ceil(view.w / 120) + 2; i++) {
+      var bx = i * 120 - scroll;
+      var bh = 38 + U.mod(i * 37, 5) * 15;
+      // Solid, so the sun sets behind the city rather than through it.
+      ctx.fillStyle = '#2e1d35';
       ctx.fillRect(bx, hz - bh, 96, bh);
       ctx.fillStyle = 'rgba(255,186,110,0.14)';
       for (var wy = 0; wy < bh - 14; wy += 14) {
         for (var wx2 = 0; wx2 < 80; wx2 += 18) {
-          if (((i * 7 + wy + wx2) % 5) < 2) ctx.fillRect(bx + 8 + wx2, hz - bh + 8 + wy, 8, 7);
+          if (U.mod(i * 7 + wy + wx2, 5) < 2) ctx.fillRect(bx + 8 + wx2, hz - bh + 8 + wy, 8, 7);
         }
       }
     }
@@ -2311,6 +2621,25 @@ body { overscroll-behavior: none; }
   }
 
   /* ── Terrain bands ──────────────────────────────────────────────── */
+
+  /* Fill a band with a texture that belongs to the ground: it slides with
+     the row and the camera instead of staying stuck to the glass. */
+  function groundFill(pat, alpha, row, top, h, cam) {
+    var P = 64;
+    var ox = U.mod(sx(0, cam), P) - P;
+    var oy = top - U.mod(row.index * 23, P);
+    ctx.save();
+    ctx.translate(ox, oy);
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = pat;
+    ctx.fillRect(-ox, top - oy, view.w, h);
+    ctx.restore();
+  }
+
+  /* Screen x of a world-anchored detail that repeats every `span` pixels. */
+  function worldWrap(px, span, cam) {
+    return U.mod(px - cam.x * view.tile, span);
+  }
 
   function drawBand(row, cam, t) {
     var top = sy(row.index, cam) - view.rowH / 2;
@@ -2364,12 +2693,7 @@ body { overscroll-behavior: none; }
     } else if (row.type === 'road') {
       ctx.fillStyle = '#37333e';
       ctx.fillRect(x0, top, x1, h);
-      if (patterns.asphalt) {
-        ctx.globalAlpha = 0.55;
-        ctx.fillStyle = patterns.asphalt;
-        ctx.fillRect(x0, top, x1, h);
-        ctx.globalAlpha = 1;
-      }
+      if (patterns.asphalt) groundFill(patterns.asphalt, 0.55, row, top, h, cam);
       // Wheel-worn tracks where the traffic actually runs.
       ctx.fillStyle = 'rgba(0,0,0,0.10)';
       ctx.fillRect(x0, top + h * 0.30, x1, h * 0.13);
@@ -2412,8 +2736,8 @@ body { overscroll-behavior: none; }
       // Specular glints drifting with the current.
       ctx.fillStyle = 'rgba(255,230,190,0.5)';
       for (var k = 0; k < 9; k++) {
-        var gp = U.mod(hash(row.index, k) * (view.w + 80) +
-          t * row.dir * row.speed * view.tile * 0.55, view.w + 80) - 40;
+        var gp = worldWrap(hash(row.index, k) * (view.w + 80) +
+          t * row.dir * row.speed * view.tile * 0.55, view.w + 80, cam) - 40;
         var gy = top + h * (0.18 + U.mod(hash(row.index, k + 40) * 7, 0.62));
         ctx.globalAlpha = Math.max(0, 0.16 + 0.16 * Math.sin(t * 2.4 + k * 1.7 + row.index));
         ctx.fillRect(gp, gy, view.tile * (0.16 + hash(row.index, k + 80) * 0.22), Math.max(1.5, view.tile * 0.03));
@@ -2425,7 +2749,7 @@ body { overscroll-behavior: none; }
       ctx.lineWidth = 2;
       for (k = 0; k < 6; k++) {
         var phase = t * (row.dir > 0 ? 26 : -26) + k * 100 + row.index * 31;
-        var rx = U.mod(phase, view.w + 120) - 60;
+        var rx = worldWrap(phase, view.w + 120, cam) - 60;
         var ry = top + h * (0.25 + ((k * 3 + row.index) % 3) * 0.22);
         ctx.beginPath();
         ctx.arc(rx, ry + 6, 12, Math.PI * 1.15, Math.PI * 1.85);
@@ -2453,7 +2777,7 @@ body { overscroll-behavior: none; }
       // Frost sparkles.
       ctx.fillStyle = '#ffffff';
       for (var sp2 = 0; sp2 < 10; sp2++) {
-        var spx2 = hash(row.index, sp2 + 200) * view.w;
+        var spx2 = worldWrap(hash(row.index, sp2 + 200) * view.w, view.w, cam);
         var spy2 = top + h * (0.15 + U.mod(hash(row.index, sp2 + 300) * 7, 0.7));
         ctx.globalAlpha = Math.max(0, 0.25 * Math.sin(t * 2 + sp2 * 2.2 + row.index));
         ctx.fillRect(spx2, spy2, 2, 2);
@@ -2473,12 +2797,7 @@ body { overscroll-behavior: none; }
       // A paved parade route with a red runner and bunting.
       ctx.fillStyle = '#4a4450';
       ctx.fillRect(x0, top, x1, h);
-      if (patterns.asphalt) {
-        ctx.globalAlpha = 0.4;
-        ctx.fillStyle = patterns.asphalt;
-        ctx.fillRect(x0, top, x1, h);
-        ctx.globalAlpha = 1;
-      }
+      if (patterns.asphalt) groundFill(patterns.asphalt, 0.4, row, top, h, cam);
       ctx.fillStyle = 'rgba(165,20,36,0.30)';
       ctx.fillRect(x0, top + h * 0.24, x1, h * 0.55);
       ctx.fillStyle = 'rgba(245,197,66,0.25)';
@@ -2489,7 +2808,7 @@ body { overscroll-behavior: none; }
       // Bunting along the far edge, anchored to the world.
       var bstep = view.tile * 0.5;
       for (var bx3 = U.mod(-cam.x * view.tile, bstep) - bstep; bx3 < view.w; bx3 += bstep) {
-        ctx.fillStyle = ((bx3 / bstep) | 0) % 2 ? '#c8102e' : '#f5c542';
+        ctx.fillStyle = U.mod(Math.round((bx3 + cam.x * view.tile) / bstep), 2) ? '#c8102e' : '#f5c542';
         ctx.beginPath();
         ctx.moveTo(bx3, top + 2);
         ctx.lineTo(bx3 + bstep * 0.5, top + 2);
@@ -2500,23 +2819,13 @@ body { overscroll-behavior: none; }
     } else if (row.type === 'checkpoint') {
       ctx.fillStyle = '#6b6155';
       ctx.fillRect(x0, top, x1, h);
-      if (patterns.ballast) {
-        ctx.globalAlpha = 0.4;
-        ctx.fillStyle = patterns.ballast;
-        ctx.fillRect(x0, top, x1, h);
-        ctx.globalAlpha = 1;
-      }
+      if (patterns.ballast) groundFill(patterns.ballast, 0.4, row, top, h, cam);
       ctx.fillStyle = 'rgba(0,0,0,0.20)';
       ctx.fillRect(x0, top, x1, h * 0.08);
     } else if (row.type === 'rail') {
       ctx.fillStyle = '#665d50';
       ctx.fillRect(x0, top, x1, h);
-      if (patterns.ballast) {
-        ctx.globalAlpha = 0.6;
-        ctx.fillStyle = patterns.ballast;
-        ctx.fillRect(x0, top, x1, h);
-        ctx.globalAlpha = 1;
-      }
+      if (patterns.ballast) groundFill(patterns.ballast, 0.6, row, top, h, cam);
       ctx.fillStyle = 'rgba(0,0,0,0.16)';
       ctx.fillRect(x0, top, x1, h * 0.09);
       // Sleepers, anchored to the world.
@@ -2987,7 +3296,7 @@ body { overscroll-behavior: none; }
       var skin = CH.enemySkin(car.skin);
       ctx.save();
       ctx.translate(car.kind === 'truck' ? w * 0.24 : 0, base - bodyH * (car.kind === 'truck' ? 1.0 : 1.28));
-      CH.draw(ctx, 0, s * 0.30, {
+      CH.drawEnemy(ctx, 0, s * 0.30, {
         size: s * 0.52, char: skin, facing: 'right',
         cap: car.seed < 0.5 ? 'ushanka' : 'cap'
       });
@@ -3255,7 +3564,7 @@ body { overscroll-behavior: none; }
       var beat = t * 2.6 + car.seed * 5 + k * 0.5;
       var frac = beat - Math.floor(beat);
       var bounce = Math.sin(Math.min(frac * 1.6, 1) * Math.PI) * s * 0.08;
-      CH.draw(ctx, mx, y - bounce, {
+      CH.drawEnemy(ctx, mx, y - bounce, {
         size: s * 0.72, char: CH.enemySkin(car.skin + k), facing: facing,
         cap: (car.skin + k) % 3 === 0 ? 'ushanka' : 'cap'
       });
@@ -3477,14 +3786,16 @@ body { overscroll-behavior: none; }
     ctx.restore();
   }
 
-  function drawVan(v, g, cam, t) {
+  /* `layer` is 'ground' (the target ring, drawn under the player) or
+     'body' (the car and the edge glow, drawn over the player's row). */
+  function drawVan(v, g, cam, t, layer) {
     var s = view.tile;
     var tx = sx(v.x, cam);
     var ty = sy(v.row, cam) + view.rowH * 0.26;
     var dir = -v.fromSide;                    // direction of travel
     var edgeX = view.w / 2 + v.fromSide * (view.w / 2 + s * 3);
 
-    if (v.state === 'warn') {
+    if (v.state === 'warn' && layer === 'ground') {
       // The locked tile, ringed — and headlights already at the kerb.
       var k = U.clamp(v.t / 0.9, 0, 1);
       var blink3 = Math.sin(t * 16) > 0;
@@ -3499,13 +3810,19 @@ body { overscroll-behavior: none; }
       U.ellipse(ctx, tx, ty - view.rowH * 0.06, s * (0.16 + k * 0.2), s * (0.07 + k * 0.08));
       ctx.stroke();
       ctx.restore();
-      // A glow building at the screen edge on this row.
+    } else if (layer === 'ground') {
+      return;
+    } else if (v.state === 'warn') {
+      // Headlights building at the edge of the screen the car will come
+      // from, on this row: you can see which way to run.
+      var kw = U.clamp(v.t / 0.9, 0, 1);
+      var glowX = v.fromSide > 0 ? view.w : 0;
       ctx.globalCompositeOperation = 'lighter';
-      var eg = ctx.createLinearGradient(edgeX, 0, edgeX + dir * s * 4, 0);
-      eg.addColorStop(0, 'rgba(255,200,120,' + (0.20 * k).toFixed(3) + ')');
+      var eg = ctx.createLinearGradient(glowX, 0, glowX + dir * s * 4, 0);
+      eg.addColorStop(0, 'rgba(255,200,120,' + (0.34 * kw).toFixed(3) + ')');
       eg.addColorStop(1, 'rgba(255,200,120,0)');
       ctx.fillStyle = eg;
-      ctx.fillRect(Math.min(edgeX, edgeX + dir * s * 4), ty - s * 0.8, s * 4, s * 1.2);
+      ctx.fillRect(Math.min(glowX, glowX + dir * s * 4), ty - s * 0.8, s * 4, s * 1.2);
       ctx.globalCompositeOperation = 'source-over';
     } else if (v.state === 'arrive') {
       var k2 = U.clamp(v.t / 0.45, 0, 1);
@@ -3558,7 +3875,7 @@ body { overscroll-behavior: none; }
       ctx.fillStyle = 'rgba(45,0,12,0.55)';
       for (var db = 0; db < 2; db++) {
         var hx2 = hash(row.index * 5 + db, 77);
-        var dx2 = hx2 * view.w;
+        var dx2 = sx(PP.World.CFG.X_MIN - 3 + hx2 * (PP.World.CFG.X_MAX - PP.World.CFG.X_MIN + 6), cam);
         var dy2 = top + view.rowH * (0.3 + hash(row.index, db + 31) * 0.4);
         var kind2 = (hx2 * 7 | 0) % 3;
         if (kind2 === 0) {          // a tipped food bowl
@@ -3629,20 +3946,24 @@ body { overscroll-behavior: none; }
     ctx.fillRect(0, y - view.rowH * 2.2, view.w, view.rowH * 2.2 - s * 0.4);
 
     // A rank of marchers with banners, stepping in time.
+    // Every marcher has a fixed place in the rank (a world slot), so the
+    // same comrade keeps the same hat and flag as the camera pans.
     var spacing = s * 0.92;
-    var offset = U.mod(-cam.x * view.tile, spacing);
-    var idx = 0;
+    var scrollT = cam.x * view.tile - view.w / 2;
+    var firstSlot = Math.floor(scrollT / spacing) - 1;
     // If the bearers are below the bottom edge, their flags and placards
     // must not poke into the frame on disembodied poles.
     var propsVisible = y - s * 0.85 <= view.h;
-    for (var px = offset - spacing; px < view.w + spacing; px += spacing, idx++) {
+    for (var idx = firstSlot; ; idx++) {
+      var px = idx * spacing - scrollT;
+      if (px > view.w + spacing) break;
       // The whole rank stomps on a shared beat, half the line offset by
       // half a step — a parade, not a crowd.
-      var beat = t * 2.4 + (idx % 2) * 0.5;
+      var beat = t * 2.4 + U.mod(idx, 2) * 0.5;
       var frac = beat - Math.floor(beat);
       var bounce = Math.sin(Math.min(frac * 1.6, 1) * Math.PI) * s * 0.10;
       var skin = CH.enemySkin(idx);
-      if (idx % 4 === 1 && propsVisible) {
+      if (U.mod(idx, 4) === 1 && propsVisible) {
         ctx.fillStyle = '#5e5248';
         ctx.fillRect(px + s * 0.22, y - s * 1.5 - bounce, s * 0.05, s * 1.1);
         ctx.fillStyle = '#c8102e';
@@ -3657,7 +3978,7 @@ body { overscroll-behavior: none; }
         ctx.fillStyle = '#f5c542';
         CH.star(ctx, px + s * 0.50 + wave * 0.5, y - s * 1.27 - bounce, s * 0.09);
       }
-      if (idx % 8 === 6 && propsVisible) {
+      if (U.mod(idx, 8) === 6 && propsVisible) {
         // A framed portrait of the Very Important Animal, held at rank
         // height in a dull brass frame — official, not collectible.
         var py2 = y - bounce;
@@ -3684,9 +4005,9 @@ body { overscroll-behavior: none; }
         ctx.closePath();
         ctx.fill();
       }
-      CH.draw(ctx, px, y - bounce, {
+      CH.drawEnemy(ctx, px, y - bounce, {
         size: s * 0.78, char: skin, facing: 'up',
-        cap: idx % 3 === 0 ? 'ushanka' : 'cap', alpha: 0.95
+        cap: U.mod(idx, 3) === 0 ? 'ushanka' : 'cap', alpha: 0.95
       });
     }
 
@@ -3860,11 +4181,11 @@ body { overscroll-behavior: none; }
     ctx.textAlign = 'left';
   }
 
-  /* The further you flee, the colder it gets: snow begins around 35m,
+  /* The further you flee, the colder it gets: snow begins around 25m,
      right where the rivers start freezing. Stateless — every flake's
      position is a function of time. */
   function drawSnow(cam, t) {
-    var intensity = U.clamp((cam.row - 35) / 40, 0, 0.85);
+    var intensity = U.clamp((cam.row - 26) / 40, 0, 0.85);
     if (intensity <= 0.01) return;
     var n = Math.floor(46 * intensity);
     ctx.fillStyle = '#f2f6fa';
@@ -3881,40 +4202,47 @@ body { overscroll-behavior: none; }
   }
 
   /* Dusk grade: warm above, cool below, dark in the corners. */
-  function drawGrade() {
-    var lg = ctx.createLinearGradient(0, 0, 0, view.h);
-    lg.addColorStop(0, 'rgba(255,166,86,0.055)');
-    lg.addColorStop(0.5, 'rgba(0,0,0,0)');
-    lg.addColorStop(1, 'rgba(22,12,48,0.17)');
-    ctx.fillStyle = lg;
-    ctx.fillRect(0, 0, view.w, view.h);
-
-    var rv = ctx.createRadialGradient(
-      view.w / 2, view.h * 0.52, Math.min(view.w, view.h) * 0.45,
-      view.w / 2, view.h * 0.52, Math.max(view.w, view.h) * 0.78
-    );
-    rv.addColorStop(0, 'rgba(8,5,16,0)');
-    rv.addColorStop(1, 'rgba(8,5,16,0.22)');
-    ctx.fillStyle = rv;
-    ctx.fillRect(0, 0, view.w, view.h);
-  }
+  /* The dusk grade lives in CSS (#grade). The danger glow does too; the
+     canvas only tells it how strong to be, and only when that changes. */
+  var dangerEl = null, lastDanger = -1;
 
   function drawVignette(g) {
     var danger = g.showPlayer ? U.clamp(1 - (g.player.row - g.tide.row) / 9, 0, 1) : 0;
-    if (danger > 0.02) {
-      var rg = ctx.createRadialGradient(
-        view.w / 2, view.h * 0.55, view.h * 0.25,
-        view.w / 2, view.h * 0.55, view.h * 0.85
-      );
-      rg.addColorStop(0, 'rgba(200,16,46,0)');
-      rg.addColorStop(1, 'rgba(200,16,46,' + (0.55 * danger).toFixed(3) + ')');
-      ctx.fillStyle = rg;
-      ctx.fillRect(0, 0, view.w, view.h);
+    var dq = danger > 0.02 ? Math.round(danger * 100) / 100 : 0;
+    if (dq !== lastDanger) {
+      if (!dangerEl) dangerEl = document.getElementById('danger');
+      if (dangerEl) dangerEl.style.opacity = dq;
+      lastDanger = dq;
     }
     if (g.flash > 0) {
       ctx.fillStyle = 'rgba(255,255,255,' + (g.flash * 0.6).toFixed(3) + ')';
       ctx.fillRect(0, 0, view.w, view.h);
     }
+  }
+
+  /* Everything standing on a row: scenery, traffic, logs, floes. `alpha`
+     fades far rows in as they rise over the horizon. */
+  function drawRowThings(row, cam, t, alpha) {
+    if (alpha < 1) { ctx.save(); ctx.globalAlpha = alpha; }
+    if (row.type === 'grass') {
+      if (row.fence) drawFence(row, cam);
+      for (var d = 0; d < row.decor.length; d++) drawDecor(row, row.decor[d], cam, t);
+      drawCoin(row, cam, t);
+    } else if (row.type === 'road') {
+      for (var c = 0; c < row.cars.length; c++) drawCar(row, row.cars[c], cam, t);
+    } else if (row.type === 'water') {
+      for (var l = 0; l < row.logs.length; l++) drawLog(row, row.logs[l], cam, t);
+    } else if (row.type === 'ice') {
+      drawFloes(row, cam, t);
+    } else if (row.type === 'parade') {
+      for (var q = 0; q < row.cars.length; q++) drawSquad(row, row.cars[q], cam, t);
+    } else if (row.type === 'checkpoint') {
+      drawCheckpoint(row, cam, t);
+    } else if (row.type === 'rail') {
+      if (row.state === 'train') drawTrain(row, cam, t);
+      drawRailSignals(row, cam, t);
+    }
+    if (alpha < 1) ctx.restore();
   }
 
   /* ── Frame ──────────────────────────────────────────────────────── */
@@ -3924,6 +4252,12 @@ body { overscroll-behavior: none; }
     var t = PP.World.time();
     if (!patterns.asphalt) buildPatterns();
 
+    // Shake moves the whole frame; paint the edges it uncovers first, or the
+    // full-screen overlays pile up on stale pixels there.
+    if (g.shake > 0.001) {
+      ctx.fillStyle = '#191026';
+      ctx.fillRect(0, 0, view.w, view.h);
+    }
     ctx.save();
     if (g.shake > 0.001) {
       ctx.translate((Math.random() - 0.5) * g.shake * 18, (Math.random() - 0.5) * g.shake * 18);
@@ -3937,17 +4271,9 @@ body { overscroll-behavior: none; }
     // A constant screen position: the world slides beneath the skyline
     // instead of the skyline re-seating itself on every row crossed.
     horizonY = view.baseY - (depth - 0.5) * view.rowH;
+    view.horizonY = horizonY;
 
     drawSky(cam, t);
-
-    // Everything in the world is clipped at the horizon line, so a newly
-    // generated far row is born BEHIND the horizon and slides smoothly out
-    // from underneath it — instead of popping into view a full band above
-    // the previous coverage edge every time the camera crosses a row.
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(0, horizonY, view.w, view.h + 60 - horizonY);
-    ctx.clip();
 
     var playerDrawRow = Math.round(g.player.row);
     // How scared should the body language be? Purely a function of the gap.
@@ -3960,28 +4286,26 @@ body { overscroll-behavior: none; }
       var row = i < 0 ? { index: i, type: 'grass', decor: [], blocked: {}, coin: null } : PP.World.row(i);
       if (!row) continue;
 
-      drawBand(row, cam, t);
-
-      if (row.type === 'grass') {
-        if (row.fence) drawFence(row, cam);
-        for (var d = 0; d < row.decor.length; d++) drawDecor(row, row.decor[d], cam, t);
-        drawCoin(row, cam, t);
-      } else if (row.type === 'road') {
-        for (var c = 0; c < row.cars.length; c++) drawCar(row, row.cars[c], cam, t);
-      } else if (row.type === 'water') {
-        for (var l = 0; l < row.logs.length; l++) drawLog(row, row.logs[l], cam, t);
-      } else if (row.type === 'ice') {
-        drawFloes(row, cam, t);
-      } else if (row.type === 'parade') {
-        for (var q = 0; q < row.cars.length; q++) drawSquad(row, row.cars[q], cam, t);
-      } else if (row.type === 'checkpoint') {
-        drawCheckpoint(row, cam, t);
-      } else if (row.type === 'rail') {
-        if (row.state === 'train') drawTrain(row, cam, t);
-        drawRailSignals(row, cam, t);
+      // The ground is clipped at the horizon line, so a newly generated far
+      // row is born BEHIND the horizon and slides smoothly out from under
+      // it. What stands on it is not clipped (a tree is not cut off at the
+      // crest of a hill); it fades in as its footing clears the horizon.
+      var bandTop = sy(i, cam) - view.rowH / 2;
+      var clipped = bandTop < horizonY;
+      if (clipped) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(0, horizonY, view.w, view.h + 60 - horizonY);
+        ctx.clip();
       }
+      drawBand(row, cam, t);
+      if (clipped) ctx.restore();
 
-      if (g.bestLineRow >= 3 && i === g.bestLineRow && g.showPlayer) drawBestLine(i, cam);
+      var footing = sy(i, cam) + view.rowH * 0.26;
+      var rise = U.clamp((footing - horizonY) / (view.rowH * 1.2), 0, 1);
+      if (rise > 0) drawRowThings(row, cam, t, rise);
+
+      if (g.bestLineRow >= 0 && i === g.bestLineRow && g.showPlayer) drawBestLine(i, cam);
 
       // Aerial perspective: far rows sink into the warm smog, near rows
       // cool toward the night behind you. Painted over the row's own
@@ -3989,23 +4313,25 @@ body { overscroll-behavior: none; }
       // drawn after this and stays vivid.
       if (i > cam.row + 4) {
         var kFar = U.clamp((i - cam.row - 4) / (depth - 4), 0, 1);
+        var fogTop = Math.max(bandTop, horizonY);
         ctx.fillStyle = 'rgba(226,158,98,' + (kFar * kFar * 0.30).toFixed(3) + ')';
-        ctx.fillRect(0, sy(i, cam) - view.rowH / 2, view.w, view.rowH + 1);
+        ctx.fillRect(0, fogTop, view.w, bandTop + view.rowH + 1 - fogTop);
       } else if (i < cam.row - 1) {
         var kNear = U.clamp((cam.row - 1 - i) / 6, 0, 1);
         ctx.fillStyle = 'rgba(24,16,34,' + (kNear * 0.10).toFixed(3) + ')';
-        ctx.fillRect(0, sy(i, cam) - view.rowH / 2, view.w, view.rowH + 1);
+        ctx.fillRect(0, bandTop, view.w, view.rowH + 1);
       }
 
       if (g.tide.row >= i) drawTideBand(row, cam, g.tide.row, t);
       if (Math.floor(g.tide.row) === i) drawTideFront(cam, g.tide.row, t);
 
+      // The black car lives on a row like everything else, so nearer rows
+      // paint over it; its target ring sits on the ground under your feet.
+      var vanHere = g.van && g.van.state !== 'idle' && g.showPlayer && i === g.van.row;
+      if (vanHere) drawVan(g.van, g, cam, t, 'ground');
       if (i === playerDrawRow && g.showPlayer) drawPlayer(g.player, cam, g.playerChar || g.char, t, fear, g.streak >= 10);
+      if (vanHere) drawVan(g.van, g, cam, t, 'body');
     }
-
-    ctx.restore();   // end horizon clip
-
-    if (g.van && g.van.state !== 'idle' && g.showPlayer) drawVan(g.van, g, cam, t);
 
     // The last of the sun finds the escapee.
     if (g.showPlayer && !g.player.dead) {
@@ -4056,7 +4382,6 @@ body { overscroll-behavior: none; }
     drawSnow(cam, t);
     ctx.restore();
 
-    drawGrade();
     drawVignette(g);
   }
 
@@ -4105,25 +4430,35 @@ body { overscroll-behavior: none; }
   };
 
   var SWIPE_MIN = 26;      // px before a drag counts as a swipe
-  var TAP_DEAD = 34;       // px around the player that means "forward"
 
   function init(canvas, handlers) {
-    var start = null;
-    var moved = false;
+    // Every finger is tracked on its own, so a thumb resting on the glass
+    // never turns another thumb's tap into a phantom swipe.
+    var pointers = {};
 
     function move(dir) {
       PP.Audio.unlock();
       handlers.onMove(dir);
     }
 
+    function held() {
+      for (var k in pointers) if (Object.prototype.hasOwnProperty.call(pointers, k)) return true;
+      return false;
+    }
+
     U.on(global, 'keydown', function (e) {
       var dir = KEY_DIR[e.code];
       if (dir) {
+        // A held arrow keeps hopping; that is a feature.
         e.preventDefault();
         move(dir);
         return;
       }
+      // Everything else fires once per press, not on every auto-repeat.
+      if (e.repeat) return;
       if (e.code === 'Space' || e.code === 'Enter') {
+        // A focused button gets its own click; don't hijack it.
+        if (e.target && e.target.tagName === 'BUTTON') return;
         e.preventDefault();
         PP.Audio.unlock();
         handlers.onAction('primary');
@@ -4138,52 +4473,45 @@ body { overscroll-behavior: none; }
 
     function pos(e) {
       var rect = canvas.getBoundingClientRect();
-      var src = e.touches && e.touches.length ? e.touches[0]
-        : (e.changedTouches && e.changedTouches.length ? e.changedTouches[0] : e);
-      return { x: src.clientX - rect.left, y: src.clientY - rect.top };
+      return { x: e.clientX - rect.left, y: e.clientY - rect.top };
     }
 
     function down(e) {
-      start = pos(e);
-      moved = false;
+      var p = pos(e);
+      pointers[e.pointerId] = { x: p.x, y: p.y, moved: false };
       PP.Audio.unlock();
       // Press-and-hold: the animal crouches until you release.
       if (handlers.onCharge) handlers.onCharge();
     }
 
     function drag(e) {
-      if (!start || moved) return;
+      var s = pointers[e.pointerId];
+      if (!s || s.moved) return;
       var p = pos(e);
-      var dx = p.x - start.x;
-      var dy = p.y - start.y;
+      var dx = p.x - s.x;
+      var dy = p.y - s.y;
       if (Math.abs(dx) < SWIPE_MIN && Math.abs(dy) < SWIPE_MIN) return;
-      moved = true;
+      s.moved = true;
       if (Math.abs(dx) > Math.abs(dy)) move(dx > 0 ? 'right' : 'left');
       else move(dy > 0 ? 'down' : 'up');
     }
 
     function up(e) {
-      if (!start) return;
-      if (!moved) {
-        // A tap: read the direction from where it landed relative to the player.
-        var p = pos(e);
-        var anchor = handlers.playerScreenPos();
-        var dx = p.x - anchor.x;
-        var dy = p.y - anchor.y;
-        if (Math.abs(dx) < TAP_DEAD && Math.abs(dy) < TAP_DEAD) move('up');
-        else if (Math.abs(dx) > Math.abs(dy)) move(dx > 0 ? 'right' : 'left');
-        else move(dy > 0 ? 'down' : 'up');
-      }
-      start = null;
-      moved = false;
+      var s = pointers[e.pointerId];
+      if (!s) return;
+      delete pointers[e.pointerId];
+      // A tap anywhere is a hop forward. Sideways and back are swipes, so a
+      // thumb resting low on the screen never walks you into the tide.
+      if (!s.moved) move('up');
+      else if (!held() && handlers.onChargeCancel) handlers.onChargeCancel();
     }
 
     U.on(canvas, 'pointerdown', down);
     U.on(canvas, 'pointermove', drag);
     U.on(canvas, 'pointerup', up);
-    U.on(canvas, 'pointercancel', function () {
-      start = null;
-      if (handlers.onChargeCancel) handlers.onChargeCancel();
+    U.on(canvas, 'pointercancel', function (e) {
+      delete pointers[e.pointerId];
+      if (!held() && handlers.onChargeCancel) handlers.onChargeCancel();
     });
     U.on(canvas, 'contextmenu', function (e) { e.preventDefault(); });
     U.on(canvas, 'touchstart', function (e) { e.preventDefault(); }, { passive: false });
@@ -4215,30 +4543,66 @@ body { overscroll-behavior: none; }
 
   var SAVE_KEY = 'pp.save';
 
-  var save = U.store.get(SAVE_KEY, null) || {
-    best: 0, coins: 0, runs: 0, owned: ['mittens', 'biscuit'], char: 'mittens'
-  };
+  var save = U.store.get(SAVE_KEY, null);
+  if (!save || typeof save !== 'object' || Array.isArray(save)) {
+    save = { best: 0, coins: 0, runs: 0, owned: ['mittens', 'biscuit'], char: 'mittens', v: 2 };
+  }
   if (!save.owned || !save.owned.length) save.owned = ['mittens', 'biscuit'];
   save.dodges = save.dodges || 0;
   save.hops = save.hops || 0;
+  // v2: distance is measured from where you start (row 2), not from row 0.
+  if ((save.v || 1) < 2) {
+    save.best = Math.max(0, (save.best || 0) - World.CFG.START_ROW);
+    save.v = 2;
+  }
 
   function persist() { U.store.set(SAVE_KEY, save); }
+
+  /* ── The Daily Escape ───────────────────────────────────────────────
+     One world per calendar day, the same for everyone: a date is hashed
+     into the world seed. Compare runs with friends on equal terms. */
+  function today() {
+    var d = new Date();
+    return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+  }
+
+  function dailySeed(day) {
+    var h = 2166136261;   // FNV-1a
+    var key = 'paws-daily-' + day;
+    for (var i = 0; i < key.length; i++) {
+      h ^= key.charCodeAt(i);
+      h = Math.imul(h, 16777619) >>> 0;
+    }
+    return h;
+  }
+
+  function dailyBest() {
+    return save.daily && save.daily.day === today() ? save.daily.best : 0;
+  }
+
+  /* Kibble is banked the moment it is earned, so quitting, restarting or
+     closing the tab never loses it. */
+  function earn(amount) {
+    g.runCoins += amount;
+    save.coins = (save.coins || 0) + amount;
+    persist();
+  }
 
   /* ── State Directives ─────────────────────────────────────────────
      Three rotating objectives. Complete one mid-run and the bounty is
      paid on the spot; a fresh directive replaces it next run. */
 
   var D_TEMPLATES = [
-    { id: 'dist30', label: 'Reach 30m in one run', type: 'dist', target: 30, reward: 40 },
-    { id: 'dist50', label: 'Reach 50m in one run', type: 'dist', target: 50, reward: 60 },
-    { id: 'dist80', label: 'Reach 80m in one run', type: 'dist', target: 80, reward: 90 },
-    { id: 'coins15', label: 'Pocket 15 kibble in one run', type: 'coins', target: 15, reward: 40 },
-    { id: 'rivers4', label: 'Cross 4 canals in one run', type: 'rivers', target: 4, reward: 40 },
-    { id: 'ice3', label: 'Cross 3 frozen rows in one run', type: 'ice', target: 3, reward: 50 },
-    { id: 'parade2', label: 'Slip past 2 parades in one run', type: 'parade', target: 2, reward: 50 },
-    { id: 'dodge1', label: 'Dodge the black car', type: 'dodge', target: 1, reward: 60 },
-    { id: 'hops500', label: 'Hop 500 times, in total', type: 'hops', target: 500, reward: 50 },
-    { id: 'record', label: 'Break your record', type: 'record', target: 1, reward: 50 }
+    { id: 'dist30', label: 'Reach 30m in one run', short: '30m REACHED', type: 'dist', target: 30, reward: 40 },
+    { id: 'dist50', label: 'Reach 50m in one run', short: '50m REACHED', type: 'dist', target: 50, reward: 60 },
+    { id: 'dist80', label: 'Reach 80m in one run', short: '80m REACHED', type: 'dist', target: 80, reward: 90 },
+    { id: 'coins15', label: 'Pick up 15 kibble off the street in one run', short: 'SCAVENGER', type: 'coins', target: 15, reward: 40 },
+    { id: 'rivers4', label: 'Cross 4 canals in one run', short: '4 CANALS', type: 'rivers', target: 4, reward: 40 },
+    { id: 'ice3', label: 'Cross 3 frozen rows in one run', short: 'THIN ICE WALKER', type: 'ice', target: 3, reward: 50 },
+    { id: 'parade2', label: 'Slip past 2 parades in one run', short: 'PARADE DODGER', type: 'parade', target: 2, reward: 50 },
+    { id: 'dodge1', label: 'Dodge the black car', short: 'CAR DODGED', type: 'dodge', target: 1, reward: 60 },
+    { id: 'hops500', label: 'Hop 500 times, in total', short: '500 HOPS', type: 'hops', target: 500, reward: 50 },
+    { id: 'record', label: 'Break your record', short: 'RECORD BROKEN', type: 'record', target: 1, reward: 50 }
   ];
 
   function templateById(id) {
@@ -4248,34 +4612,55 @@ body { overscroll-behavior: none; }
 
   function pickDirective(exceptIds) {
     var pool = D_TEMPLATES.filter(function (tpl) {
+      // Nobody can break a record they have not set yet.
+      if (tpl.type === 'record' && (save.best || 0) < 3) return false;
       return exceptIds.indexOf(tpl.id) === -1;
     });
     return pool[U.randInt(0, pool.length - 1)];
   }
 
+  /* A directive remembers where its counter stood when it was issued, so
+     "hop 500 times" means 500 more hops, not 500 in your whole life. */
+  function issue(tpl) {
+    var d = { id: tpl.id, done: false };
+    if (tpl.type === 'hops') d.base = save.hops;
+    return d;
+  }
+
   function ensureDirectives() {
-    if (save.directives && save.directives.length === 3) return;
-    save.directives = [];
-    for (var i = 0; i < 3; i++) {
-      var have = save.directives.map(function (d) { return d.id; });
-      save.directives.push({ id: pickDirective(have).id, done: false });
+    var valid = (save.directives || []).filter(function (d) {
+      if (!d || !templateById(d.id)) return false;
+      // An old save may hold a record directive nobody can meet yet.
+      return !(d.id === 'record' && !d.done && (save.best || 0) < 3);
+    });
+    if (valid.length !== 3) {
+      save.directives = valid.slice(0, 3);
+      while (save.directives.length < 3) {
+        var have = save.directives.map(function (d) { return d.id; });
+        save.directives.push(issue(pickDirective(have)));
+      }
     }
+    // Saves from before baselines existed: start counting from now.
+    save.directives.forEach(function (d) {
+      if (d.id === 'hops500' && d.base === undefined) d.base = save.hops;
+    });
     persist();
   }
 
   function refreshDirectives() {
+    ensureDirectives();
     var changed = false;
     for (var i = 0; i < save.directives.length; i++) {
       if (save.directives[i].done) {
         var have = save.directives.map(function (d) { return d.id; });
-        save.directives[i] = { id: pickDirective(have).id, done: false };
+        save.directives[i] = issue(pickDirective(have));
         changed = true;
       }
     }
     if (changed) persist();
   }
 
-  function directiveValue(tpl) {
+  function directiveValue(tpl, d) {
     switch (tpl.type) {
       case 'dist': return g.score;
       case 'coins': return g.runStats.kibble;
@@ -4283,8 +4668,8 @@ body { overscroll-behavior: none; }
       case 'ice': return g.runStats.iceX;
       case 'parade': return g.runStats.paradeX;
       case 'dodge': return g.runStats.dodged ? 1 : 0;
-      case 'hops': return save.hops;
-      case 'record': return g.bestCrossed ? 1 : 0;
+      case 'hops': return save.hops - (d.base || 0);
+      case 'record': return g.startBest >= 3 && g.score > g.startBest ? 1 : 0;
     }
     return 0;
   }
@@ -4296,11 +4681,11 @@ body { overscroll-behavior: none; }
       if (d.done) continue;
       var tpl = templateById(d.id);
       if (!tpl) continue;
-      if (directiveValue(tpl) >= tpl.target) {
+      if (directiveValue(tpl, d) >= tpl.target) {
         d.done = true;
-        persist();
-        g.runCoins += tpl.reward;
-        floater('DIRECTIVE +' + tpl.reward, g.player.x, g.player.row + 1.0, '#8ee36a');
+        // Paid on the spot, into the bank, not just onto the run's tally.
+        earn(tpl.reward);
+        floater((tpl.short || 'DIRECTIVE') + ' +' + tpl.reward, g.player.x, g.player.row + 1.0, '#8ee36a');
         PP.Audio.unlockChime();
       }
     }
@@ -4319,7 +4704,13 @@ body { overscroll-behavior: none; }
     flash: 0,
     showPlayer: false,
     char: PP.Characters.byId(save.char),
-    score: 0,
+    score: 0,                  // metres: furthest row reached, from the start line
+    maxRow: 0,
+    started: false,            // the chase waits for your first hop
+    daily: null,               // the day's date on a Daily Escape run
+    banked: false,             // this run's distance bonus and best are saved
+    startBest: 0,
+    unlockedSecret: false,
     runCoins: 0,
     idleT: 0,
     deathT: 0,
@@ -4402,6 +4793,11 @@ body { overscroll-behavior: none; }
   }
 
   function floater(text, x, row, color) {
+    // Rewards often land on the same hop; stack them instead of overprinting.
+    for (var i = 0; i < g.floaters.length; i++) {
+      var f = g.floaters[i];
+      if (f.life > 0.35 && Math.abs(f.x - x) < 2.5 && Math.abs(f.row - row) < 0.7) row = f.row + 0.7;
+    }
     g.floaters.push({ text: text, x: x, row: row, life: 1.0, maxLife: 1.0, color: color });
   }
 
@@ -4429,6 +4825,11 @@ body { overscroll-behavior: none; }
     g.flash = Math.max(0, g.flash - dt * 3.0);
   }
 
+  /* Momentum: ten quick hops onto new ground, kept alive by the next one. */
+  function hasMomentum() {
+    return g.streak >= 10 && World.time() - g.lastFwdT < 0.9;
+  }
+
   /* ── Movement ───────────────────────────────────────────────────── */
 
   function tryMove(dir) {
@@ -4443,7 +4844,8 @@ body { overscroll-behavior: none; }
       return;
     }
 
-    var baseX = Math.round(p.x);
+    // A log can carry you to the very edge; hop from the nearest real column.
+    var baseX = U.clamp(Math.round(p.x), World.CFG.X_MIN, World.CFG.X_MAX);
     var toX = baseX, toRow = p.row;
     if (dir === 'up') toRow = p.row + 1;
     else if (dir === 'down') toRow = p.row - 1;
@@ -4467,11 +4869,15 @@ body { overscroll-behavior: none; }
     p.hopping = true;
     p.hopT = 0;
     p.onLog = null;
+    g.started = true;
     if (dir === 'up') {
       g.idleT = 0;
-      var nowT = World.time();
-      g.streak = (nowT - g.lastFwdT < 0.9) ? g.streak + 1 : 1;
-      g.lastFwdT = nowT;
+      // Momentum is built on new ground only; bouncing in place earns none.
+      if (toRow > g.maxRow) {
+        var nowT = World.time();
+        g.streak = (nowT - g.lastFwdT < 0.9) ? g.streak + 1 : 1;
+        g.lastFwdT = nowT;
+      }
     }
     save.hops++;
     PP.Audio.hop(g.char.species === 'cat' ? 1.12 : 0.85);
@@ -4503,7 +4909,7 @@ body { overscroll-behavior: none; }
     }
 
     // Crossing your own record line is a moment.
-    if (!g.bestCrossed && g.bestLineRow >= 3 && p.row > g.bestLineRow) {
+    if (!g.bestCrossed && g.bestLineRow >= 0 && p.row > g.bestLineRow) {
       g.bestCrossed = true;
       floater('RECORD BROKEN', p.x, p.row + 0.6, '#f5c542');
       puff(p.x, p.row, '#f5c542', 16, 2.6);
@@ -4514,26 +4920,27 @@ body { overscroll-behavior: none; }
     var coin = World.coinAt(Math.round(p.x), p.row);
     if (coin) {
       coin.taken = true;
-      var mult = g.streak >= 10 ? 2 : 1;   // momentum pays double
-      g.runCoins += COIN_VALUE * mult;
+      var mult = hasMomentum() ? 2 : 1;   // momentum pays double
       g.runStats.kibble += COIN_VALUE * mult;
+      earn(COIN_VALUE * mult);
       floater('+' + (COIN_VALUE * mult), p.x, p.row, '#f5c542');
       puff(p.x, p.row, '#f5c542', 8, 1.6);
       PP.Audio.coin();
       checkDirectives();
     }
 
-    if (p.row > g.score) {
-      g.score = p.row;
+    if (p.row > g.maxRow) {
+      g.maxRow = p.row;
+      g.score = Math.max(0, g.maxRow - World.CFG.START_ROW);
       // The row now fully behind you counts as crossed.
-      var behind = World.row(g.score - 1);
+      var behind = World.row(g.maxRow - 1);
       if (behind) {
         if (behind.type === 'water') g.runStats.waterX++;
         else if (behind.type === 'ice') g.runStats.iceX++;
         else if (behind.type === 'parade') g.runStats.paradeX++;
         else if (behind.type === 'checkpoint') {
           // Through the gate: the paperwork delays them.
-          g.runCoins += 25;
+          earn(25);
           g.tide.row = Math.max(-7, g.tide.row - 2);
           floater('SECTOR CLEARED +25', p.x, p.row + 1.0, '#f5c542');
           g.flash = 0.22;
@@ -4548,6 +4955,11 @@ body { overscroll-behavior: none; }
         PP.Audio.milestone();
       }
     }
+
+    // Where you landed decides whether you live, before any buffered hop
+    // can carry you on (otherwise a quick tapper could walk on water).
+    checkDeath();
+    if (p.dead) { g.queued = null; return; }
 
     if (g.queued) {
       var q = g.queued;
@@ -4617,16 +5029,22 @@ body { overscroll-behavior: none; }
     checkDeath();
   }
 
-  function die(kind) {
+  /* `kind` is how the death looks; `cause` picks the game-over card. */
+  function die(kind, cause) {
     var p = g.player;
     if (p.dead) return;
     p.dead = true;
     p.deathKind = kind;
+    p.deathCause = cause || kind;
     p.hopping = false;
     g.mode = 'dying';
     g.deathT = 0;
     // A beat of slow motion sells the impact; conversion is already slow.
     if (kind !== 'caught') g.slowmoT = 0.45;
+    // And the phone in your hand feels it (where phones allow it).
+    if (global.navigator && global.navigator.vibrate && !PP.Audio.isMuted()) {
+      try { global.navigator.vibrate(kind === 'caught' ? [40, 60, 40] : 70); } catch (e) { /* not allowed */ }
+    }
 
     if (kind === 'squash') {
       g.shake = 1;
@@ -4655,24 +5073,33 @@ body { overscroll-behavior: none; }
 
   function checkDeath() {
     var p = g.player;
-    var row = World.row(p.row);
-    if (!row) return;
-
     if (g.tide.row >= p.row - 0.05) { die('caught'); return; }
 
-    if (row.type === 'road' && World.carAt(p.x, p.row, HALF_W)) { die('squash'); return; }
-    if (row.type === 'parade' && World.carAt(p.x, p.row, HALF_W)) { die('caught'); return; }
-    if (row.type === 'rail' && World.trainAt(p.x, p.row, HALF_W)) { die('squash'); return; }
+    // Mid-hop between rows, traffic on the row you are landing in can reach
+    // you once you are drawn over it; the row you are leaving cannot.
+    var ri = p.row;
+    if (ri !== Math.floor(ri)) {
+      if (p.hopT / HOP_TIME < 0.5) return;
+      ri = p.toRow;
+    }
+    var row = World.row(ri);
+    if (!row) return;
 
-    if (row.type === 'ice' && !p.hopping) {
-      var fl = World.floeAt(p.x, p.row);
-      if (!fl || fl.state === 'sunk') { die('water'); return; }
+    if (row.type === 'road' && World.carAt(p.x, ri, HALF_W)) { die('squash'); return; }
+    if (row.type === 'parade' && World.carAt(p.x, ri, HALF_W)) { die('caught', 'parade'); return; }
+    if (row.type === 'rail' && World.trainAt(p.x, ri, HALF_W)) { die('squash'); return; }
+
+    if (p.hopping) return;
+
+    if (row.type === 'ice') {
+      var fl = World.floeAt(p.x, ri);
+      if (!fl || fl.state === 'sunk') { die('water', 'ice'); return; }
     }
 
-    if (row.type === 'water' && !p.hopping) {
-      if (!World.logUnder(p.x, p.row)) { die('water'); return; }
+    if (row.type === 'water') {
+      if (!World.logUnder(p.x, ri)) { die('water'); return; }
       // Carried past the bank: still on screen when it happens, so you see it.
-      if (p.x < World.CFG.X_MIN - 1 || p.x > World.CFG.X_MAX + 1) { die('water'); return; }
+      if (p.x < World.CFG.X_MIN - 1 || p.x > World.CFG.X_MAX + 1) { die('water', 'drift'); return; }
     }
   }
 
@@ -4714,6 +5141,14 @@ body { overscroll-behavior: none; }
           save.dodges++;
           persist();
           floater('DODGED', p.x, p.row + 0.6, '#8ee36a');
+          // Three clean escapes from the black car earn you the dissident.
+          if (save.dodges >= 3 && save.owned.indexOf('kotleta') === -1) {
+            save.owned.push('kotleta');
+            persist();
+            g.unlockedSecret = true;
+            floater('SECRET COMRADE', p.x, p.row + 1.0, '#f5c542');
+            PP.Audio.unlockChime();
+          }
           checkDirectives();
         }
         v.state = 'grab';
@@ -4833,8 +5268,9 @@ body { overscroll-behavior: none; }
       PP.Music.stop();
     },
 
-    start: function () {
-      World.reset();
+    start: function (opts) {
+      g.daily = opts && opts.daily ? today() : null;
+      World.reset(g.daily ? dailySeed(g.daily) : undefined);
       g.mode = 'playing';
       g.player = newPlayer();
       g.showPlayer = true;
@@ -4842,11 +5278,16 @@ body { overscroll-behavior: none; }
       g.tide.row = -7;
       g.tide.speed = 1.05;
       g.score = 0;
+      g.maxRow = g.player.row;
+      g.started = false;
+      g.banked = false;
+      g.startBest = save.best || 0;
+      g.unlockedSecret = false;
       g.runCoins = 0;
       g.idleT = 0;
       g.deathT = 0;
       g.nextMilestone = 25;
-      g.bestLineRow = (save.best || 0) >= 3 ? save.best : -1;
+      g.bestLineRow = g.startBest >= 3 ? g.startBest + World.CFG.START_ROW : -1;
       g.bestCrossed = false;
       g.van.state = 'idle';
       g.van.t = 0;
@@ -4870,7 +5311,12 @@ body { overscroll-behavior: none; }
     },
 
     pause: function () {
-      if (g.mode === 'playing') { g.mode = 'paused'; PP.Music.stop(); return true; }
+      if (g.mode === 'playing') {
+        g.mode = 'paused';
+        g.shake = 0;   // a frozen frame should not be a shaken one
+        PP.Music.stop();
+        return true;
+      }
       return false;
     },
 
@@ -4916,24 +5362,49 @@ body { overscroll-behavior: none; }
       return win;
     },
 
-    /* Distance bonus is paid out at the end of the run. */
+    /* Kibble is banked as it is earned; the distance bonus and your best
+       are settled once, when the run ends — however it ends. */
     finishRun: function () {
       var bonus = Math.floor(g.score / 5);
-      var earned = g.runCoins + bonus;
-      var newBest = g.score > (save.best || 0);
-      if (newBest) save.best = g.score;
-      save.coins = (save.coins || 0) + earned;
-      // Three clean escapes from the black car earn you the dissident.
-      var unlockedSecret = false;
-      if (save.dodges >= 3 && save.owned.indexOf('kotleta') === -1) {
-        save.owned.push('kotleta');
-        unlockedSecret = true;
+      var newBest = g.score > g.startBest;
+      var newDaily = false;
+      if (!g.banked) {
+        g.banked = true;
+        if (g.score > (save.best || 0)) save.best = g.score;
+        if (g.daily) {
+          newDaily = g.score > dailyBest();
+          if (newDaily || !save.daily || save.daily.day !== g.daily) {
+            save.daily = { day: g.daily, best: Math.max(g.score, dailyBest()) };
+          }
+        }
+        save.coins = (save.coins || 0) + bonus;
+        // Older saves may have earned the dissident before it unlocked live.
+        if (save.dodges >= 3 && save.owned.indexOf('kotleta') === -1) {
+          save.owned.push('kotleta');
+          g.unlockedSecret = true;
+        }
+        persist();
       }
-      persist();
       return {
-        score: g.score, best: save.best, earned: earned, newBest: newBest,
-        kind: g.player.deathKind, unlockedSecret: unlockedSecret
+        score: g.score, best: save.best, earned: g.runCoins + bonus, bonus: bonus, newBest: newBest,
+        kind: g.player.deathCause || g.player.deathKind, unlockedSecret: g.unlockedSecret,
+        daily: g.daily, dailyBest: g.daily ? dailyBest() : 0, newDaily: newDaily
       };
+    },
+
+    /* Leaving a run early (quit, restart, closing the tab) still banks it. */
+    /* Your record is written as you set it, so a closed tab keeps it. */
+    saveProgress: function () {
+      if (g.player && g.score > (save.best || 0) && g.mode !== 'menu') {
+        save.best = g.score;
+        persist();
+      }
+    },
+
+    abandon: function () {
+      if (g.player && !g.banked && (g.mode === 'playing' || g.mode === 'paused' || g.mode === 'dying')) {
+        Game.finishRun();
+      }
     },
 
     /* For the title screen: the three active directives, displayable. */
@@ -4942,11 +5413,14 @@ body { overscroll-behavior: none; }
       return save.directives.map(function (d) {
         var tpl = templateById(d.id) || { label: d.id, reward: 0, type: '' };
         var progText = '';
-        if (tpl.type === 'hops') progText = Math.min(save.hops, tpl.target) + '/' + tpl.target;
+        if (tpl.type === 'hops') progText = Math.min(save.hops - (d.base || 0), tpl.target) + '/' + tpl.target;
         return { label: tpl.label, reward: tpl.reward, done: d.done, progText: progText };
       });
     },
     dodgeCount: function () { return save.dodges; },
+    today: today,
+    dailySeed: dailySeed,
+    dailyBest: dailyBest,
 
     playerScreenPos: function () {
       return {
@@ -4965,10 +5439,14 @@ body { overscroll-behavior: none; }
       if (g.mode === 'playing' || g.mode === 'dying' || g.mode === 'dead') {
         World.update(dt, g.player.row);
         if (g.mode === 'playing') {
-          g.idleT += dt;
+          // The Collective waits for you to make the first move.
+          if (g.started) g.idleT += dt;
+          if (g.streak && World.time() - g.lastFwdT >= 0.9) g.streak = 0;
           updatePlayer(dt);
-          updateTide(dt);
-          updateVan(dt);
+          if (g.started) {
+            updateTide(dt);
+            updateVan(dt);
+          }
           updateTraffic(dt);
         } else {
           // The tide keeps rolling over the scene while the card comes up.
@@ -5028,10 +5506,25 @@ body { overscroll-behavior: none; }
     van: {
       title: 'DETAINED',
       flavor: 'A black car happened to be passing. A black car is always passing.'
+    },
+    ice: {
+      title: 'ON THIN ICE',
+      flavor: 'The river froze for the Party, not for you.'
+    },
+    drift: {
+      title: 'LOST AT SEA',
+      flavor: 'You rode the log past the edge of the map. The map is also state property.'
+    },
+    parade: {
+      title: 'CONSCRIPTED',
+      flavor: 'You joined the parade. The parade did not ask. Left, right, left, right.'
     }
   };
 
+  var current = 'screen-title';
+
   function showScreen(id) {
+    current = id;
     SCREENS.forEach(function (s) {
       var el = U.$(s);
       if (el) el.classList.toggle('hidden', s !== id);
@@ -5050,6 +5543,8 @@ body { overscroll-behavior: none; }
     U.$('p-coins').textContent = Game.save.coins || 0;
     refreshLotteryButtons();
     refreshDirectivesPanel();
+    var best = Game.dailyBest();
+    U.$('daily-sub').textContent = best > 0 ? 'today\u2019s best: ' + best + ' m' : 'same map for everyone today';
   }
 
   function refreshDirectivesPanel() {
@@ -5151,24 +5646,33 @@ body { overscroll-behavior: none; }
   /* ── Flow ───────────────────────────────────────────────────────── */
 
   function toMenu() {
+    Game.abandon();
     Game.enterMenu();
     refreshStats();
     showScreen('screen-title');
   }
 
-  var hintTimer = null;
+  var touchFirst = !!(global.matchMedia && global.matchMedia('(pointer: coarse)').matches);
 
-  function startRun() {
-    Game.start();
+  var lastDaily = false;
+
+  /* opts.daily: run today's shared map. Without opts, repeat the last kind
+     of run (RUN AGAIN and R stay on the Daily Escape if you were on it). */
+  function startRun(opts) {
+    if (opts && typeof opts.daily === 'boolean') lastDaily = opts.daily;
+    Game.abandon();   // restarting mid-run still banks what you earned
+    Game.start({ daily: lastDaily });
     elScore.textContent = '0';
     elCoins.textContent = '0';
     hideScreens();
-    // Coach the press-and-release hop for the first few escapes.
+    // Coach the controls for the first few escapes; the chase waits for
+    // your first hop, so the hint can stay up until then.
     var hint = U.$('hint');
     if (hint && (Game.save.runs || 0) <= 3) {
+      hint.textContent = touchFirst
+        ? 'tap to hop \u00b7 swipe to dodge'
+        : 'arrow keys to hop \u00b7 they move when you do';
       hint.classList.remove('hidden');
-      if (hintTimer) clearTimeout(hintTimer);
-      hintTimer = setTimeout(function () { hint.classList.add('hidden'); }, 6000);
     }
   }
 
@@ -5185,12 +5689,62 @@ body { overscroll-behavior: none; }
     U.$('o-score').textContent = result.score;
     U.$('o-best').textContent = result.best;
     U.$('o-coins').textContent = result.earned;
+    U.$('o-coins-label').textContent = result.bonus > 0
+      ? 'kibble (+' + result.bonus + ' distance)' : 'kibble earned';
     U.$('o-newbest').classList.toggle('hidden', !result.newBest);
     U.$('o-secret').classList.toggle('hidden', !result.unlockedSecret);
+    U.$('o-daily').classList.toggle('hidden', !result.daily);
+    if (result.daily) {
+      U.$('o-daily').textContent = 'DAILY ESCAPE \u00b7 ' + (result.newDaily ? 'TODAY\u2019S BEST' : 'BEST TODAY ' + result.dailyBest + ' m');
+    }
     if (result.unlockedSecret) PP.Audio.unlockChime();
+    lastResult = result;
     refreshStats();
     showScreen('screen-over');
   }
+
+  /* ── Sharing ────────────────────────────────────────────────────── */
+
+  var lastResult = null;
+  var toastTimer = null;
+
+  function toast(text) {
+    var el = U.$('toast');
+    el.textContent = text;
+    el.classList.remove('hidden');
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { el.classList.add('hidden'); }, 2600);
+  }
+
+  function shareLink(daily) {
+    var base = /^https?:/.test(global.location.protocol)
+      ? global.location.origin + global.location.pathname
+      : 'https://cdft.github.io/Test-game/';
+    return base + (daily ? '?daily' : '');
+  }
+
+  function shareRun() {
+    var r = lastResult;
+    if (!r) return;
+    var text = r.daily
+      ? 'I got ' + r.score + ' m from the Collective on today\u2019s Daily Escape in Paws & Politburo. Same map for everyone today \u2014 beat me.'
+      : 'I got ' + r.score + ' m from the Collective in Paws & Politburo. Beat that.';
+    var url = shareLink(!!r.daily);
+    if (global.navigator.share) {
+      global.navigator.share({ title: 'Paws & Politburo', text: text, url: url }).catch(function () { /* dismissed */ });
+      return;
+    }
+    var all = text + ' ' + url;
+    if (global.navigator.clipboard && global.navigator.clipboard.writeText) {
+      global.navigator.clipboard.writeText(all).then(function () {
+        toast('Copied \u2014 paste it to a friend');
+      }, function () { toast(all); });
+    } else {
+      toast(all);
+    }
+  }
+
+  U.on(U.$('btn-share'), 'click', shareRun);
 
   Game.g.onDeath = onDeath;
 
@@ -5208,18 +5762,40 @@ body { overscroll-behavior: none; }
 
   /* ── Buttons ────────────────────────────────────────────────────── */
 
-  U.on(U.$('btn-play'), 'click', function () { PP.Audio.unlock(); startRun(); });
-  U.on(U.$('btn-again'), 'click', startRun);
+  U.on(U.$('btn-play'), 'click', function () { PP.Audio.unlock(); startRun({ daily: false }); });
+  U.on(U.$('btn-again'), 'click', function () { startRun(); });
+  U.on(U.$('btn-daily'), 'click', function () { PP.Audio.unlock(); startRun({ daily: true }); });
   U.on(U.$('btn-menu'), 'click', toMenu);
   U.on(U.$('btn-resume'), 'click', function () { Game.resume(); hideScreens(); });
-  U.on(U.$('btn-quit'), 'click', toMenu);
+  // Giving up takes two taps, so a thumb that misses Resume doesn't end the run.
+  var quitArmed = null;
+  U.on(U.$('btn-quit'), 'click', function () {
+    var btn = U.$('btn-quit');
+    if (!quitArmed) {
+      btn.textContent = 'Tap again to give up';
+      btn.classList.add('armed');
+      quitArmed = setTimeout(function () {
+        quitArmed = null;
+        btn.textContent = 'Give up, go home';
+        btn.classList.remove('armed');
+      }, 2500);
+      return;
+    }
+    clearTimeout(quitArmed);
+    quitArmed = null;
+    btn.textContent = 'Give up, go home';
+    btn.classList.remove('armed');
+    toMenu();
+  });
   U.on(U.$('btn-pause'), 'click', togglePause);
   U.on(U.$('btn-mute'), 'click', toggleMute);
   U.on(U.$('btn-help'), 'click', function () { showScreen('screen-help'); });
   U.on(U.$('btn-help-back'), 'click', function () { showScreen('screen-title'); });
-  U.on(U.$('btn-pick-back'), 'click', function () { showScreen('screen-title'); });
+  var pickerFrom = 'screen-title';
+  U.on(U.$('btn-pick-back'), 'click', function () { showScreen(pickerFrom); });
 
   function openPicker() {
+    pickerFrom = current === 'screen-over' ? 'screen-over' : 'screen-title';
     refreshStats();
     buildRoster();
     showScreen('screen-pick');
@@ -5304,9 +5880,8 @@ body { overscroll-behavior: none; }
     onCharge: function () { Game.charge(); },
     onChargeCancel: function () { Game.uncharge(); },
     onMove: function (dir) {
-      hideHint();
-      if (Game.isPlaying()) Game.move(dir);
-      else if (Game.mode() === 'menu' && dir === 'up') startRun();
+      if (Game.isPlaying()) { hideHint(); Game.move(dir); }
+      else if (Game.mode() === 'menu' && current === 'screen-title' && dir === 'up') startRun({ daily: false });
     },
     onAction: function (name) {
       var mode = Game.mode();
@@ -5320,19 +5895,23 @@ body { overscroll-behavior: none; }
         return;
       }
       if (name === 'primary') {
-        if (mode === 'menu') startRun();
-        else if (mode === 'dead') startRun();
+        if (mode === 'menu' && current === 'screen-title') startRun({ daily: false });
+        else if (mode === 'dead' && current === 'screen-over') startRun();
         else if (mode === 'paused') { Game.resume(); hideScreens(); }
       }
-    },
-    playerScreenPos: Game.playerScreenPos
+    }
   });
 
   /* ── Loop ───────────────────────────────────────────────────────── */
 
   PP.Render.init(canvas);
-  U.on(global, 'resize', function () { PP.Render.resize(); });
-  U.on(global, 'orientationchange', function () { setTimeout(PP.Render.resize, 120); });
+  // While paused the scene is frozen, so it is drawn once, not 60 times a
+  // second; a resize clears the canvas, so it earns one fresh frame.
+  var needsDraw = true, drawnMode = null;
+  U.on(global, 'resize', function () { PP.Render.resize(); needsDraw = true; });
+  U.on(global, 'orientationchange', function () {
+    setTimeout(function () { PP.Render.resize(); needsDraw = true; }, 120);
+  });
   U.on(document, 'visibilitychange', function () {
     if (document.hidden && Game.pause()) showScreen('screen-pause');
   });
@@ -5356,8 +5935,28 @@ body { overscroll-behavior: none; }
       U.$('combo').classList.toggle('hidden', !(Game.g.streak >= 10 && Game.mode() === 'playing'));
     }
 
-    PP.Render.draw(Game.g);
+    var mode = Game.mode();
+    if (mode !== 'paused' || needsDraw || drawnMode !== 'paused') {
+      PP.Render.draw(Game.g);
+      needsDraw = false;
+      drawnMode = mode;
+    }
   }
+
+  // Browsers only allow sound after a gesture: any tap or key anywhere
+  // (menus included) wakes the audio, so nothing waits for the first hop.
+  U.on(document, 'pointerdown', function () { PP.Audio.unlock(); }, true);
+  U.on(document, 'keydown', function () { PP.Audio.unlock(); }, true);
+
+  // A tab that is closed mid-run still keeps its record.
+  U.on(global, 'pagehide', function () { Game.saveProgress(); });
+
+  // Which build is this? Testers can quote it with a bug report.
+  var build = document.querySelector('meta[name="pp-build"]');
+  if (build && U.$('build-id')) U.$('build-id').textContent = 'build ' + build.getAttribute('content');
+
+  // A friend's Daily Escape link: point them at today's map.
+  if (/[?&]daily\b/.test(global.location.search)) U.$('btn-daily').classList.add('invited');
 
   U.$('btn-mute').textContent = PP.Audio.isMuted() ? '🔇' : '🔊';
   toMenu();

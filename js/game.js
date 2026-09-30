@@ -20,30 +20,66 @@
 
   var SAVE_KEY = 'pp.save';
 
-  var save = U.store.get(SAVE_KEY, null) || {
-    best: 0, coins: 0, runs: 0, owned: ['mittens', 'biscuit'], char: 'mittens'
-  };
+  var save = U.store.get(SAVE_KEY, null);
+  if (!save || typeof save !== 'object' || Array.isArray(save)) {
+    save = { best: 0, coins: 0, runs: 0, owned: ['mittens', 'biscuit'], char: 'mittens', v: 2 };
+  }
   if (!save.owned || !save.owned.length) save.owned = ['mittens', 'biscuit'];
   save.dodges = save.dodges || 0;
   save.hops = save.hops || 0;
+  // v2: distance is measured from where you start (row 2), not from row 0.
+  if ((save.v || 1) < 2) {
+    save.best = Math.max(0, (save.best || 0) - World.CFG.START_ROW);
+    save.v = 2;
+  }
 
   function persist() { U.store.set(SAVE_KEY, save); }
+
+  /* ── The Daily Escape ───────────────────────────────────────────────
+     One world per calendar day, the same for everyone: a date is hashed
+     into the world seed. Compare runs with friends on equal terms. */
+  function today() {
+    var d = new Date();
+    return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+  }
+
+  function dailySeed(day) {
+    var h = 2166136261;   // FNV-1a
+    var key = 'paws-daily-' + day;
+    for (var i = 0; i < key.length; i++) {
+      h ^= key.charCodeAt(i);
+      h = Math.imul(h, 16777619) >>> 0;
+    }
+    return h;
+  }
+
+  function dailyBest() {
+    return save.daily && save.daily.day === today() ? save.daily.best : 0;
+  }
+
+  /* Kibble is banked the moment it is earned, so quitting, restarting or
+     closing the tab never loses it. */
+  function earn(amount) {
+    g.runCoins += amount;
+    save.coins = (save.coins || 0) + amount;
+    persist();
+  }
 
   /* ── State Directives ─────────────────────────────────────────────
      Three rotating objectives. Complete one mid-run and the bounty is
      paid on the spot; a fresh directive replaces it next run. */
 
   var D_TEMPLATES = [
-    { id: 'dist30', label: 'Reach 30m in one run', type: 'dist', target: 30, reward: 40 },
-    { id: 'dist50', label: 'Reach 50m in one run', type: 'dist', target: 50, reward: 60 },
-    { id: 'dist80', label: 'Reach 80m in one run', type: 'dist', target: 80, reward: 90 },
-    { id: 'coins15', label: 'Pocket 15 kibble in one run', type: 'coins', target: 15, reward: 40 },
-    { id: 'rivers4', label: 'Cross 4 canals in one run', type: 'rivers', target: 4, reward: 40 },
-    { id: 'ice3', label: 'Cross 3 frozen rows in one run', type: 'ice', target: 3, reward: 50 },
-    { id: 'parade2', label: 'Slip past 2 parades in one run', type: 'parade', target: 2, reward: 50 },
-    { id: 'dodge1', label: 'Dodge the black car', type: 'dodge', target: 1, reward: 60 },
-    { id: 'hops500', label: 'Hop 500 times, in total', type: 'hops', target: 500, reward: 50 },
-    { id: 'record', label: 'Break your record', type: 'record', target: 1, reward: 50 }
+    { id: 'dist30', label: 'Reach 30m in one run', short: '30m REACHED', type: 'dist', target: 30, reward: 40 },
+    { id: 'dist50', label: 'Reach 50m in one run', short: '50m REACHED', type: 'dist', target: 50, reward: 60 },
+    { id: 'dist80', label: 'Reach 80m in one run', short: '80m REACHED', type: 'dist', target: 80, reward: 90 },
+    { id: 'coins15', label: 'Pick up 15 kibble off the street in one run', short: 'SCAVENGER', type: 'coins', target: 15, reward: 40 },
+    { id: 'rivers4', label: 'Cross 4 canals in one run', short: '4 CANALS', type: 'rivers', target: 4, reward: 40 },
+    { id: 'ice3', label: 'Cross 3 frozen rows in one run', short: 'THIN ICE WALKER', type: 'ice', target: 3, reward: 50 },
+    { id: 'parade2', label: 'Slip past 2 parades in one run', short: 'PARADE DODGER', type: 'parade', target: 2, reward: 50 },
+    { id: 'dodge1', label: 'Dodge the black car', short: 'CAR DODGED', type: 'dodge', target: 1, reward: 60 },
+    { id: 'hops500', label: 'Hop 500 times, in total', short: '500 HOPS', type: 'hops', target: 500, reward: 50 },
+    { id: 'record', label: 'Break your record', short: 'RECORD BROKEN', type: 'record', target: 1, reward: 50 }
   ];
 
   function templateById(id) {
@@ -53,34 +89,55 @@
 
   function pickDirective(exceptIds) {
     var pool = D_TEMPLATES.filter(function (tpl) {
+      // Nobody can break a record they have not set yet.
+      if (tpl.type === 'record' && (save.best || 0) < 3) return false;
       return exceptIds.indexOf(tpl.id) === -1;
     });
     return pool[U.randInt(0, pool.length - 1)];
   }
 
+  /* A directive remembers where its counter stood when it was issued, so
+     "hop 500 times" means 500 more hops, not 500 in your whole life. */
+  function issue(tpl) {
+    var d = { id: tpl.id, done: false };
+    if (tpl.type === 'hops') d.base = save.hops;
+    return d;
+  }
+
   function ensureDirectives() {
-    if (save.directives && save.directives.length === 3) return;
-    save.directives = [];
-    for (var i = 0; i < 3; i++) {
-      var have = save.directives.map(function (d) { return d.id; });
-      save.directives.push({ id: pickDirective(have).id, done: false });
+    var valid = (save.directives || []).filter(function (d) {
+      if (!d || !templateById(d.id)) return false;
+      // An old save may hold a record directive nobody can meet yet.
+      return !(d.id === 'record' && !d.done && (save.best || 0) < 3);
+    });
+    if (valid.length !== 3) {
+      save.directives = valid.slice(0, 3);
+      while (save.directives.length < 3) {
+        var have = save.directives.map(function (d) { return d.id; });
+        save.directives.push(issue(pickDirective(have)));
+      }
     }
+    // Saves from before baselines existed: start counting from now.
+    save.directives.forEach(function (d) {
+      if (d.id === 'hops500' && d.base === undefined) d.base = save.hops;
+    });
     persist();
   }
 
   function refreshDirectives() {
+    ensureDirectives();
     var changed = false;
     for (var i = 0; i < save.directives.length; i++) {
       if (save.directives[i].done) {
         var have = save.directives.map(function (d) { return d.id; });
-        save.directives[i] = { id: pickDirective(have).id, done: false };
+        save.directives[i] = issue(pickDirective(have));
         changed = true;
       }
     }
     if (changed) persist();
   }
 
-  function directiveValue(tpl) {
+  function directiveValue(tpl, d) {
     switch (tpl.type) {
       case 'dist': return g.score;
       case 'coins': return g.runStats.kibble;
@@ -88,8 +145,8 @@
       case 'ice': return g.runStats.iceX;
       case 'parade': return g.runStats.paradeX;
       case 'dodge': return g.runStats.dodged ? 1 : 0;
-      case 'hops': return save.hops;
-      case 'record': return g.bestCrossed ? 1 : 0;
+      case 'hops': return save.hops - (d.base || 0);
+      case 'record': return g.startBest >= 3 && g.score > g.startBest ? 1 : 0;
     }
     return 0;
   }
@@ -101,11 +158,11 @@
       if (d.done) continue;
       var tpl = templateById(d.id);
       if (!tpl) continue;
-      if (directiveValue(tpl) >= tpl.target) {
+      if (directiveValue(tpl, d) >= tpl.target) {
         d.done = true;
-        persist();
-        g.runCoins += tpl.reward;
-        floater('DIRECTIVE +' + tpl.reward, g.player.x, g.player.row + 1.0, '#8ee36a');
+        // Paid on the spot, into the bank, not just onto the run's tally.
+        earn(tpl.reward);
+        floater((tpl.short || 'DIRECTIVE') + ' +' + tpl.reward, g.player.x, g.player.row + 1.0, '#8ee36a');
         PP.Audio.unlockChime();
       }
     }
@@ -124,7 +181,13 @@
     flash: 0,
     showPlayer: false,
     char: PP.Characters.byId(save.char),
-    score: 0,
+    score: 0,                  // metres: furthest row reached, from the start line
+    maxRow: 0,
+    started: false,            // the chase waits for your first hop
+    daily: null,               // the day's date on a Daily Escape run
+    banked: false,             // this run's distance bonus and best are saved
+    startBest: 0,
+    unlockedSecret: false,
     runCoins: 0,
     idleT: 0,
     deathT: 0,
@@ -207,6 +270,11 @@
   }
 
   function floater(text, x, row, color) {
+    // Rewards often land on the same hop; stack them instead of overprinting.
+    for (var i = 0; i < g.floaters.length; i++) {
+      var f = g.floaters[i];
+      if (f.life > 0.35 && Math.abs(f.x - x) < 2.5 && Math.abs(f.row - row) < 0.7) row = f.row + 0.7;
+    }
     g.floaters.push({ text: text, x: x, row: row, life: 1.0, maxLife: 1.0, color: color });
   }
 
@@ -234,6 +302,11 @@
     g.flash = Math.max(0, g.flash - dt * 3.0);
   }
 
+  /* Momentum: ten quick hops onto new ground, kept alive by the next one. */
+  function hasMomentum() {
+    return g.streak >= 10 && World.time() - g.lastFwdT < 0.9;
+  }
+
   /* ── Movement ───────────────────────────────────────────────────── */
 
   function tryMove(dir) {
@@ -248,7 +321,8 @@
       return;
     }
 
-    var baseX = Math.round(p.x);
+    // A log can carry you to the very edge; hop from the nearest real column.
+    var baseX = U.clamp(Math.round(p.x), World.CFG.X_MIN, World.CFG.X_MAX);
     var toX = baseX, toRow = p.row;
     if (dir === 'up') toRow = p.row + 1;
     else if (dir === 'down') toRow = p.row - 1;
@@ -272,11 +346,15 @@
     p.hopping = true;
     p.hopT = 0;
     p.onLog = null;
+    g.started = true;
     if (dir === 'up') {
       g.idleT = 0;
-      var nowT = World.time();
-      g.streak = (nowT - g.lastFwdT < 0.9) ? g.streak + 1 : 1;
-      g.lastFwdT = nowT;
+      // Momentum is built on new ground only; bouncing in place earns none.
+      if (toRow > g.maxRow) {
+        var nowT = World.time();
+        g.streak = (nowT - g.lastFwdT < 0.9) ? g.streak + 1 : 1;
+        g.lastFwdT = nowT;
+      }
     }
     save.hops++;
     PP.Audio.hop(g.char.species === 'cat' ? 1.12 : 0.85);
@@ -308,7 +386,7 @@
     }
 
     // Crossing your own record line is a moment.
-    if (!g.bestCrossed && g.bestLineRow >= 3 && p.row > g.bestLineRow) {
+    if (!g.bestCrossed && g.bestLineRow >= 0 && p.row > g.bestLineRow) {
       g.bestCrossed = true;
       floater('RECORD BROKEN', p.x, p.row + 0.6, '#f5c542');
       puff(p.x, p.row, '#f5c542', 16, 2.6);
@@ -319,26 +397,27 @@
     var coin = World.coinAt(Math.round(p.x), p.row);
     if (coin) {
       coin.taken = true;
-      var mult = g.streak >= 10 ? 2 : 1;   // momentum pays double
-      g.runCoins += COIN_VALUE * mult;
+      var mult = hasMomentum() ? 2 : 1;   // momentum pays double
       g.runStats.kibble += COIN_VALUE * mult;
+      earn(COIN_VALUE * mult);
       floater('+' + (COIN_VALUE * mult), p.x, p.row, '#f5c542');
       puff(p.x, p.row, '#f5c542', 8, 1.6);
       PP.Audio.coin();
       checkDirectives();
     }
 
-    if (p.row > g.score) {
-      g.score = p.row;
+    if (p.row > g.maxRow) {
+      g.maxRow = p.row;
+      g.score = Math.max(0, g.maxRow - World.CFG.START_ROW);
       // The row now fully behind you counts as crossed.
-      var behind = World.row(g.score - 1);
+      var behind = World.row(g.maxRow - 1);
       if (behind) {
         if (behind.type === 'water') g.runStats.waterX++;
         else if (behind.type === 'ice') g.runStats.iceX++;
         else if (behind.type === 'parade') g.runStats.paradeX++;
         else if (behind.type === 'checkpoint') {
           // Through the gate: the paperwork delays them.
-          g.runCoins += 25;
+          earn(25);
           g.tide.row = Math.max(-7, g.tide.row - 2);
           floater('SECTOR CLEARED +25', p.x, p.row + 1.0, '#f5c542');
           g.flash = 0.22;
@@ -353,6 +432,11 @@
         PP.Audio.milestone();
       }
     }
+
+    // Where you landed decides whether you live, before any buffered hop
+    // can carry you on (otherwise a quick tapper could walk on water).
+    checkDeath();
+    if (p.dead) { g.queued = null; return; }
 
     if (g.queued) {
       var q = g.queued;
@@ -422,16 +506,22 @@
     checkDeath();
   }
 
-  function die(kind) {
+  /* `kind` is how the death looks; `cause` picks the game-over card. */
+  function die(kind, cause) {
     var p = g.player;
     if (p.dead) return;
     p.dead = true;
     p.deathKind = kind;
+    p.deathCause = cause || kind;
     p.hopping = false;
     g.mode = 'dying';
     g.deathT = 0;
     // A beat of slow motion sells the impact; conversion is already slow.
     if (kind !== 'caught') g.slowmoT = 0.45;
+    // And the phone in your hand feels it (where phones allow it).
+    if (global.navigator && global.navigator.vibrate && !PP.Audio.isMuted()) {
+      try { global.navigator.vibrate(kind === 'caught' ? [40, 60, 40] : 70); } catch (e) { /* not allowed */ }
+    }
 
     if (kind === 'squash') {
       g.shake = 1;
@@ -460,24 +550,33 @@
 
   function checkDeath() {
     var p = g.player;
-    var row = World.row(p.row);
-    if (!row) return;
-
     if (g.tide.row >= p.row - 0.05) { die('caught'); return; }
 
-    if (row.type === 'road' && World.carAt(p.x, p.row, HALF_W)) { die('squash'); return; }
-    if (row.type === 'parade' && World.carAt(p.x, p.row, HALF_W)) { die('caught'); return; }
-    if (row.type === 'rail' && World.trainAt(p.x, p.row, HALF_W)) { die('squash'); return; }
+    // Mid-hop between rows, traffic on the row you are landing in can reach
+    // you once you are drawn over it; the row you are leaving cannot.
+    var ri = p.row;
+    if (ri !== Math.floor(ri)) {
+      if (p.hopT / HOP_TIME < 0.5) return;
+      ri = p.toRow;
+    }
+    var row = World.row(ri);
+    if (!row) return;
 
-    if (row.type === 'ice' && !p.hopping) {
-      var fl = World.floeAt(p.x, p.row);
-      if (!fl || fl.state === 'sunk') { die('water'); return; }
+    if (row.type === 'road' && World.carAt(p.x, ri, HALF_W)) { die('squash'); return; }
+    if (row.type === 'parade' && World.carAt(p.x, ri, HALF_W)) { die('caught', 'parade'); return; }
+    if (row.type === 'rail' && World.trainAt(p.x, ri, HALF_W)) { die('squash'); return; }
+
+    if (p.hopping) return;
+
+    if (row.type === 'ice') {
+      var fl = World.floeAt(p.x, ri);
+      if (!fl || fl.state === 'sunk') { die('water', 'ice'); return; }
     }
 
-    if (row.type === 'water' && !p.hopping) {
-      if (!World.logUnder(p.x, p.row)) { die('water'); return; }
+    if (row.type === 'water') {
+      if (!World.logUnder(p.x, ri)) { die('water'); return; }
       // Carried past the bank: still on screen when it happens, so you see it.
-      if (p.x < World.CFG.X_MIN - 1 || p.x > World.CFG.X_MAX + 1) { die('water'); return; }
+      if (p.x < World.CFG.X_MIN - 1 || p.x > World.CFG.X_MAX + 1) { die('water', 'drift'); return; }
     }
   }
 
@@ -519,6 +618,14 @@
           save.dodges++;
           persist();
           floater('DODGED', p.x, p.row + 0.6, '#8ee36a');
+          // Three clean escapes from the black car earn you the dissident.
+          if (save.dodges >= 3 && save.owned.indexOf('kotleta') === -1) {
+            save.owned.push('kotleta');
+            persist();
+            g.unlockedSecret = true;
+            floater('SECRET COMRADE', p.x, p.row + 1.0, '#f5c542');
+            PP.Audio.unlockChime();
+          }
           checkDirectives();
         }
         v.state = 'grab';
@@ -638,8 +745,9 @@
       PP.Music.stop();
     },
 
-    start: function () {
-      World.reset();
+    start: function (opts) {
+      g.daily = opts && opts.daily ? today() : null;
+      World.reset(g.daily ? dailySeed(g.daily) : undefined);
       g.mode = 'playing';
       g.player = newPlayer();
       g.showPlayer = true;
@@ -647,11 +755,16 @@
       g.tide.row = -7;
       g.tide.speed = 1.05;
       g.score = 0;
+      g.maxRow = g.player.row;
+      g.started = false;
+      g.banked = false;
+      g.startBest = save.best || 0;
+      g.unlockedSecret = false;
       g.runCoins = 0;
       g.idleT = 0;
       g.deathT = 0;
       g.nextMilestone = 25;
-      g.bestLineRow = (save.best || 0) >= 3 ? save.best : -1;
+      g.bestLineRow = g.startBest >= 3 ? g.startBest + World.CFG.START_ROW : -1;
       g.bestCrossed = false;
       g.van.state = 'idle';
       g.van.t = 0;
@@ -675,7 +788,12 @@
     },
 
     pause: function () {
-      if (g.mode === 'playing') { g.mode = 'paused'; PP.Music.stop(); return true; }
+      if (g.mode === 'playing') {
+        g.mode = 'paused';
+        g.shake = 0;   // a frozen frame should not be a shaken one
+        PP.Music.stop();
+        return true;
+      }
       return false;
     },
 
@@ -721,24 +839,49 @@
       return win;
     },
 
-    /* Distance bonus is paid out at the end of the run. */
+    /* Kibble is banked as it is earned; the distance bonus and your best
+       are settled once, when the run ends — however it ends. */
     finishRun: function () {
       var bonus = Math.floor(g.score / 5);
-      var earned = g.runCoins + bonus;
-      var newBest = g.score > (save.best || 0);
-      if (newBest) save.best = g.score;
-      save.coins = (save.coins || 0) + earned;
-      // Three clean escapes from the black car earn you the dissident.
-      var unlockedSecret = false;
-      if (save.dodges >= 3 && save.owned.indexOf('kotleta') === -1) {
-        save.owned.push('kotleta');
-        unlockedSecret = true;
+      var newBest = g.score > g.startBest;
+      var newDaily = false;
+      if (!g.banked) {
+        g.banked = true;
+        if (g.score > (save.best || 0)) save.best = g.score;
+        if (g.daily) {
+          newDaily = g.score > dailyBest();
+          if (newDaily || !save.daily || save.daily.day !== g.daily) {
+            save.daily = { day: g.daily, best: Math.max(g.score, dailyBest()) };
+          }
+        }
+        save.coins = (save.coins || 0) + bonus;
+        // Older saves may have earned the dissident before it unlocked live.
+        if (save.dodges >= 3 && save.owned.indexOf('kotleta') === -1) {
+          save.owned.push('kotleta');
+          g.unlockedSecret = true;
+        }
+        persist();
       }
-      persist();
       return {
-        score: g.score, best: save.best, earned: earned, newBest: newBest,
-        kind: g.player.deathKind, unlockedSecret: unlockedSecret
+        score: g.score, best: save.best, earned: g.runCoins + bonus, bonus: bonus, newBest: newBest,
+        kind: g.player.deathCause || g.player.deathKind, unlockedSecret: g.unlockedSecret,
+        daily: g.daily, dailyBest: g.daily ? dailyBest() : 0, newDaily: newDaily
       };
+    },
+
+    /* Leaving a run early (quit, restart, closing the tab) still banks it. */
+    /* Your record is written as you set it, so a closed tab keeps it. */
+    saveProgress: function () {
+      if (g.player && g.score > (save.best || 0) && g.mode !== 'menu') {
+        save.best = g.score;
+        persist();
+      }
+    },
+
+    abandon: function () {
+      if (g.player && !g.banked && (g.mode === 'playing' || g.mode === 'paused' || g.mode === 'dying')) {
+        Game.finishRun();
+      }
     },
 
     /* For the title screen: the three active directives, displayable. */
@@ -747,11 +890,14 @@
       return save.directives.map(function (d) {
         var tpl = templateById(d.id) || { label: d.id, reward: 0, type: '' };
         var progText = '';
-        if (tpl.type === 'hops') progText = Math.min(save.hops, tpl.target) + '/' + tpl.target;
+        if (tpl.type === 'hops') progText = Math.min(save.hops - (d.base || 0), tpl.target) + '/' + tpl.target;
         return { label: tpl.label, reward: tpl.reward, done: d.done, progText: progText };
       });
     },
     dodgeCount: function () { return save.dodges; },
+    today: today,
+    dailySeed: dailySeed,
+    dailyBest: dailyBest,
 
     playerScreenPos: function () {
       return {
@@ -770,10 +916,14 @@
       if (g.mode === 'playing' || g.mode === 'dying' || g.mode === 'dead') {
         World.update(dt, g.player.row);
         if (g.mode === 'playing') {
-          g.idleT += dt;
+          // The Collective waits for you to make the first move.
+          if (g.started) g.idleT += dt;
+          if (g.streak && World.time() - g.lastFwdT >= 0.9) g.streak = 0;
           updatePlayer(dt);
-          updateTide(dt);
-          updateVan(dt);
+          if (g.started) {
+            updateTide(dt);
+            updateVan(dt);
+          }
           updateTraffic(dt);
         } else {
           // The tide keeps rolling over the scene while the card comes up.

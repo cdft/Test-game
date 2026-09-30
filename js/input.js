@@ -14,25 +14,35 @@
   };
 
   var SWIPE_MIN = 26;      // px before a drag counts as a swipe
-  var TAP_DEAD = 34;       // px around the player that means "forward"
 
   function init(canvas, handlers) {
-    var start = null;
-    var moved = false;
+    // Every finger is tracked on its own, so a thumb resting on the glass
+    // never turns another thumb's tap into a phantom swipe.
+    var pointers = {};
 
     function move(dir) {
       PP.Audio.unlock();
       handlers.onMove(dir);
     }
 
+    function held() {
+      for (var k in pointers) if (Object.prototype.hasOwnProperty.call(pointers, k)) return true;
+      return false;
+    }
+
     U.on(global, 'keydown', function (e) {
       var dir = KEY_DIR[e.code];
       if (dir) {
+        // A held arrow keeps hopping; that is a feature.
         e.preventDefault();
         move(dir);
         return;
       }
+      // Everything else fires once per press, not on every auto-repeat.
+      if (e.repeat) return;
       if (e.code === 'Space' || e.code === 'Enter') {
+        // A focused button gets its own click; don't hijack it.
+        if (e.target && e.target.tagName === 'BUTTON') return;
         e.preventDefault();
         PP.Audio.unlock();
         handlers.onAction('primary');
@@ -47,52 +57,45 @@
 
     function pos(e) {
       var rect = canvas.getBoundingClientRect();
-      var src = e.touches && e.touches.length ? e.touches[0]
-        : (e.changedTouches && e.changedTouches.length ? e.changedTouches[0] : e);
-      return { x: src.clientX - rect.left, y: src.clientY - rect.top };
+      return { x: e.clientX - rect.left, y: e.clientY - rect.top };
     }
 
     function down(e) {
-      start = pos(e);
-      moved = false;
+      var p = pos(e);
+      pointers[e.pointerId] = { x: p.x, y: p.y, moved: false };
       PP.Audio.unlock();
       // Press-and-hold: the animal crouches until you release.
       if (handlers.onCharge) handlers.onCharge();
     }
 
     function drag(e) {
-      if (!start || moved) return;
+      var s = pointers[e.pointerId];
+      if (!s || s.moved) return;
       var p = pos(e);
-      var dx = p.x - start.x;
-      var dy = p.y - start.y;
+      var dx = p.x - s.x;
+      var dy = p.y - s.y;
       if (Math.abs(dx) < SWIPE_MIN && Math.abs(dy) < SWIPE_MIN) return;
-      moved = true;
+      s.moved = true;
       if (Math.abs(dx) > Math.abs(dy)) move(dx > 0 ? 'right' : 'left');
       else move(dy > 0 ? 'down' : 'up');
     }
 
     function up(e) {
-      if (!start) return;
-      if (!moved) {
-        // A tap: read the direction from where it landed relative to the player.
-        var p = pos(e);
-        var anchor = handlers.playerScreenPos();
-        var dx = p.x - anchor.x;
-        var dy = p.y - anchor.y;
-        if (Math.abs(dx) < TAP_DEAD && Math.abs(dy) < TAP_DEAD) move('up');
-        else if (Math.abs(dx) > Math.abs(dy)) move(dx > 0 ? 'right' : 'left');
-        else move(dy > 0 ? 'down' : 'up');
-      }
-      start = null;
-      moved = false;
+      var s = pointers[e.pointerId];
+      if (!s) return;
+      delete pointers[e.pointerId];
+      // A tap anywhere is a hop forward. Sideways and back are swipes, so a
+      // thumb resting low on the screen never walks you into the tide.
+      if (!s.moved) move('up');
+      else if (!held() && handlers.onChargeCancel) handlers.onChargeCancel();
     }
 
     U.on(canvas, 'pointerdown', down);
     U.on(canvas, 'pointermove', drag);
     U.on(canvas, 'pointerup', up);
-    U.on(canvas, 'pointercancel', function () {
-      start = null;
-      if (handlers.onChargeCancel) handlers.onChargeCancel();
+    U.on(canvas, 'pointercancel', function (e) {
+      delete pointers[e.pointerId];
+      if (!held() && handlers.onChargeCancel) handlers.onChargeCancel();
     });
     U.on(canvas, 'contextmenu', function (e) { e.preventDefault(); });
     U.on(canvas, 'touchstart', function (e) { e.preventDefault(); }, { passive: false });

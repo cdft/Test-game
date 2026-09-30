@@ -65,6 +65,7 @@
     view.w = w;
     view.h = h;
     view.dpr = dpr;
+    CH.clearSprites();   // cached at the old size and pixel ratio
     // Fit roughly 11 columns across, but never let tiles get silly.
     view.tile = U.clamp(Math.min(w / 11, h / 12), 26, 96);
     view.rowH = view.tile * 0.84;
@@ -142,13 +143,16 @@
     ctx.fill();
 
     // Skyline in two parallax layers; the far one owns the smokestacks.
-    var off2 = U.mod(cam.x * view.tile * 0.12, 90);
-    for (i = -1; i < view.w / 90 + 2; i++) {
-      var bx2 = i * 90 - off2;
-      var bh2 = 22 + ((i * 29) % 4) * 11;
+    // Each building belongs to a fixed slot of the city, not a slot of the
+    // screen, so panning slides the skyline instead of re-dealing it.
+    var scroll2 = cam.x * view.tile * 0.12;
+    var first2 = Math.floor(scroll2 / 90) - 1;
+    for (i = first2; i <= first2 + Math.ceil(view.w / 90) + 2; i++) {
+      var bx2 = i * 90 - scroll2;
+      var bh2 = 22 + U.mod(i * 29, 4) * 11;
       ctx.fillStyle = 'rgba(88,52,84,0.42)';
       ctx.fillRect(bx2, hz - bh2, 70, bh2);
-      if (((i % 5) + 5) % 5 === 2) {
+      if (U.mod(i, 5) === 2) {
         ctx.fillRect(bx2 + 52, hz - bh2 - 26, 9, 26);
         ctx.fillStyle = '#9c8ba0';
         for (var sm = 0; sm < 3; sm++) {
@@ -161,16 +165,18 @@
         ctx.globalAlpha = 1;
       }
     }
-    var off = U.mod(cam.x * view.tile * 0.25, 120);
-    for (i = -1; i < view.w / 120 + 2; i++) {
-      var bx = i * 120 - off;
-      var bh = 38 + ((i * 37) % 5) * 15;
-      ctx.fillStyle = 'rgba(34,22,44,0.88)';
+    var scroll = cam.x * view.tile * 0.25;
+    var first = Math.floor(scroll / 120) - 1;
+    for (i = first; i <= first + Math.ceil(view.w / 120) + 2; i++) {
+      var bx = i * 120 - scroll;
+      var bh = 38 + U.mod(i * 37, 5) * 15;
+      // Solid, so the sun sets behind the city rather than through it.
+      ctx.fillStyle = '#2e1d35';
       ctx.fillRect(bx, hz - bh, 96, bh);
       ctx.fillStyle = 'rgba(255,186,110,0.14)';
       for (var wy = 0; wy < bh - 14; wy += 14) {
         for (var wx2 = 0; wx2 < 80; wx2 += 18) {
-          if (((i * 7 + wy + wx2) % 5) < 2) ctx.fillRect(bx + 8 + wx2, hz - bh + 8 + wy, 8, 7);
+          if (U.mod(i * 7 + wy + wx2, 5) < 2) ctx.fillRect(bx + 8 + wx2, hz - bh + 8 + wy, 8, 7);
         }
       }
     }
@@ -184,6 +190,25 @@
   }
 
   /* ── Terrain bands ──────────────────────────────────────────────── */
+
+  /* Fill a band with a texture that belongs to the ground: it slides with
+     the row and the camera instead of staying stuck to the glass. */
+  function groundFill(pat, alpha, row, top, h, cam) {
+    var P = 64;
+    var ox = U.mod(sx(0, cam), P) - P;
+    var oy = top - U.mod(row.index * 23, P);
+    ctx.save();
+    ctx.translate(ox, oy);
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = pat;
+    ctx.fillRect(-ox, top - oy, view.w, h);
+    ctx.restore();
+  }
+
+  /* Screen x of a world-anchored detail that repeats every `span` pixels. */
+  function worldWrap(px, span, cam) {
+    return U.mod(px - cam.x * view.tile, span);
+  }
 
   function drawBand(row, cam, t) {
     var top = sy(row.index, cam) - view.rowH / 2;
@@ -237,12 +262,7 @@
     } else if (row.type === 'road') {
       ctx.fillStyle = '#37333e';
       ctx.fillRect(x0, top, x1, h);
-      if (patterns.asphalt) {
-        ctx.globalAlpha = 0.55;
-        ctx.fillStyle = patterns.asphalt;
-        ctx.fillRect(x0, top, x1, h);
-        ctx.globalAlpha = 1;
-      }
+      if (patterns.asphalt) groundFill(patterns.asphalt, 0.55, row, top, h, cam);
       // Wheel-worn tracks where the traffic actually runs.
       ctx.fillStyle = 'rgba(0,0,0,0.10)';
       ctx.fillRect(x0, top + h * 0.30, x1, h * 0.13);
@@ -285,8 +305,8 @@
       // Specular glints drifting with the current.
       ctx.fillStyle = 'rgba(255,230,190,0.5)';
       for (var k = 0; k < 9; k++) {
-        var gp = U.mod(hash(row.index, k) * (view.w + 80) +
-          t * row.dir * row.speed * view.tile * 0.55, view.w + 80) - 40;
+        var gp = worldWrap(hash(row.index, k) * (view.w + 80) +
+          t * row.dir * row.speed * view.tile * 0.55, view.w + 80, cam) - 40;
         var gy = top + h * (0.18 + U.mod(hash(row.index, k + 40) * 7, 0.62));
         ctx.globalAlpha = Math.max(0, 0.16 + 0.16 * Math.sin(t * 2.4 + k * 1.7 + row.index));
         ctx.fillRect(gp, gy, view.tile * (0.16 + hash(row.index, k + 80) * 0.22), Math.max(1.5, view.tile * 0.03));
@@ -298,7 +318,7 @@
       ctx.lineWidth = 2;
       for (k = 0; k < 6; k++) {
         var phase = t * (row.dir > 0 ? 26 : -26) + k * 100 + row.index * 31;
-        var rx = U.mod(phase, view.w + 120) - 60;
+        var rx = worldWrap(phase, view.w + 120, cam) - 60;
         var ry = top + h * (0.25 + ((k * 3 + row.index) % 3) * 0.22);
         ctx.beginPath();
         ctx.arc(rx, ry + 6, 12, Math.PI * 1.15, Math.PI * 1.85);
@@ -326,7 +346,7 @@
       // Frost sparkles.
       ctx.fillStyle = '#ffffff';
       for (var sp2 = 0; sp2 < 10; sp2++) {
-        var spx2 = hash(row.index, sp2 + 200) * view.w;
+        var spx2 = worldWrap(hash(row.index, sp2 + 200) * view.w, view.w, cam);
         var spy2 = top + h * (0.15 + U.mod(hash(row.index, sp2 + 300) * 7, 0.7));
         ctx.globalAlpha = Math.max(0, 0.25 * Math.sin(t * 2 + sp2 * 2.2 + row.index));
         ctx.fillRect(spx2, spy2, 2, 2);
@@ -346,12 +366,7 @@
       // A paved parade route with a red runner and bunting.
       ctx.fillStyle = '#4a4450';
       ctx.fillRect(x0, top, x1, h);
-      if (patterns.asphalt) {
-        ctx.globalAlpha = 0.4;
-        ctx.fillStyle = patterns.asphalt;
-        ctx.fillRect(x0, top, x1, h);
-        ctx.globalAlpha = 1;
-      }
+      if (patterns.asphalt) groundFill(patterns.asphalt, 0.4, row, top, h, cam);
       ctx.fillStyle = 'rgba(165,20,36,0.30)';
       ctx.fillRect(x0, top + h * 0.24, x1, h * 0.55);
       ctx.fillStyle = 'rgba(245,197,66,0.25)';
@@ -362,7 +377,7 @@
       // Bunting along the far edge, anchored to the world.
       var bstep = view.tile * 0.5;
       for (var bx3 = U.mod(-cam.x * view.tile, bstep) - bstep; bx3 < view.w; bx3 += bstep) {
-        ctx.fillStyle = ((bx3 / bstep) | 0) % 2 ? '#c8102e' : '#f5c542';
+        ctx.fillStyle = U.mod(Math.round((bx3 + cam.x * view.tile) / bstep), 2) ? '#c8102e' : '#f5c542';
         ctx.beginPath();
         ctx.moveTo(bx3, top + 2);
         ctx.lineTo(bx3 + bstep * 0.5, top + 2);
@@ -373,23 +388,13 @@
     } else if (row.type === 'checkpoint') {
       ctx.fillStyle = '#6b6155';
       ctx.fillRect(x0, top, x1, h);
-      if (patterns.ballast) {
-        ctx.globalAlpha = 0.4;
-        ctx.fillStyle = patterns.ballast;
-        ctx.fillRect(x0, top, x1, h);
-        ctx.globalAlpha = 1;
-      }
+      if (patterns.ballast) groundFill(patterns.ballast, 0.4, row, top, h, cam);
       ctx.fillStyle = 'rgba(0,0,0,0.20)';
       ctx.fillRect(x0, top, x1, h * 0.08);
     } else if (row.type === 'rail') {
       ctx.fillStyle = '#665d50';
       ctx.fillRect(x0, top, x1, h);
-      if (patterns.ballast) {
-        ctx.globalAlpha = 0.6;
-        ctx.fillStyle = patterns.ballast;
-        ctx.fillRect(x0, top, x1, h);
-        ctx.globalAlpha = 1;
-      }
+      if (patterns.ballast) groundFill(patterns.ballast, 0.6, row, top, h, cam);
       ctx.fillStyle = 'rgba(0,0,0,0.16)';
       ctx.fillRect(x0, top, x1, h * 0.09);
       // Sleepers, anchored to the world.
@@ -860,7 +865,7 @@
       var skin = CH.enemySkin(car.skin);
       ctx.save();
       ctx.translate(car.kind === 'truck' ? w * 0.24 : 0, base - bodyH * (car.kind === 'truck' ? 1.0 : 1.28));
-      CH.draw(ctx, 0, s * 0.30, {
+      CH.drawEnemy(ctx, 0, s * 0.30, {
         size: s * 0.52, char: skin, facing: 'right',
         cap: car.seed < 0.5 ? 'ushanka' : 'cap'
       });
@@ -1128,7 +1133,7 @@
       var beat = t * 2.6 + car.seed * 5 + k * 0.5;
       var frac = beat - Math.floor(beat);
       var bounce = Math.sin(Math.min(frac * 1.6, 1) * Math.PI) * s * 0.08;
-      CH.draw(ctx, mx, y - bounce, {
+      CH.drawEnemy(ctx, mx, y - bounce, {
         size: s * 0.72, char: CH.enemySkin(car.skin + k), facing: facing,
         cap: (car.skin + k) % 3 === 0 ? 'ushanka' : 'cap'
       });
@@ -1350,14 +1355,16 @@
     ctx.restore();
   }
 
-  function drawVan(v, g, cam, t) {
+  /* `layer` is 'ground' (the target ring, drawn under the player) or
+     'body' (the car and the edge glow, drawn over the player's row). */
+  function drawVan(v, g, cam, t, layer) {
     var s = view.tile;
     var tx = sx(v.x, cam);
     var ty = sy(v.row, cam) + view.rowH * 0.26;
     var dir = -v.fromSide;                    // direction of travel
     var edgeX = view.w / 2 + v.fromSide * (view.w / 2 + s * 3);
 
-    if (v.state === 'warn') {
+    if (v.state === 'warn' && layer === 'ground') {
       // The locked tile, ringed — and headlights already at the kerb.
       var k = U.clamp(v.t / 0.9, 0, 1);
       var blink3 = Math.sin(t * 16) > 0;
@@ -1372,13 +1379,19 @@
       U.ellipse(ctx, tx, ty - view.rowH * 0.06, s * (0.16 + k * 0.2), s * (0.07 + k * 0.08));
       ctx.stroke();
       ctx.restore();
-      // A glow building at the screen edge on this row.
+    } else if (layer === 'ground') {
+      return;
+    } else if (v.state === 'warn') {
+      // Headlights building at the edge of the screen the car will come
+      // from, on this row: you can see which way to run.
+      var kw = U.clamp(v.t / 0.9, 0, 1);
+      var glowX = v.fromSide > 0 ? view.w : 0;
       ctx.globalCompositeOperation = 'lighter';
-      var eg = ctx.createLinearGradient(edgeX, 0, edgeX + dir * s * 4, 0);
-      eg.addColorStop(0, 'rgba(255,200,120,' + (0.20 * k).toFixed(3) + ')');
+      var eg = ctx.createLinearGradient(glowX, 0, glowX + dir * s * 4, 0);
+      eg.addColorStop(0, 'rgba(255,200,120,' + (0.34 * kw).toFixed(3) + ')');
       eg.addColorStop(1, 'rgba(255,200,120,0)');
       ctx.fillStyle = eg;
-      ctx.fillRect(Math.min(edgeX, edgeX + dir * s * 4), ty - s * 0.8, s * 4, s * 1.2);
+      ctx.fillRect(Math.min(glowX, glowX + dir * s * 4), ty - s * 0.8, s * 4, s * 1.2);
       ctx.globalCompositeOperation = 'source-over';
     } else if (v.state === 'arrive') {
       var k2 = U.clamp(v.t / 0.45, 0, 1);
@@ -1431,7 +1444,7 @@
       ctx.fillStyle = 'rgba(45,0,12,0.55)';
       for (var db = 0; db < 2; db++) {
         var hx2 = hash(row.index * 5 + db, 77);
-        var dx2 = hx2 * view.w;
+        var dx2 = sx(PP.World.CFG.X_MIN - 3 + hx2 * (PP.World.CFG.X_MAX - PP.World.CFG.X_MIN + 6), cam);
         var dy2 = top + view.rowH * (0.3 + hash(row.index, db + 31) * 0.4);
         var kind2 = (hx2 * 7 | 0) % 3;
         if (kind2 === 0) {          // a tipped food bowl
@@ -1502,20 +1515,24 @@
     ctx.fillRect(0, y - view.rowH * 2.2, view.w, view.rowH * 2.2 - s * 0.4);
 
     // A rank of marchers with banners, stepping in time.
+    // Every marcher has a fixed place in the rank (a world slot), so the
+    // same comrade keeps the same hat and flag as the camera pans.
     var spacing = s * 0.92;
-    var offset = U.mod(-cam.x * view.tile, spacing);
-    var idx = 0;
+    var scrollT = cam.x * view.tile - view.w / 2;
+    var firstSlot = Math.floor(scrollT / spacing) - 1;
     // If the bearers are below the bottom edge, their flags and placards
     // must not poke into the frame on disembodied poles.
     var propsVisible = y - s * 0.85 <= view.h;
-    for (var px = offset - spacing; px < view.w + spacing; px += spacing, idx++) {
+    for (var idx = firstSlot; ; idx++) {
+      var px = idx * spacing - scrollT;
+      if (px > view.w + spacing) break;
       // The whole rank stomps on a shared beat, half the line offset by
       // half a step — a parade, not a crowd.
-      var beat = t * 2.4 + (idx % 2) * 0.5;
+      var beat = t * 2.4 + U.mod(idx, 2) * 0.5;
       var frac = beat - Math.floor(beat);
       var bounce = Math.sin(Math.min(frac * 1.6, 1) * Math.PI) * s * 0.10;
       var skin = CH.enemySkin(idx);
-      if (idx % 4 === 1 && propsVisible) {
+      if (U.mod(idx, 4) === 1 && propsVisible) {
         ctx.fillStyle = '#5e5248';
         ctx.fillRect(px + s * 0.22, y - s * 1.5 - bounce, s * 0.05, s * 1.1);
         ctx.fillStyle = '#c8102e';
@@ -1530,7 +1547,7 @@
         ctx.fillStyle = '#f5c542';
         CH.star(ctx, px + s * 0.50 + wave * 0.5, y - s * 1.27 - bounce, s * 0.09);
       }
-      if (idx % 8 === 6 && propsVisible) {
+      if (U.mod(idx, 8) === 6 && propsVisible) {
         // A framed portrait of the Very Important Animal, held at rank
         // height in a dull brass frame — official, not collectible.
         var py2 = y - bounce;
@@ -1557,9 +1574,9 @@
         ctx.closePath();
         ctx.fill();
       }
-      CH.draw(ctx, px, y - bounce, {
+      CH.drawEnemy(ctx, px, y - bounce, {
         size: s * 0.78, char: skin, facing: 'up',
-        cap: idx % 3 === 0 ? 'ushanka' : 'cap', alpha: 0.95
+        cap: U.mod(idx, 3) === 0 ? 'ushanka' : 'cap', alpha: 0.95
       });
     }
 
@@ -1733,11 +1750,11 @@
     ctx.textAlign = 'left';
   }
 
-  /* The further you flee, the colder it gets: snow begins around 35m,
+  /* The further you flee, the colder it gets: snow begins around 25m,
      right where the rivers start freezing. Stateless — every flake's
      position is a function of time. */
   function drawSnow(cam, t) {
-    var intensity = U.clamp((cam.row - 35) / 40, 0, 0.85);
+    var intensity = U.clamp((cam.row - 26) / 40, 0, 0.85);
     if (intensity <= 0.01) return;
     var n = Math.floor(46 * intensity);
     ctx.fillStyle = '#f2f6fa';
@@ -1754,40 +1771,47 @@
   }
 
   /* Dusk grade: warm above, cool below, dark in the corners. */
-  function drawGrade() {
-    var lg = ctx.createLinearGradient(0, 0, 0, view.h);
-    lg.addColorStop(0, 'rgba(255,166,86,0.055)');
-    lg.addColorStop(0.5, 'rgba(0,0,0,0)');
-    lg.addColorStop(1, 'rgba(22,12,48,0.17)');
-    ctx.fillStyle = lg;
-    ctx.fillRect(0, 0, view.w, view.h);
-
-    var rv = ctx.createRadialGradient(
-      view.w / 2, view.h * 0.52, Math.min(view.w, view.h) * 0.45,
-      view.w / 2, view.h * 0.52, Math.max(view.w, view.h) * 0.78
-    );
-    rv.addColorStop(0, 'rgba(8,5,16,0)');
-    rv.addColorStop(1, 'rgba(8,5,16,0.22)');
-    ctx.fillStyle = rv;
-    ctx.fillRect(0, 0, view.w, view.h);
-  }
+  /* The dusk grade lives in CSS (#grade). The danger glow does too; the
+     canvas only tells it how strong to be, and only when that changes. */
+  var dangerEl = null, lastDanger = -1;
 
   function drawVignette(g) {
     var danger = g.showPlayer ? U.clamp(1 - (g.player.row - g.tide.row) / 9, 0, 1) : 0;
-    if (danger > 0.02) {
-      var rg = ctx.createRadialGradient(
-        view.w / 2, view.h * 0.55, view.h * 0.25,
-        view.w / 2, view.h * 0.55, view.h * 0.85
-      );
-      rg.addColorStop(0, 'rgba(200,16,46,0)');
-      rg.addColorStop(1, 'rgba(200,16,46,' + (0.55 * danger).toFixed(3) + ')');
-      ctx.fillStyle = rg;
-      ctx.fillRect(0, 0, view.w, view.h);
+    var dq = danger > 0.02 ? Math.round(danger * 100) / 100 : 0;
+    if (dq !== lastDanger) {
+      if (!dangerEl) dangerEl = document.getElementById('danger');
+      if (dangerEl) dangerEl.style.opacity = dq;
+      lastDanger = dq;
     }
     if (g.flash > 0) {
       ctx.fillStyle = 'rgba(255,255,255,' + (g.flash * 0.6).toFixed(3) + ')';
       ctx.fillRect(0, 0, view.w, view.h);
     }
+  }
+
+  /* Everything standing on a row: scenery, traffic, logs, floes. `alpha`
+     fades far rows in as they rise over the horizon. */
+  function drawRowThings(row, cam, t, alpha) {
+    if (alpha < 1) { ctx.save(); ctx.globalAlpha = alpha; }
+    if (row.type === 'grass') {
+      if (row.fence) drawFence(row, cam);
+      for (var d = 0; d < row.decor.length; d++) drawDecor(row, row.decor[d], cam, t);
+      drawCoin(row, cam, t);
+    } else if (row.type === 'road') {
+      for (var c = 0; c < row.cars.length; c++) drawCar(row, row.cars[c], cam, t);
+    } else if (row.type === 'water') {
+      for (var l = 0; l < row.logs.length; l++) drawLog(row, row.logs[l], cam, t);
+    } else if (row.type === 'ice') {
+      drawFloes(row, cam, t);
+    } else if (row.type === 'parade') {
+      for (var q = 0; q < row.cars.length; q++) drawSquad(row, row.cars[q], cam, t);
+    } else if (row.type === 'checkpoint') {
+      drawCheckpoint(row, cam, t);
+    } else if (row.type === 'rail') {
+      if (row.state === 'train') drawTrain(row, cam, t);
+      drawRailSignals(row, cam, t);
+    }
+    if (alpha < 1) ctx.restore();
   }
 
   /* ── Frame ──────────────────────────────────────────────────────── */
@@ -1797,6 +1821,12 @@
     var t = PP.World.time();
     if (!patterns.asphalt) buildPatterns();
 
+    // Shake moves the whole frame; paint the edges it uncovers first, or the
+    // full-screen overlays pile up on stale pixels there.
+    if (g.shake > 0.001) {
+      ctx.fillStyle = '#191026';
+      ctx.fillRect(0, 0, view.w, view.h);
+    }
     ctx.save();
     if (g.shake > 0.001) {
       ctx.translate((Math.random() - 0.5) * g.shake * 18, (Math.random() - 0.5) * g.shake * 18);
@@ -1810,17 +1840,9 @@
     // A constant screen position: the world slides beneath the skyline
     // instead of the skyline re-seating itself on every row crossed.
     horizonY = view.baseY - (depth - 0.5) * view.rowH;
+    view.horizonY = horizonY;
 
     drawSky(cam, t);
-
-    // Everything in the world is clipped at the horizon line, so a newly
-    // generated far row is born BEHIND the horizon and slides smoothly out
-    // from underneath it — instead of popping into view a full band above
-    // the previous coverage edge every time the camera crosses a row.
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(0, horizonY, view.w, view.h + 60 - horizonY);
-    ctx.clip();
 
     var playerDrawRow = Math.round(g.player.row);
     // How scared should the body language be? Purely a function of the gap.
@@ -1833,28 +1855,26 @@
       var row = i < 0 ? { index: i, type: 'grass', decor: [], blocked: {}, coin: null } : PP.World.row(i);
       if (!row) continue;
 
-      drawBand(row, cam, t);
-
-      if (row.type === 'grass') {
-        if (row.fence) drawFence(row, cam);
-        for (var d = 0; d < row.decor.length; d++) drawDecor(row, row.decor[d], cam, t);
-        drawCoin(row, cam, t);
-      } else if (row.type === 'road') {
-        for (var c = 0; c < row.cars.length; c++) drawCar(row, row.cars[c], cam, t);
-      } else if (row.type === 'water') {
-        for (var l = 0; l < row.logs.length; l++) drawLog(row, row.logs[l], cam, t);
-      } else if (row.type === 'ice') {
-        drawFloes(row, cam, t);
-      } else if (row.type === 'parade') {
-        for (var q = 0; q < row.cars.length; q++) drawSquad(row, row.cars[q], cam, t);
-      } else if (row.type === 'checkpoint') {
-        drawCheckpoint(row, cam, t);
-      } else if (row.type === 'rail') {
-        if (row.state === 'train') drawTrain(row, cam, t);
-        drawRailSignals(row, cam, t);
+      // The ground is clipped at the horizon line, so a newly generated far
+      // row is born BEHIND the horizon and slides smoothly out from under
+      // it. What stands on it is not clipped (a tree is not cut off at the
+      // crest of a hill); it fades in as its footing clears the horizon.
+      var bandTop = sy(i, cam) - view.rowH / 2;
+      var clipped = bandTop < horizonY;
+      if (clipped) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(0, horizonY, view.w, view.h + 60 - horizonY);
+        ctx.clip();
       }
+      drawBand(row, cam, t);
+      if (clipped) ctx.restore();
 
-      if (g.bestLineRow >= 3 && i === g.bestLineRow && g.showPlayer) drawBestLine(i, cam);
+      var footing = sy(i, cam) + view.rowH * 0.26;
+      var rise = U.clamp((footing - horizonY) / (view.rowH * 1.2), 0, 1);
+      if (rise > 0) drawRowThings(row, cam, t, rise);
+
+      if (g.bestLineRow >= 0 && i === g.bestLineRow && g.showPlayer) drawBestLine(i, cam);
 
       // Aerial perspective: far rows sink into the warm smog, near rows
       // cool toward the night behind you. Painted over the row's own
@@ -1862,23 +1882,25 @@
       // drawn after this and stays vivid.
       if (i > cam.row + 4) {
         var kFar = U.clamp((i - cam.row - 4) / (depth - 4), 0, 1);
+        var fogTop = Math.max(bandTop, horizonY);
         ctx.fillStyle = 'rgba(226,158,98,' + (kFar * kFar * 0.30).toFixed(3) + ')';
-        ctx.fillRect(0, sy(i, cam) - view.rowH / 2, view.w, view.rowH + 1);
+        ctx.fillRect(0, fogTop, view.w, bandTop + view.rowH + 1 - fogTop);
       } else if (i < cam.row - 1) {
         var kNear = U.clamp((cam.row - 1 - i) / 6, 0, 1);
         ctx.fillStyle = 'rgba(24,16,34,' + (kNear * 0.10).toFixed(3) + ')';
-        ctx.fillRect(0, sy(i, cam) - view.rowH / 2, view.w, view.rowH + 1);
+        ctx.fillRect(0, bandTop, view.w, view.rowH + 1);
       }
 
       if (g.tide.row >= i) drawTideBand(row, cam, g.tide.row, t);
       if (Math.floor(g.tide.row) === i) drawTideFront(cam, g.tide.row, t);
 
+      // The black car lives on a row like everything else, so nearer rows
+      // paint over it; its target ring sits on the ground under your feet.
+      var vanHere = g.van && g.van.state !== 'idle' && g.showPlayer && i === g.van.row;
+      if (vanHere) drawVan(g.van, g, cam, t, 'ground');
       if (i === playerDrawRow && g.showPlayer) drawPlayer(g.player, cam, g.playerChar || g.char, t, fear, g.streak >= 10);
+      if (vanHere) drawVan(g.van, g, cam, t, 'body');
     }
-
-    ctx.restore();   // end horizon clip
-
-    if (g.van && g.van.state !== 'idle' && g.showPlayer) drawVan(g.van, g, cam, t);
 
     // The last of the sun finds the escapee.
     if (g.showPlayer && !g.player.dead) {
@@ -1929,7 +1951,6 @@
     drawSnow(cam, t);
     ctx.restore();
 
-    drawGrade();
     drawVignette(g);
   }
 

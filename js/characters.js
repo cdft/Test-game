@@ -20,8 +20,8 @@
     {
       id: 'biscuit', name: 'Biscuit', species: 'dog', price: 0,
       tag: 'Short legs, long memory',
-      fur: '#e8b060', belly: '#fdf1dc', accent: '#c8102e', eye: '#241a12',
-      ears: 'perk', tail: 'stub', short: true
+      fur: '#c98a4e', belly: '#fffaf2', accent: '#2f7fc1', eye: '#241a12',
+      ears: 'floppy', tail: 'stub', short: true
     },
     {
       id: 'boris', name: 'Boris', species: 'dog', price: 60,
@@ -82,6 +82,54 @@
      Draws a chunky, blocky animal with its feet at (x, y).
      opts: { size, char, facing: 'up'|'down'|'left'|'right',
              squash: -1..1, lift: px, alpha, cap: 'ushanka'|'cap'|null } */
+  /* Derived shades, worked out once per look instead of every frame. A
+     converting player gets a fresh blended object, so it recomputes. */
+  function tones(c) {
+    if (c._tones && c._tones.fur === c.fur && c._tones.belly === c.belly && c._tones.acc === c.accent) {
+      return c._tones;
+    }
+    c._tones = {
+      fur: c.fur, belly: c.belly, acc: c.accent,
+      dark: U.shade(c.fur, -0.28),
+      patch: U.shade(c.fur, -0.45),
+      earIn: U.shade(c.belly, -0.06),
+      flop: U.shade(c.fur, -0.18),
+      points: U.shade(c.fur, -0.42),
+      tuft: U.shade(c.fur, -0.12),
+      accent: c.accent ? U.shade(c.accent, 0.35) : null
+    };
+    return c._tones;
+  }
+
+  /* The regime's animals never squash, hop or flinch, so each look (skin,
+     hat, facing, size) is drawn once to an offscreen canvas and stamped from
+     then on. A crowded late-game frame holds nearly a hundred of them. */
+  var sprites = {};
+
+  function drawEnemy(ctx, x, y, opts) {
+    var skin = ENEMY_SKINS.indexOf(opts.char);
+    if (skin < 0 || typeof document === 'undefined') { drawCritter(ctx, x, y, opts); return; }
+    var dpr = Math.min(global.devicePixelRatio || 1, 2);
+    var s = opts.size;
+    var key = skin + '|' + (opts.cap || '') + '|' + (opts.facing || 'down') + '|' + Math.round(s * dpr * 4);
+    var spr = sprites[key];
+    if (!spr) {
+      var W = Math.ceil(s * 2.0), H = Math.ceil(s * 1.8);
+      var ox = W / 2, oy = Math.round(H * 0.8);
+      var cnv = document.createElement('canvas');
+      cnv.width = Math.ceil(W * dpr);
+      cnv.height = Math.ceil(H * dpr);
+      var g2 = cnv.getContext('2d');
+      g2.setTransform(dpr, 0, 0, dpr, 0, 0);
+      drawCritter(g2, ox, oy, { size: s, char: opts.char, facing: opts.facing, cap: opts.cap, still: true });
+      spr = sprites[key] = { c: cnv, w: W, h: H, ox: ox, oy: oy };
+    }
+    var prev = ctx.globalAlpha;
+    ctx.globalAlpha = prev * (opts.alpha === undefined ? 1 : opts.alpha);
+    ctx.drawImage(spr.c, x - spr.ox, y - spr.oy, spr.w, spr.h);
+    ctx.globalAlpha = prev;
+  }
+
   function drawCritter(ctx, x, y, opts) {
     var c = opts.char || ROSTER[0];
     var s = opts.size;
@@ -100,11 +148,14 @@
     var flip = (facing === 'left') ? -1 : 1;
 
     ctx.save();
-    ctx.globalAlpha = opts.alpha === undefined ? 1 : opts.alpha;
+    // Multiply, so a caller's fade (e.g. a far row rising over the horizon)
+    // still applies to the animal.
+    var alpha = ctx.globalAlpha * (opts.alpha === undefined ? 1 : opts.alpha);
+    ctx.globalAlpha = alpha;
 
     /* Contact shadow stays on the ground even while the critter is airborne. */
     ctx.save();
-    ctx.globalAlpha = (opts.alpha === undefined ? 1 : opts.alpha) * (0.28 - Math.min(lift, s) / s * 0.12);
+    ctx.globalAlpha = alpha * (0.28 - Math.min(lift, s) / s * 0.12);
     ctx.fillStyle = '#251536';
     U.ellipse(ctx, x, y, bodyW * 0.62, bodyW * 0.24);
     ctx.fill();
@@ -113,8 +164,8 @@
     ctx.translate(x, y - lift);
     ctx.scale(flip * (1 + squash * 0.35), 1 - squash * 0.35);
 
-    var dark = U.shade(c.fur, -0.28);
-    var light = U.shade(c.fur, 0.18);
+    var tone = tones(c);
+    var dark = tone.dark;
 
     /* Tail (behind the body). Sways idly; tucks low when afraid. */
     ctx.strokeStyle = dark;
@@ -122,7 +173,7 @@
     var tailBaseY = -legH - bodyH * 0.55;
     var fear = opts.fear || 0;
     var tnow = PP.World ? PP.World.time() : 0;
-    var sway = Math.sin(tnow * 2.1) * s * 0.05 * (1 - fear);
+    var sway = opts.still ? 0 : Math.sin(tnow * 2.1) * s * 0.05 * (1 - fear);
     if (c.tail === 'long' || c.tail === 'curl') {
       ctx.lineWidth = s * 0.09;
       ctx.beginPath();
@@ -166,7 +217,7 @@
       ctx.fill();
     }
     if (c.patch) {
-      ctx.fillStyle = U.shade(c.fur, -0.45);
+      ctx.fillStyle = tone.patch;
       U.ellipse(ctx, bodyW * 0.22, bodyTop + bodyH * 0.45, bodyW * 0.16, bodyH * 0.3);
       ctx.fill();
     }
@@ -191,7 +242,7 @@
         ctx.closePath();
         ctx.fill();
         if (!away) {
-          ctx.fillStyle = U.shade(c.belly, -0.06);
+          ctx.fillStyle = tone.earIn;
           ctx.beginPath();
           ctx.moveTo(ex - earW * 0.24, headTop + earH * 0.34);
           ctx.lineTo(ex, headTop - earH * 0.18);
@@ -202,7 +253,7 @@
         }
       });
     } else { /* floppy */
-      ctx.fillStyle = U.shade(c.fur, -0.18);
+      ctx.fillStyle = tone.flop;
       [-1, 1].forEach(function (sgn) {
         U.roundRect(ctx, sgn * headW * 0.42 - headW * 0.14, headTop + headH * 0.06,
           headW * 0.28, headH * 0.78, headW * 0.13);
@@ -216,7 +267,7 @@
     ctx.fill();
 
     if (c.points) { /* siamese mask */
-      ctx.fillStyle = U.shade(c.fur, -0.42);
+      ctx.fillStyle = tone.points;
       U.roundRect(ctx, hx + headW * 0.16, headTop + headH * 0.30, headW * 0.68, headH * 0.66, headW * 0.2);
       ctx.fill();
     }
@@ -228,7 +279,7 @@
 
     if (away) {
       /* Back of the head — a couple of tufts, no face. */
-      ctx.fillStyle = U.shade(c.fur, -0.12);
+      ctx.fillStyle = tone.tuft;
       U.roundRect(ctx, hx + headW * 0.18, headTop + headH * 0.22, headW * 0.64, headH * 0.42, headW * 0.18);
       ctx.fill();
     } else {
@@ -330,7 +381,7 @@
       ctx.fillStyle = c.accent;
       U.roundRect(ctx, hx + headW * 0.06, headBottom - headH * 0.02, headW * 0.88, s * 0.055, s * 0.03);
       ctx.fill();
-      ctx.fillStyle = U.shade(c.accent, 0.35);
+      ctx.fillStyle = tone.accent;
       U.ellipse(ctx, 0, headBottom + s * 0.045, s * 0.035, s * 0.035);
       ctx.fill();
     }
@@ -417,6 +468,8 @@
     byId: function (id) { return BY_ID[id] || ROSTER[0]; },
     enemySkin: function (i) { return ENEMY_SKINS[U.mod(i, ENEMY_SKINS.length)]; },
     draw: drawCritter,
+    drawEnemy: drawEnemy,
+    clearSprites: function () { sprites = {}; },
     star: star
   };
 })(window);
