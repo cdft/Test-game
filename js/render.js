@@ -1794,6 +1794,14 @@
     }
   }
 
+  /* Clip to the ground below the horizon line (pair with ctx.restore()). */
+  function clipToGround() {
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, horizonY, view.w, view.h + 60 - horizonY);
+    ctx.clip();
+  }
+
   /* Everything standing on a row: scenery, traffic, logs, floes. `alpha`
      fades far rows in as they rise over the horizon. */
   function drawRowThings(row, cam, t, alpha) {
@@ -1866,12 +1874,7 @@
       // crest of a hill); it fades in as its footing clears the horizon.
       var bandTop = sy(i, cam) - view.rowH / 2;
       var clipped = bandTop < horizonY;
-      if (clipped) {
-        ctx.save();
-        ctx.beginPath();
-        ctx.rect(0, horizonY, view.w, view.h + 60 - horizonY);
-        ctx.clip();
-      }
+      if (clipped) clipToGround();
       drawBand(row, cam, t);
       if (clipped) ctx.restore();
 
@@ -1879,6 +1882,9 @@
       var rise = U.clamp((footing - horizonY) / (view.rowH * 1.2), 0, 1);
       if (rise > 0) drawRowThings(row, cam, t, rise);
 
+      // Markings on the ground (the record line, the tide) belong to the
+      // ground, so they are clipped at the horizon with it.
+      if (clipped) clipToGround();
       if (g.bestLineRow >= 0 && i === g.bestLineRow && g.showPlayer) drawBestLine(i, cam);
 
       // Aerial perspective: far rows sink into the warm smog, near rows
@@ -1898,6 +1904,7 @@
 
       if (g.tide.row >= i) drawTideBand(row, cam, g.tide.row, t);
       if (Math.floor(g.tide.row) === i) drawTideFront(cam, g.tide.row, t);
+      if (clipped) ctx.restore();
 
       // The black car lives on a row like everything else, so nearer rows
       // paint over it; its target ring sits on the ground under your feet.
