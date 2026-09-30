@@ -104,7 +104,9 @@ jobs:
           git fetch origin gh-pages
           git worktree add --detach ../pages origin/gh-pages
           cd ../pages
-          git rm -rq --ignore-unmatch .
+          # Leave .github alone: the Actions token may not touch workflow
+          # files, even to delete a stale copy (it is inert on this branch).
+          git rm -rq --ignore-unmatch -- . ':(exclude).github'
           cp -r "$GITHUB_WORKSPACE/_site/." .
           git add -A
           if git diff --cached --quiet; then
@@ -112,5 +114,6 @@ jobs:
             exit 0
           fi
           git commit -qm "Publish ${GITHUB_SHA::7} from ${GITHUB_REF_NAME}"
-          # A plain push: it only ever fast-forwards the live site.
+          # A plain push, never --force: if gh-pages moved underneath us the
+          # push fails loudly instead of discarding someone else's publish.
           git push origin HEAD:gh-pages
