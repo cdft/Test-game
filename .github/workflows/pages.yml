@@ -104,8 +104,8 @@ jobs:
           git fetch origin gh-pages
           git worktree add --detach ../pages origin/gh-pages
           cd ../pages
-          # Leave .github alone: the Actions token may not touch workflow
-          # files, even to delete a stale copy (it is inert on this branch).
+          # Leave any .github directory alone: the site never needs it, and
+          # the Actions token is not meant to edit workflow files.
           git rm -rq --ignore-unmatch -- . ':(exclude).github'
           cp -r "$GITHUB_WORKSPACE/_site/." .
           git add -A
